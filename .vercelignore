@@ -1,0 +1,17 @@
+# Deploy from an explicit allowlist. Everything else stays local/private.
+/*
+
+# Vite application source and public demo asset.
+!src
+!public
+!index.html
+
+# Reproducible build inputs.
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.app.json
+!tsconfig.node.json
+!vite.config.ts
+!vercel.json
+!.nvmrc
