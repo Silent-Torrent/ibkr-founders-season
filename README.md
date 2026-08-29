@@ -54,9 +54,10 @@ Open the local URL printed by Vite, normally `http://localhost:5173`. Vite 8 req
 - Browser support begins at iOS 16.4 and Safari 16.4.
 - The remote must be a GitHub private repository.
 - Git commits must use the user's approved GitHub `noreply` email rather than a personal email address.
-- The only permitted external deployment in the current stage is an access-protected Vercel Preview.
-- Do not create, publish, or expose a Vercel Production deployment or production domain. Public/Production release requires a separate future approval and release-gate review.
-- The local `main` branch now tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and this Mac connects through a repository-scoped read/write deploy key. An empty, Standard-Protected Vercel project exists with zero deployments. Vercel currently forces the first deployment to Production even when Preview is requested, so deployment is paused pending a new user decision.
+- The earlier access-protected Vercel Preview authorization is paused because Vercel forced the empty project's first Preview request into Production.
+- The user selected A + C on 2026-08-30: keep Vercel empty and research private-test alternatives only. No alternate provider or external upload is approved yet.
+- Do not create, publish, or expose any external deployment or public/Production domain without a separate future approval and provider-specific release-gate review.
+- The local `main` branch now tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and this Mac connects through a repository-scoped read/write deploy key. The Standard-Protected Vercel project remains at zero deployments. The read-only alternative comparison is recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 
 ## Validate before a commit
 
@@ -146,6 +147,7 @@ scripts/
   test-worker-boundary.mjs
 docs/
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
+  PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md  A + C private-host comparison, proposed gates and stop conditions
 ```
 
 ## Known MVP limitations
@@ -164,7 +166,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Resolve Vercel's forced-first-Production blocker without weakening the frozen access boundary. Do not retry the empty project's upload before a user decision; after a safe route is approved, verify Network/Storage, Worker response headers/MIME and security headers on the protected non-public deployment.
+1. Choose whether to continue local-only, use the researched Tailscale owner-device bridge, or authorize the researched Netlify private-Draft gate. Until that explicit decision, keep Vercel empty and do not upload to any alternate host. After a safe route is approved, verify Network/Storage, Worker response headers/MIME and security headers on the protected non-public deployment.
 2. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` to verify real iPhone Safari 16.4+ import, cancellation, timeout and share-card export with fictional data only.
 3. Run VoiceOver checks on the supported real iPhone; do not treat the desktop keyboard or simulated-width result as a substitute.
 4. Refine the dashboard after real-data density is known. A public or Production release remains outside the approved current scope.

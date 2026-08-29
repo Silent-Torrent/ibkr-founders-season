@@ -68,7 +68,9 @@
 - [x] Add a three-locale privacy notice and disclaimer modal.
 - [x] Initialize local Git history with the approved GitHub `noreply` identity.
 - [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
-- [ ] Resolve Vercel's forced-first-Production blocker by explicit user decision, then deploy only through the approved protected route.
+- [x] Record the user's A + C decision: keep Vercel at zero deployments and research alternative private-test routes without external action.
+- [x] Compare owner-only Netlify Private Draft, Tailscale Serve, Cloudflare Pages + Access, GitHub Pages and Render against the non-public-first-deployment gate.
+- [ ] Obtain a separate explicit user decision for one researched route; until then, create no alternate account, authorization, project, upload or paid plan.
 
 ## P1 — after first testers
 

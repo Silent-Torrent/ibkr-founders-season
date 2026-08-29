@@ -1,6 +1,6 @@
 # Locked product decisions — v0.3
 
-Updated and approved by the user on 2026-08-29. This version supersedes conflicting v0.1 and v0.2 storage, identity, verification, PDF-input, browser-support, source-control, and deployment assumptions.
+Updated and approved by the user through 2026-08-30. This version supersedes conflicting v0.1 and v0.2 storage, identity, verification, PDF-input, browser-support, source-control, and deployment assumptions.
 
 ## Product
 
@@ -61,15 +61,19 @@ Exact account balance is private by default. Net liquidation value determines a 
 - That baseline applies to the production bundle. The Vite development server is not compatibility evidence for Safari/iOS 16.4.
 - The remote source repository must be a GitHub private repository during the current beta stage.
 - Git commits must use the user's approved GitHub `noreply` email, not a personal email address.
-- External deployment is limited to a Vercel Preview protected by access control. Do not create, publish, or expose a Vercel Production deployment or production domain in the current stage.
+- The earlier authorization for an access-protected Vercel Preview is paused because the provider forced the empty project's first Preview request into Production.
+- On 2026-08-30 the user chose **A + C**: keep Vercel at zero deployments and perform read-only research into private-test alternatives. No alternate provider or external upload is approved by that choice.
+- Do not create, publish, or expose any external deployment until the user explicitly approves a researched route and its provider-specific release gate.
 - Any future public or Production deployment requires a new explicit user decision and a fresh release-gate review.
 
-### Deployment implementation status — 2026-08-29
+### Deployment implementation status — 2026-08-30
 
 - An empty Hobby-plan Vercel project now exists with Vercel Authentication set to Standard Protection. It has no surviving deployment and no connected Git repository.
 - Vercel classified the first upload as Production even though the CLI request explicitly used `--target=preview`; it also assigned the default production alias. The deployment was immediately removed, and both generated URLs were verified as `404 DEPLOYMENT_NOT_FOUND`.
 - The provider currently forces a new project's first deployment to Production. Therefore the frozen Preview-only decision cannot be completed on this empty Vercel project without a new user decision about a non-public Production bootstrap or a different hosting route. Do not retry the upload while the project has zero deployments.
 - Provider evidence: [open Vercel CLI issue #17069](https://github.com/vercel/vercel/issues/17069) and [Vercel staff confirmation on 2026-08-22](https://community.vercel.com/t/fresh-no-git-cli-and-rest-deployments-classified-as-production-despite-documented-preview-defaults/46150).
+- A read-only comparison now identifies Netlify Free Private + manual Draft Deploy as the strongest owner-only persistent-cloud candidate; Tailscale Serve as an optional temporary owner-device bridge; and Cloudflare Pages + Access as a more complex multi-user fallback. This is not deployment approval.
+- The complete scope, official references, proposed gates and stop conditions are in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 
 ## Security and data collection
 

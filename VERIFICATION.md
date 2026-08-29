@@ -1,6 +1,6 @@
 # Verification record — coding checkpoint 0.5
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 ## Frozen release decisions and execution status
 
@@ -8,11 +8,12 @@ Last updated: 2026-08-29
 - The production build target is explicitly frozen to Chrome 111, Edge 111, Firefox 114, Safari 16.4, and iOS 16.4. A contract check also requires every standard `backdrop-filter` declaration to retain its Safari 16.4 `-webkit-` counterpart.
 - TypeScript's application target/library guard is ES2022 to reduce accidental use of newer built-in APIs. This guard does not provide runtime polyfills or replace versioned browser testing.
 - The remote must be a GitHub private repository, and commits must use the user's approved GitHub `noreply` email rather than a personal email address.
-- The only permitted external deployment in the current stage is an access-protected Vercel Preview.
-- A Vercel Production deployment or production domain must not be created, published, or exposed without a new explicit user decision.
+- The earlier access-protected Vercel Preview authorization is paused because the provider forced the first request into Production.
+- The user selected A + C on 2026-08-30: keep Vercel at zero deployments and research alternatives only. No alternate host, external upload, Production deployment, or public domain is approved without a new explicit user decision.
 - The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac.
 - An empty Vercel project exists with Standard Protection enabled and build settings frozen to Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. It currently has zero deployments.
 - A first upload explicitly requested as Preview was classified by Vercel as Production and received the default production alias. It was immediately removed; both generated URLs were then verified as `404 DEPLOYMENT_NOT_FOUND`. This is a failed release-gate attempt, not a successful Preview or Production release.
+- The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
@@ -95,7 +96,7 @@ Last updated: 2026-08-29
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
 - Exercise remains uncovered by a qualified real or independently proven fixture.
-- Protected-Preview header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari and PNG export remain unverified.
+- Protected private-host header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari and PNG export remain unverified.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.
 - Node 25.8.1 was used for this local run; Node 22 LTS remains the recommended repeatable user environment.
-- The private GitHub remote exists and the `main` history has been pushed successfully. The Vercel project exists but has zero deployments; the frozen Preview-only gate is blocked by Vercel's current forced-first-Production behavior.
+- The private GitHub remote exists and the `main` history has been pushed successfully. Under the user's A + C decision, Vercel remains at zero deployments and no researched alternate route is authorized yet.

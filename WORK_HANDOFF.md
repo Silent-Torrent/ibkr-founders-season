@@ -20,6 +20,8 @@ The user subsequently froze three release-boundary choices: the supported baseli
 
 An empty Vercel project now exists and is locally linked through ignored `.vercel/` and `.env.local` state. Its settings are Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. Vercel Authentication reports Standard Protection (`all_except_custom_domains`), no bypass secret, share link, exception, custom domain or Git integration was created. The first explicit `--target=preview` upload was nevertheless classified by Vercel as Production and received the default production alias. It was removed immediately; the project now has zero deployments and both generated URLs return `404 DEPLOYMENT_NOT_FOUND`. Current provider behavior forces a new project's first deployment to Production, so the Preview-only gate is blocked pending a new user decision. Do not retry while the project remains empty.
 
+On 2026-08-30 the user selected **A + C**: preserve that empty Vercel state and research alternatives without registering, authorizing, installing provider tooling, uploading, connecting GitHub or paying. The research in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md` recommends Netlify Free Private + a manual Draft Deploy as the best owner-only persistent-cloud candidate, with Tailscale Serve as an optional temporary private-iPhone bridge and Cloudflare Pages + Access as a more complex multi-user fallback. No route has been approved for implementation; all external uploads remain paused.
+
 ## Product thesis
 
 P&L Arena is an entertainment-oriented identity layer built on serious IBKR performance data. It is not a trading bot and not initially a generic portfolio tracker.
@@ -51,7 +53,7 @@ The engagement layer adds:
 - Raw statement: local browser parsing only.
 - Supported browser baseline: iOS 16.4+ and Safari 16.4+.
 - Remote backup boundary: GitHub private repository with the user's approved GitHub `noreply` commit email.
-- Deployment boundary: access-protected Vercel Preview only; no Production deployment or public production domain.
+- Deployment boundary: Vercel remains empty; no alternate host or external upload is approved after the 2026-08-30 A + C decision. Any future route requires a separate explicit decision and provider-specific gate.
 
 ## MVP surfaces already represented in code
 
@@ -93,7 +95,7 @@ These checks do not replace testing against a real IBKR statement.
 ## Main unverified risks
 
 1. Assignment and expiration are covered by the private calibration and the synthetic fixture, but no qualified exercise event is available.
-2. Protected-Preview Network/Storage verification, Worker response-header/MIME inspection and near-limit device responsiveness remain incomplete; local Worker lifecycle and parser limits now have regression cases.
+2. Protected private-host Network/Storage verification, Worker response-header/MIME inspection and near-limit device responsiveness remain incomplete; local Worker lifecycle and parser limits now have regression cases.
 3. Real iPhone Safari 16.4+ file import, cancellation, timeout and PNG export have not been tested. VoiceOver also remains untested; the broader desktop keyboard/focus and simulated 320 px checks are only preliminary coverage.
 4. PDF checks are manual; PDF parsing is not automated and PDF-only remains unsupported for ranked results.
 5. The project has a private GitHub remote backup. The local and remote `main` branches are connected through a repository-scoped read/write deploy key. The Vercel project exists but has zero deployments after the misclassified first upload was removed.
@@ -104,7 +106,7 @@ Do not add social features or polish first. The next milestone is:
 
 > Complete the static-Beta security and device gate around the now-repeatable accounting parser, without broadening the product's data boundary.
 
-The accounting checkpoint is repeatable with a fully synthetic current-schema fixture, and the private sample remains a separate read-only calibration source. The Worker boundary, complete underlying-value provenance UI, and three-locale privacy dialog are now implemented. Desktop keyboard/focus behavior and the principal simulated 320 px surfaces have passed. The GitHub private remote gate is complete. The empty Vercel project and its access protection are confirmed, but Vercel's forced-first-Production behavior blocks the frozen Preview-only upload until the user chooses a safe exception or another host. After that decision, Network/Storage and Worker-response inspection remain the next technical gate. The fictional-data real-iPhone Safari 16.4+ procedure in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` and VoiceOver remain required. Automated PDF reconciliation remains a later workstream.
+The accounting checkpoint is repeatable with a fully synthetic current-schema fixture, and the private sample remains a separate read-only calibration source. The Worker boundary, complete underlying-value provenance UI, and three-locale privacy dialog are now implemented. Desktop keyboard/focus behavior and the principal simulated 320 px surfaces have passed. The GitHub private remote gate is complete. Under the 2026-08-30 A + C decision, Vercel remains empty and alternative private-test hosting has been researched but not approved for implementation. After a route is explicitly chosen, Network/Storage and Worker-response inspection remain the next technical gate. The fictional-data real-iPhone Safari 16.4+ procedure in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` and VoiceOver remain required. Automated PDF reconciliation remains a later workstream.
 
 ## Longer-term roadmap
 
