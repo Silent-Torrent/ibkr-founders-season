@@ -1,7 +1,8 @@
 Statement,Header,Field Name,Field Value
 Statement,Data,Period,"January 1, 2026 - August 27, 2026"
 Account Information,Header,Field Name,Field Value
-Account Information,Data,Account,U1232026
+Account Information,Data,Account,SYNTHETIC_SAMPLE_2026
+Account Information,Data,Name,Synthetic Bundled Sample
 Account Information,Data,Base Currency,USD
 Change in NAV,Header,Field Name,Field Value
 Change in NAV,Data,Time Weighted Rate of Return,21.3%

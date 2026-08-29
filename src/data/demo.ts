@@ -2,6 +2,7 @@ import type { PortfolioReport } from '../types'
 
 export const demoReport: PortfolioReport = {
   source: 'demo',
+  accountComparisonKey: 'demo-only',
   accountIdMasked: '••••2026',
   baseCurrency: 'USD',
   seasonYear: 2026,
@@ -171,5 +172,5 @@ export const demoReport: PortfolioReport = {
     'Statement',
   ],
   warnings: [],
-  dataQuality: 'good',
+  dataQuality: 'warning',
 }

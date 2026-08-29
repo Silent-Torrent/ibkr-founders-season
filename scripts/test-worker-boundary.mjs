@@ -2,9 +2,10 @@ import assert from 'node:assert/strict'
 import { createServer } from 'vite'
 
 class FakeWorker {
-  constructor(mode = 'idle', response) {
+  constructor(mode = 'idle', response, expectedSalt = 'standalone-worker-v1') {
     this.mode = mode
     this.response = response
+    this.expectedSalt = expectedSalt
     this.listeners = new Map()
     this.terminateCount = 0
   }
@@ -20,8 +21,9 @@ class FakeWorker {
   }
 
   postMessage(request) {
-    assert.deepEqual(Object.keys(request).sort(), ['statement', 'type'])
+    assert.deepEqual(Object.keys(request).sort(), ['accountComparisonSalt', 'statement', 'type'])
     assert.equal(request.type, 'parse')
+    assert.equal(request.accountComparisonSalt, this.expectedSalt)
     assert.ok(request.statement instanceof Blob)
     assert.equal('name' in request.statement, false)
 
@@ -153,11 +155,16 @@ try {
     }),
   )
 
-  const successWorker = new FakeWorker('result', {
-    type: 'result',
-    result: { errors: [], warnings: [] },
-  })
+  const successWorker = new FakeWorker(
+    'result',
+    {
+      type: 'result',
+      result: { errors: [], warnings: [] },
+    },
+    'custom-session-salt',
+  )
   const success = await parseIbkrActivityStatementInWorker(statement, {
+    accountComparisonSalt: 'custom-session-salt',
     workerFactory: () => successWorker,
   })
   assert.deepEqual(success, { errors: [], warnings: [] })

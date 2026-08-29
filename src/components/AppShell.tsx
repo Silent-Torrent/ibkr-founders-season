@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { Locale, PageId, PortfolioReport } from '../types'
 import { t } from '../i18n'
+import { isImportedSource, reportSourceStatusKey } from '../lib/reportSource'
 
 interface AppShellProps {
   children: ReactNode
@@ -37,7 +38,7 @@ export function AppShell({
   useEffect(() => {
     const pageChanged = previousPageRef.current !== page
     const reportWasCleared =
-      previousReportSourceRef.current === 'local' && report.source === 'demo'
+      isImportedSource(previousReportSourceRef.current) && report.source === 'demo'
 
     previousPageRef.current = page
     previousReportSourceRef.current = report.source
@@ -51,7 +52,7 @@ export function AppShell({
         {t(locale, 'skipToContent')}
       </a>
       <span aria-live="polite" className="sr-only report-source-status" role="status">
-        {report.source === 'demo' ? t(locale, 'demoData') : t(locale, 'localReport')}
+        {t(locale, reportSourceStatusKey(report.source))}
       </span>
       <aside className="sidebar">
         <button className="brand" onClick={() => onPageChange('ledger')} type="button">
@@ -92,12 +93,12 @@ export function AppShell({
 
         <div className="sidebar-footer">
           <div className="source-row">
-            <span className={report.source === 'demo' ? 'source-pill demo' : 'source-pill local'}>
-              {report.source === 'demo' ? t(locale, 'demoData') : t(locale, 'localReport')}
+            <span className={`source-pill ${report.source}`}>
+              {t(locale, reportSourceStatusKey(report.source))}
             </span>
             <span aria-hidden="true" className={`quality-dot ${report.dataQuality}`} />
           </div>
-          {report.source === 'local' && (
+          {isImportedSource(report.source) && (
             <button className="text-button danger" onClick={onClearLocal} type="button">
               {t(locale, 'clearLocal')}
             </button>
@@ -112,8 +113,8 @@ export function AppShell({
             <strong>{report.accountIdMasked}</strong>
           </div>
           <div className="topbar-actions">
-            <span className={report.source === 'demo' ? 'source-pill demo mobile-source' : 'source-pill local mobile-source'}>
-              {report.source === 'demo' ? t(locale, 'demoData') : t(locale, 'localReport')}
+            <span className={`source-pill ${report.source} mobile-source`}>
+              {t(locale, reportSourceStatusKey(report.source))}
             </span>
             <select
               aria-label={t(locale, 'languageLabel')}

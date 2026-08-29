@@ -1,6 +1,6 @@
 # Locked product decisions — v0.3
 
-Updated and approved by the user through 2026-08-30. This version supersedes conflicting v0.1 and v0.2 storage, identity, verification, PDF-input, browser-support, source-control, and deployment assumptions.
+This record includes the user's approved decisions through 2026-08-30 plus implementation safeguards that do not expand the approved scope. It supersedes conflicting v0.1 and v0.2 storage, identity, verification, PDF-input, browser-support, source-control, and deployment assumptions.
 
 ## Product
 
@@ -24,6 +24,7 @@ P&L Arena is an annual-season performance identity layer for IBKR stock and opti
 - IBKR YTD MTM is the season P&L source of truth.
 - Current unrealized P&L is explanatory, not added to YTD MTM.
 - Self-uploaded CSV status: Self-Reported, never Verified.
+- Repository-owned fictional fixtures matched by normalized SHA-256 content digest are labelled Fully Synthetic Test, not Self-Reported; this content match is not a general authenticity detector.
 - Source tiers: Demo → Self-Reported → Reconciled Self-Reported → Broker-Sourced.
 - CSV/PDF agreement can reach Reconciled Self-Reported only. Verified/Broker-Sourced requires a future approved direct read-only source.
 
@@ -45,6 +46,9 @@ Future official annual boards:
 
 Exact account balance is private by default. Net liquidation value determines a division, not a skill score.
 
+- Current capital-division thresholds are USD-only. Non-USD NAV remains ungrouped until an exchange-rate policy is explicitly approved.
+- Default share outputs omit holdings, account identifiers, and exact net liquidation value, but a displayed USD division can still reveal a broad balance range.
+
 - Absolute Season P&L and TWR/Season Return are separate boards.
 - The ranking unit is an account-season entry; the product does not claim one natural person has only one brokerage account.
 - Self-Reported/Reconciled Self-Reported and Broker-Sourced results must use separate boards, not merely different icons.
@@ -63,6 +67,7 @@ Exact account balance is private by default. Net liquidation value determines a 
 - Git commits must use the user's approved GitHub `noreply` email, not a personal email address.
 - The earlier authorization for an access-protected Vercel Preview is paused because the provider forced the empty project's first Preview request into Production.
 - On 2026-08-30 the user chose **A + C**: keep Vercel at zero deployments and perform read-only research into private-test alternatives. No alternate provider or external upload is approved by that choice.
+- The user then chose **L**: continue local development and private-GitHub backup until the local product is ready, and discuss deployment only afterwards. Hosting research remains reference material, not authorization.
 - Do not create, publish, or expose any external deployment until the user explicitly approves a researched route and its provider-specific release gate.
 - Any future public or Production deployment requires a new explicit user decision and a fresh release-gate review.
 
@@ -73,6 +78,7 @@ Exact account balance is private by default. Net liquidation value determines a 
 - The provider currently forces a new project's first deployment to Production. Therefore the frozen Preview-only decision cannot be completed on this empty Vercel project without a new user decision about a non-public Production bootstrap or a different hosting route. Do not retry the upload while the project has zero deployments.
 - Provider evidence: [open Vercel CLI issue #17069](https://github.com/vercel/vercel/issues/17069) and [Vercel staff confirmation on 2026-08-22](https://community.vercel.com/t/fresh-no-git-cli-and-rest-deployments-classified-as-production-despite-documented-preview-defaults/46150).
 - A read-only comparison now identifies Netlify Free Private + manual Draft Deploy as the strongest owner-only persistent-cloud candidate; Tailscale Serve as an optional temporary owner-device bridge; and Cloudflare Pages + Access as a more complex multi-user fallback. This is not deployment approval.
+- Under the subsequent L decision, no alternate-host selection is currently pending; external deployment work is deliberately deferred while local product-integrity and security work continues.
 - The complete scope, official references, proposed gates and stop conditions are in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 
 ## Security and data collection

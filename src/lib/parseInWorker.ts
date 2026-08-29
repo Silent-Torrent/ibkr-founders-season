@@ -15,6 +15,7 @@ const WORKER_FAILURE_ERROR =
 const WORKER_CANCELLED_ERROR = 'The statement import was cancelled.'
 
 interface ParseInWorkerOptions {
+  accountComparisonSalt?: string
   signal?: AbortSignal
   timeoutMs?: number
   workerFactory?: () => Worker
@@ -36,6 +37,7 @@ export function parseIbkrActivityStatementInWorker(
   options: ParseInWorkerOptions = {},
 ): Promise<ParseResult> {
   const {
+    accountComparisonSalt = 'standalone-worker-v1',
     signal,
     timeoutMs = IBKR_PARSER_TIMEOUT_MS,
     workerFactory,
@@ -95,7 +97,11 @@ export function parseIbkrActivityStatementInWorker(
       timeoutMs,
     )
 
-    const request: IbkrParserWorkerRequest = { type: 'parse', statement }
+    const request: IbkrParserWorkerRequest = {
+      type: 'parse',
+      accountComparisonSalt,
+      statement,
+    }
     try {
       worker.postMessage(request)
     } catch {

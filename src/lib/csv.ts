@@ -97,22 +97,75 @@ export function parsePercent(value: string | undefined): number | undefined {
   return parsed / 100
 }
 
+const ENGLISH_MONTHS = new Map<string, number>([
+  ['jan', 0], ['january', 0],
+  ['feb', 1], ['february', 1],
+  ['mar', 2], ['march', 2],
+  ['apr', 3], ['april', 3],
+  ['may', 4],
+  ['jun', 5], ['june', 5],
+  ['jul', 6], ['july', 6],
+  ['aug', 7], ['august', 7],
+  ['sep', 8], ['sept', 8], ['september', 8],
+  ['oct', 9], ['october', 9],
+  ['nov', 10], ['november', 10],
+  ['dec', 11], ['december', 11],
+])
+
+function validLocalDate(year: number, monthIndex: number, day: number): Date | undefined {
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(monthIndex) ||
+    !Number.isInteger(day) ||
+    year < 1900 ||
+    monthIndex < 0 ||
+    monthIndex > 11 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return undefined
+  }
+
+  const date = new Date(year, monthIndex, day)
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== monthIndex ||
+    date.getDate() !== day
+  ) {
+    return undefined
+  }
+  return date
+}
+
 export function parseDateFlexible(value: string | undefined): Date | undefined {
   if (!value) return undefined
   const clean = value.trim()
 
   const compact = clean.match(/^(\d{4})(\d{2})(\d{2})$/)
   if (compact) {
-    return new Date(Number(compact[1]), Number(compact[2]) - 1, Number(compact[3]))
+    return validLocalDate(Number(compact[1]), Number(compact[2]) - 1, Number(compact[3]))
   }
 
-  const iso = clean.match(/^(\d{4})[-/]?(\d{2})[-/]?(\d{2})$/)
+  const iso = clean.match(/^(\d{4})-(\d{2})-(\d{2})$/) ?? clean.match(/^(\d{4})\/(\d{2})\/(\d{2})$/)
   if (iso) {
-    return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
+    return validLocalDate(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]))
   }
 
-  const parsed = new Date(clean)
-  return Number.isNaN(parsed.getTime()) ? undefined : parsed
+  const monthFirst = clean.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/)
+  if (monthFirst) {
+    const monthIndex = ENGLISH_MONTHS.get(monthFirst[1].toLowerCase())
+    if (monthIndex == null) return undefined
+    return validLocalDate(Number(monthFirst[3]), monthIndex, Number(monthFirst[2]))
+  }
+
+  const dayFirst = clean.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/)
+  if (dayFirst) {
+    const monthIndex = ENGLISH_MONTHS.get(dayFirst[2].toLowerCase())
+    if (monthIndex == null) return undefined
+    return validLocalDate(Number(dayFirst[3]), monthIndex, Number(dayFirst[1]))
+  }
+
+  return undefined
 }
 
 export function toIsoDate(date: Date | undefined): string | undefined {

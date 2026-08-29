@@ -2,6 +2,7 @@ import type { Locale, PortfolioReport } from '../types'
 import type { MessageKey } from '../i18n'
 import { t } from '../i18n'
 import { getTrophies } from '../lib/season'
+import { isSyntheticSource, reportTrustLabelKey } from '../lib/reportSource'
 
 interface TrophiesPageProps {
   report: PortfolioReport
@@ -33,20 +34,30 @@ const descriptionKeys: Record<string, MessageKey> = {
 export function TrophiesPage({ report, locale }: TrophiesPageProps) {
   const trophies = getTrophies(report)
   const unlocked = trophies.filter((item) => item.unlocked).length
+  const isSynthetic = isSyntheticSource(report.source)
+  const counterLabel = t(locale, isSynthetic ? 'achievementPreview' : 'trophyCounterLabel')
 
   return (
     <>
       <section className="trophy-hero">
         <div>
-          <span className="eyebrow">{unlocked}/{trophies.length} UNLOCKED</span>
+          <span className="eyebrow">{unlocked}/{trophies.length} {counterLabel}</span>
           <h1>{t(locale, 'trophiesTitle')}</h1>
           <p>{t(locale, 'trophiesSubtitle')}</p>
         </div>
         <div className="trophy-counter">
           <strong>{unlocked}</strong>
-          <span>SEASON TROPHIES</span>
+          <span>{counterLabel}</span>
         </div>
       </section>
+
+      <div className="notice-banner">
+        <span aria-hidden="true">◇</span>
+        <div>
+          <strong>{t(locale, isSynthetic ? reportTrustLabelKey(report.source) : 'localAchievement')}</strong>
+          <p>{t(locale, isSynthetic ? 'trophyDemoNotice' : 'trophyLocalNotice')}</p>
+        </div>
+      </div>
 
       <section aria-label={t(locale, 'trophiesTitle')} className="trophy-grid" role="list">
         {trophies.map((trophy) => (
@@ -56,7 +67,7 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
               <span>{trophy.icon}</span>
             </div>
             <div className="trophy-status">
-              <span>{trophy.unlocked ? t(locale, 'unlocked') : t(locale, 'locked')}</span>
+              <span>{trophy.unlocked ? t(locale, 'localAchievement') : t(locale, 'locked')}</span>
               {trophy.unlocked && <i />}
             </div>
             <h2>{t(locale, titleKeys[trophy.id])}</h2>

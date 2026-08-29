@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.5
+## Completed through coding checkpoint 0.6
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -9,8 +9,11 @@
 - [x] CSV drag-and-drop and file picker.
 - [x] Local-only parser.
 - [x] Current-year YTD validation.
-- [x] Duplicate detection and latest-snapshot replacement rule.
+- [x] Strict calendar-date validation, including invalid dates, reversed periods, future period ends, and non-current seasons.
+- [x] Duplicate detection and latest-snapshot replacement rule, including rejection of a different same-date file for the same account-season.
 - [x] One-account validation.
+- [x] Missing-account rejection and session-salted SHA-256 account comparison key; masked account suffixes are display-only.
+- [x] Strict three-letter base-currency validation with safe display fallback for malformed or conflicting currency rows.
 - [x] YTD MTM aggregation by underlying and asset class.
 - [x] Realized and current-unrealized explanatory fields.
 - [x] Option event detection.
@@ -19,6 +22,7 @@
 - [x] Capital divisions.
 - [x] Trophy rules and locked previews.
 - [x] PNG season card export.
+- [x] Privacy-safe default share card and copied summary with no underlying symbols, account identifiers, or exact net liquidation value.
 - [x] Sample CSV and parser smoke suite, including invalid-input cases.
 - [x] Visible IBKR YTD-total reconciliation difference.
 - [x] Canonical MTM field names and `reported - parsed` difference direction.
@@ -40,6 +44,12 @@
 - [x] Desktop browser keyboard/focus check and simulated 320 px checks for bottom navigation, Ledger table/share card, Arena scrolling, privacy dialog, and symbol drawer.
 - [x] Beginner-safe real-iPhone Safari checklist that uses only the fully fictional CSV fixture.
 - [x] Explicit production build target for iOS/Safari 16.4+, Safari-prefixed visual effects, and an automated compatibility contract check.
+- [x] Separate Synthetic Demo, SHA-256-matched Fully Synthetic Test, Self-Reported, and Internal Checks Passed labels; remove fake local ranking and prevent synthetic data from unlocking local achievements.
+- [x] Show imported user results as a local, unranked snapshot; do not infer a capital division when NAV is unavailable or the base currency is not USD.
+- [x] Restrict fixed monetary achievement thresholds to USD until an exchange-rate policy exists.
+- [x] Treat unavailable or warning reconciliation checks as Review, not Internal Checks Passed.
+- [x] Product-policy regression suite for trust labels, rankings, achievements, share-card privacy, currency safety, and snapshot replacement.
+- [x] Beginner launcher and project engine pinned to maintained Node.js 22 LTS; full checks and build passed on Node 22.23.2.
 
 ## P0 — before public deployment
 
@@ -70,7 +80,12 @@
 - [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
 - [x] Record the user's A + C decision: keep Vercel at zero deployments and research alternative private-test routes without external action.
 - [x] Compare owner-only Netlify Private Draft, Tailscale Serve, Cloudflare Pages + Access, GitHub Pages and Render against the non-public-first-deployment gate.
-- [ ] Obtain a separate explicit user decision for one researched route; until then, create no alternate account, authorization, project, upload or paid plan.
+- [x] Record the user's L decision: defer every hosting route until the local product is ready and continue only local/private-GitHub development.
+- [ ] Revisit hosting only after the user explicitly reopens deployment; until then, create no alternate account, authorization, project, upload or paid plan.
+- [ ] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
+- [ ] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
+- [ ] Add an automated local-browser import regression for the synthetic fixture.
+- [ ] Localize remaining parser rejection messages in all three interface languages.
 
 ## P1 — after first testers
 

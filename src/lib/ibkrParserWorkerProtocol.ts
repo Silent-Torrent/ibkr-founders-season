@@ -2,6 +2,7 @@ import type { ParseResult } from '../types'
 
 export interface IbkrParserWorkerRequest {
   type: 'parse'
+  accountComparisonSalt: string
   statement: Blob
 }
 

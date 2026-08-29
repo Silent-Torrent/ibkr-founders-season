@@ -1,7 +1,12 @@
 import type { Locale, PortfolioReport } from '../types'
-import { formatCurrency, formatPercent } from './format'
+import { formatCurrency, formatDate, formatPercent } from './format'
 import { getDivision } from './season'
 import { t } from '../i18n'
+import { reportTrustLabelKey } from './reportSource'
+
+export function getShareSourceLabel(report: PortfolioReport, locale: Locale): string {
+  return t(locale, reportTrustLabelKey(report.source))
+}
 
 function roundedRect(
   context: CanvasRenderingContext2D,
@@ -23,9 +28,9 @@ export function downloadSeasonCard(report: PortfolioReport, locale: Locale): voi
   if (!context) return
 
   const currency = report.baseCurrency
-  const best = [...report.symbols].sort((a, b) => b.totalYtdMtm - a.totalYtdMtm)[0]
-  const worst = [...report.symbols].sort((a, b) => a.totalYtdMtm - b.totalYtdMtm)[0]
-  const division = t(locale, getDivision(report.netLiquidationValue))
+  const divisionKey = getDivision(report.netLiquidationValue, report.baseCurrency)
+  const division = divisionKey ? t(locale, divisionKey) : t(locale, 'divisionUnavailable')
+  const sourceLabel = getShareSourceLabel(report, locale)
 
   const background = context.createLinearGradient(0, 0, 1200, 1500)
   background.addColorStop(0, '#070a0f')
@@ -83,8 +88,8 @@ export function downloadSeasonCard(report: PortfolioReport, locale: Locale): voi
   })
 
   const rows = [
-    { label: 'BEST UNDERLYING', symbol: best?.symbol ?? '—', value: best?.totalYtdMtm },
-    { label: 'WORST UNDERLYING', symbol: worst?.symbol ?? '—', value: worst?.totalYtdMtm },
+    { label: t(locale, 'dataThrough'), value: formatDate(report.endDate, locale) },
+    { label: t(locale, 'sourceType'), value: sourceLabel },
   ]
 
   rows.forEach((row, index) => {
@@ -94,17 +99,13 @@ export function downloadSeasonCard(report: PortfolioReport, locale: Locale): voi
     context.fillText(row.label, 120, y)
     context.fillStyle = '#f3f7fb'
     context.font = '750 48px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(row.symbol, 120, y + 60)
-    context.textAlign = 'right'
-    context.fillStyle = (row.value ?? 0) >= 0 ? '#62e6ac' : '#ff7d86'
-    context.fillText(formatCurrency(row.value, currency, locale), 1080, y + 60)
-    context.textAlign = 'left'
+    context.fillText(row.value, 120, y + 60)
   })
 
   context.fillStyle = '#6f8193'
   context.font = '500 25px -apple-system, BlinkMacSystemFont, sans-serif'
   context.fillText(`${t(locale, 'dataThrough')}: ${report.endDate}`, 120, 1270)
-  context.fillText(`${t(locale, 'selfReported')} · IBKR local statement`, 120, 1320)
+  context.fillText(t(locale, 'shareNoHoldings'), 120, 1320)
 
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
@@ -119,17 +120,14 @@ export function downloadSeasonCard(report: PortfolioReport, locale: Locale): voi
 }
 
 export function buildSeasonSummary(report: PortfolioReport, locale: Locale): string {
-  const best = [...report.symbols].sort((a, b) => b.totalYtdMtm - a.totalYtdMtm)[0]
   return [
     `${report.seasonYear} ${t(locale, 'seasonLabel')}`,
     `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'seasonReturn')}: ${formatPercent(report.seasonReturn, locale)}`,
     `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
-    best
-      ? `Best underlying: ${best.symbol} ${formatCurrency(best.totalYtdMtm, report.baseCurrency, locale)}`
-      : '',
     `${t(locale, 'dataThrough')}: ${report.endDate}`,
-    `${t(locale, 'selfReported')} · IBKR local statement`,
+    `${t(locale, 'sourceType')}: ${getShareSourceLabel(report, locale)}`,
+    t(locale, 'shareNoHoldings'),
   ]
     .filter(Boolean)
     .join('\n')

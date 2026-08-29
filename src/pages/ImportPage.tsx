@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import { parseIbkrActivityStatementInWorker } from '../lib/parseInWorker'
 
 interface ImportPageProps {
+  accountComparisonSalt: string
   locale: Locale
   onImport: (report: PortfolioReport) => void
   onUseDemo: () => void
@@ -11,7 +12,7 @@ interface ImportPageProps {
 
 const MAX_CSV_BYTES = 5 * 1024 * 1024
 
-export function ImportPage({ locale, onImport, onUseDemo }: ImportPageProps) {
+export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo }: ImportPageProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const activeTaskRef = useRef<{
     controller: AbortController
@@ -68,6 +69,7 @@ export function ImportPage({ locale, onImport, onUseDemo }: ImportPageProps) {
       // A Blob clone omits File.name while keeping the bytes local to the worker.
       const statement = file.slice(0, file.size, 'text/csv')
       const result = await parseIbkrActivityStatementInWorker(statement, {
+        accountComparisonSalt,
         signal: controller.signal,
       })
       if (

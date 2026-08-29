@@ -2,6 +2,7 @@ export type Locale = 'en' | 'zh-CN' | 'zh-TW'
 export type PageId = 'ledger' | 'arena' | 'trophies' | 'import'
 export type AssetClass = 'STOCK' | 'OPTION' | 'OTHER'
 export type DataQuality = 'good' | 'warning' | 'error'
+export type ReportSource = 'demo' | 'synthetic' | 'local'
 
 export interface SourceRef {
   source: 'csv' | 'pdf'
@@ -93,8 +94,9 @@ export interface SymbolPnl {
 }
 
 export interface PortfolioReport {
-  source: 'demo' | 'local'
+  source: ReportSource
   fingerprint?: string
+  accountComparisonKey: string
   accountIdMasked: string
   baseCurrency: string
   seasonYear: number

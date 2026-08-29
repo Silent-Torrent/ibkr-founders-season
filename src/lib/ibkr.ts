@@ -17,6 +17,7 @@ import {
   parseNumber,
   toIsoDate,
 } from './csv'
+import { sha256Hex } from './sha256'
 
 interface SectionRecord {
   section: string
@@ -53,6 +54,20 @@ interface InstrumentUnderlying {
 const MAX_CSV_CHARACTERS = 10_000_000
 const MAX_CSV_ROWS = 100_000
 const CSV_RECONCILIATION_EPSILON = 0.000001
+const KNOWN_SYNTHETIC_STATEMENTS = new Set([
+  'a81d783777ab4bd84bf8066764425489be96d60f67270cbbc2ffebac495a0d7f',
+  '80831483527003e501aa63f1691a2f155a37b8279f68e2e3e31cb244a219d7ff',
+])
+
+function knownSyntheticIdentity(text: string): string {
+  const normalized = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n')
+  return sha256Hex(normalized)
+}
+
+export interface ParseIbkrActivityStatementOptions {
+  accountComparisonSalt?: string
+  currentDate?: Date
+}
 
 const SECTION_CODES: Record<string, string> = {
   ACCT: 'Account Information',
@@ -296,6 +311,21 @@ function maskAccount(value: string | undefined): string {
   const clean = value.trim()
   if (clean.length <= 4) return 'Local account'
   return `••••${clean.slice(-4)}`
+}
+
+function normalizeCurrencyCode(value: string | undefined): string | undefined {
+  const normalized = value?.trim().toUpperCase()
+  if (!normalized || !/^[A-Z]{3}$/.test(normalized)) return undefined
+
+  try {
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: normalized,
+    }).format(0)
+    return normalized
+  } catch {
+    return undefined
+  }
 }
 
 function classifyAsset(value: string | undefined, symbol: string): AssetClass {
@@ -1055,7 +1085,10 @@ function navDiagnostic(
   }
 }
 
-export function parseIbkrActivityStatement(text: string): ParseResult {
+export function parseIbkrActivityStatement(
+  text: string,
+  options: ParseIbkrActivityStatementOptions = {},
+): ParseResult {
   if (text.length > MAX_CSV_CHARACTERS) {
     return {
       errors: ['The CSV file exceeds the parser safety limit.'],
@@ -1099,10 +1132,15 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
     errors.push('The statement period could not be detected. Export an English Activity Statement CSV.')
   }
 
+  const currentDate =
+    options.currentDate && !Number.isNaN(options.currentDate.getTime())
+      ? options.currentDate
+      : new Date()
+  const currentDateIso = toIsoDate(currentDate)!
+  const currentYear = currentDate.getFullYear()
   const startIso = toIsoDate(start)
   const endIso = toIsoDate(end)
-  const seasonYear = end?.getFullYear() ?? new Date().getFullYear()
-  const currentYear = new Date().getFullYear()
+  const seasonYear = end?.getFullYear() ?? currentYear
   const isYtd = Boolean(
     start &&
       end &&
@@ -1113,6 +1151,12 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
 
   if (start && end && !isYtd) {
     errors.push('Only a Year-to-Date statement beginning on January 1 is accepted in this MVP.')
+  }
+  if (startIso && endIso && startIso > endIso) {
+    errors.push('The statement period start date is later than its end date.')
+  }
+  if (endIso && endIso > currentDateIso) {
+    errors.push('A statement with a future end date is not accepted.')
   }
   if (end && seasonYear !== currentYear) {
     errors.push(`This MVP accepts the current ${currentYear} season only.`)
@@ -1141,13 +1185,44 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
     }
   }
 
-  if (accountIds.size > 1) {
+  if (accountIds.size === 0) {
+    errors.push('The statement account identifier could not be detected.')
+  } else if (accountIds.size > 1) {
     errors.push('This MVP accepts one IBKR account per statement. Consolidated or concatenated multi-account reports are not supported.')
   }
 
-  const accountId = [...accountIds][0] ?? findNamedValue(accountRecords, ['Account', 'Account ID', 'AccountID'])
-  const baseCurrency =
-    findNamedValue(accountRecords, ['Base Currency', 'BaseCurrency']) ?? 'USD'
+  const accountId = [...accountIds][0]
+  const baseCurrencyAliases = ['Base Currency', 'BaseCurrency'].map(normalizeKey)
+  const baseCurrencyCandidates = new Set<string>()
+
+  for (const record of accountRecords) {
+    const fieldName = valueFor(record, ['Field Name', 'Name', 'Item'])
+    const fieldValue = valueFor(record, ['Field Value', 'Value'])
+    if (
+      fieldName &&
+      baseCurrencyAliases.includes(normalizeKey(fieldName)) &&
+      fieldValue?.trim()
+    ) {
+      baseCurrencyCandidates.add(fieldValue.trim().toUpperCase())
+    }
+
+    for (const [key, value] of Object.entries(record.fields)) {
+      if (baseCurrencyAliases.includes(normalizeKey(key)) && value.trim()) {
+        baseCurrencyCandidates.add(value.trim().toUpperCase())
+      }
+    }
+  }
+
+  if (baseCurrencyCandidates.size === 0) {
+    errors.push('The statement base currency could not be detected.')
+  } else if (baseCurrencyCandidates.size > 1) {
+    errors.push('Conflicting statement base currencies were found.')
+  }
+
+  const baseCurrency = normalizeCurrencyCode([...baseCurrencyCandidates][0])
+  if (baseCurrencyCandidates.size === 1 && !baseCurrency) {
+    errors.push('The statement base currency is not a valid three-letter currency code.')
+  }
 
   const symbols = new Map<string, SymbolAccumulator>()
   const instrumentUnderlyings = buildInstrumentUnderlyingMap(store)
@@ -1446,7 +1521,7 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
 
   if (mtmReconciliationDifference != null && mtmReconciliationDifference !== 0) {
     warnings.push(
-      `IBKR reported all-assets YTD MTM minus the parsed detail sum is ${mtmReconciliationDifference.toFixed(6)} ${baseCurrency.trim().toUpperCase()}.`,
+      `IBKR reported all-assets YTD MTM minus the parsed detail sum is ${mtmReconciliationDifference.toFixed(6)} ${baseCurrency ?? 'BASE'}.`,
     )
   }
 
@@ -1491,7 +1566,13 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
     warnings.push('The NAV bridge is incomplete, conflicting, or outside the CSV precision tolerance.')
   }
 
-  if (errors.length > 0 || !startIso || !endIso) {
+  if (
+    errors.length > 0 ||
+    !startIso ||
+    !endIso ||
+    accountId === undefined ||
+    baseCurrency === undefined
+  ) {
     return { errors, warnings }
   }
 
@@ -1499,13 +1580,28 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
     'Non-stock and non-option performance is included in total season P&L as “Other”.',
     'No option assignment, exercise or expiration events were found.',
   ])
-  const hasQualityWarning = warnings.some((warning) => !informationalWarnings.has(warning))
+  const reconciliations = [mtmCheck, statementDiagnostic.check, nav.check]
+  const hasIncompleteReconciliation = reconciliations.some(
+    (check) => check.status !== 'PASS_EXACT' && check.status !== 'PASS_ROUNDED',
+  )
+  const hasQualityWarning =
+    hasIncompleteReconciliation ||
+    warnings.some((warning) => !informationalWarnings.has(warning))
+
+  const fingerprint = fingerprintText(text)
+  const isKnownSyntheticStatement =
+    accountId !== undefined &&
+    accountId.startsWith('SYNTHETIC_') &&
+    KNOWN_SYNTHETIC_STATEMENTS.has(knownSyntheticIdentity(text))
 
   const report: PortfolioReport = {
-    source: 'local',
-    fingerprint: fingerprintText(text),
+    source: isKnownSyntheticStatement ? 'synthetic' : 'local',
+    fingerprint,
+    accountComparisonKey: sha256Hex(
+      `${options.accountComparisonSalt ?? 'standalone-parser-v1'}\u0000${accountId}`,
+    ),
     accountIdMasked: maskAccount(accountId),
-    baseCurrency: baseCurrency.trim().toUpperCase(),
+    baseCurrency,
     seasonYear,
     startDate: startIso,
     endDate: endIso,
@@ -1541,7 +1637,7 @@ export function parseIbkrActivityStatement(text: string): ParseResult {
       beginningNav: nav.beginningSourceRefs,
       endingNav: nav.endingSourceRefs,
     },
-    reconciliations: [mtmCheck, statementDiagnostic.check, nav.check],
+    reconciliations,
     sections: sectionNames.sort(),
     warnings,
     dataQuality: hasQualityWarning ? 'warning' : 'good',

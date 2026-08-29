@@ -13,13 +13,17 @@ export function formatCurrency(
   compact = false,
 ): string {
   if (value == null || !Number.isFinite(value)) return '—'
-  return new Intl.NumberFormat(localeMap[locale], {
-    style: 'currency',
-    currency,
-    notation: compact ? 'compact' : 'standard',
-    maximumFractionDigits: compact ? 1 : 0,
-    signDisplay: 'exceptZero',
-  }).format(value)
+  try {
+    return new Intl.NumberFormat(localeMap[locale], {
+      style: 'currency',
+      currency,
+      notation: compact ? 'compact' : 'standard',
+      maximumFractionDigits: compact ? 1 : 0,
+      signDisplay: 'exceptZero',
+    }).format(value)
+  } catch {
+    return '—'
+  }
 }
 
 export function formatPercent(value: number | undefined, locale: Locale): string {

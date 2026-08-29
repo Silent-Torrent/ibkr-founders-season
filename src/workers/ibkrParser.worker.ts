@@ -21,7 +21,12 @@ function safeFailure(): ParseResult {
 }
 
 workerScope.onmessage = async (event) => {
-  if (event.data.type !== 'parse' || !(event.data.statement instanceof Blob)) {
+  if (
+    event.data.type !== 'parse' ||
+    typeof event.data.accountComparisonSalt !== 'string' ||
+    event.data.accountComparisonSalt.length < 16 ||
+    !(event.data.statement instanceof Blob)
+  ) {
     workerScope.postMessage({ type: 'result', result: safeFailure() })
     return
   }
@@ -29,7 +34,9 @@ workerScope.onmessage = async (event) => {
   let result: ParseResult
   try {
     const text = await event.data.statement.text()
-    result = parseIbkrActivityStatement(text)
+    result = parseIbkrActivityStatement(text, {
+      accountComparisonSalt: event.data.accountComparisonSalt,
+    })
     if (result.report && !isWorkerReportWithinLimits(result.report)) {
       result = safeFailure()
     }

@@ -28,6 +28,7 @@
 | 枚举 | 含义 | 允许用途 |
 |---|---|---|
 | `demo` | 产品内置合成数据 | 演示界面、测试；不与真实用户混排 |
+| `synthetic` | 与仓库自带虚构 CSV 的 SHA-256 内容摘要匹配 | 解析器与界面测试；不排名、不发本机成就 |
 | `self_reported` | 用户本地导入 CSV，通过格式与算术检查 | 本地成绩、自报成就 |
 | `reconciled_self_reported` | CSV 与可选 PDF 在账户、期间和关键汇总上交叉一致 | 未来独立的「已对账自报」榜；仍不是 Verified |
 | `broker_sourced` | 未来在获得用户授权和 IBKR 合规批准后，从只读渠道直接取得 | 可进入与自报榜分离的 Verified 榜 |
@@ -116,7 +117,8 @@
 | `generatedAt` | datetime/null | Statement | 否 | S1 | LOCAL_SESSION | 缺失时告警，不猜测 |
 | `baseCurrency` | currency | Account Information | 是 | S1 | LOCAL_SESSION | 所有账户级汇总必须与它一致 |
 | `accountCount` | integer | 去重后账户标识数 | 是 | S1 | LOCAL_SESSION | 必须等于 1，否则拒绝 |
-| `accountIdRaw` | string | Account Information/BOF | 临时必需 | S3 | LOCAL_EPHEMERAL | 只用于单账户和跨文件一致性检查；解析后丢弃 |
+| `accountIdRaw` | string | Account Information/BOF | 临时必需 | S3 | LOCAL_EPHEMERAL | 只用于单账户检查和生成会话比较键；解析后丢弃 |
+| `accountComparisonKey` | string | `SHA-256(sessionSalt + accountIdRaw)` | 是 | S2 | LOCAL_SESSION | 只用于当前标签页跨文件比较；不显示、不记录、不分享，关闭标签页后失效 |
 | `accountIdMasked` | string | `accountIdRaw` 掩码 | 否 | S2 | LOCAL_SESSION | 只显示最少必需后缀；不记日志、不公开 |
 | `verificationTier` | enum | 文件来源与对账状态 | 是 | S1 | LOCAL_SESSION；未来可公开 | 上传文件不得越过 `reconciled_self_reported` |
 | `calculationVersion` | string | 应用内部常量 | 是 | S0 | LOCAL_SESSION；未来可公开 | 每次会计规则变更必须升版 |

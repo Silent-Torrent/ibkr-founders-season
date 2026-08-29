@@ -9,6 +9,7 @@ import type {
 import { t } from '../i18n'
 import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
 import { getDivision } from '../lib/season'
+import { reportTrustLabelKey } from '../lib/reportSource'
 import { MetricCard } from '../components/MetricCard'
 import { ShareCardPreview } from '../components/ShareCardPreview'
 import { SymbolDrawer } from '../components/SymbolDrawer'
@@ -51,6 +52,8 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
   const [filter, setFilter] = useState<FilterMode>('all')
   const [sort, setSort] = useState<SortMode>('pnl')
   const [selected, setSelected] = useState<SymbolPnl | null>(null)
+  const division = getDivision(report.netLiquidationValue, report.baseCurrency)
+  const divisionLabel = division ? t(locale, division) : t(locale, 'divisionUnavailable')
 
   const symbols = useMemo(() => {
     const normalizedQuery = query.trim().toUpperCase()
@@ -86,12 +89,17 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
           <h1>{t(locale, 'navLedger')}</h1>
           <p>
             {t(locale, 'dataThrough')} {formatDate(report.endDate, locale)} · {report.baseCurrency} ·{' '}
-            {t(locale, getDivision(report.netLiquidationValue))}
+            {divisionLabel}
           </p>
         </div>
-        <div className={`quality-badge ${report.dataQuality}`}>
-          <span />
-          {qualityLabel}
+        <div className="hero-statuses">
+          <div className={`trust-badge ${report.source}`}>
+            {t(locale, reportTrustLabelKey(report.source))}
+          </div>
+          <div className={`quality-badge ${report.dataQuality}`}>
+            <span />
+            {qualityLabel}
+          </div>
         </div>
       </section>
 
@@ -113,7 +121,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
         <MetricCard
           label={t(locale, 'netLiquidation')}
           value={formatCurrency(report.netLiquidationValue, report.baseCurrency, locale, true)}
-          hint={t(locale, getDivision(report.netLiquidationValue))}
+          hint={divisionLabel}
           icon="◇"
         />
         <MetricCard

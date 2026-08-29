@@ -1,4 +1,4 @@
-# Verification record — coding checkpoint 0.5
+# Verification record — coding checkpoint 0.6
 
 Last updated: 2026-08-30
 
@@ -10,6 +10,7 @@ Last updated: 2026-08-30
 - The remote must be a GitHub private repository, and commits must use the user's approved GitHub `noreply` email rather than a personal email address.
 - The earlier access-protected Vercel Preview authorization is paused because the provider forced the first request into Production.
 - The user selected A + C on 2026-08-30: keep Vercel at zero deployments and research alternatives only. No alternate host, external upload, Production deployment, or public domain is approved without a new explicit user decision.
+- The user then selected L: continue local/private-GitHub development and defer all deployment discussion until the local product is ready.
 - The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac.
 - An empty Vercel project exists with Standard Protection enabled and build settings frozen to Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. It currently has zero deployments.
 - A first upload explicitly requested as Preview was classified by Vercel as Production and received the default production alias. It was immediately removed; both generated URLs were then verified as `404 DEPLOYMENT_NOT_FOUND`. This is a failed release-gate attempt, not a successful Preview or Production release.
@@ -43,15 +44,26 @@ Last updated: 2026-08-30
 - Source cards display only source type, section, one-based row, record type, field and technical header signature; they do not display raw rows, financial values, filenames, account identifiers or instrument values.
 - CSV file reading and parsing run in a dedicated module Web Worker. The main thread passes a filename-free `Blob`, not a `File` or filename.
 - The Worker has a 12,000 ms total timeout, explicit cancellation and single-settlement termination handling for success, parser failure, worker error, `messageerror`, malformed response, `postMessage` failure, abort and timeout.
-- Valid replacement imports, explicit cancel, Demo switching and page unmount cancel the active worker. An invalid replacement file is rejected before it can cancel a valid active task.
+- A replacement that passes the filename, non-empty and size preflight, explicit cancel, Demo switching and page unmount cancel the active worker. Files that fail that preflight do not cancel active work; a content-invalid CSV can pass preflight, replace the active task and then fail parsing.
 - Worker output is rejected before main-thread transfer above 5,000 underlyings, 25,000 events or 100,000 source-reference occurrences.
 - The 100,000-row CSV limit is enforced while rows are being read, rather than only after a full row table has been created.
 - A dedicated Worker contract suite is included in `npm run check` and passed.
+- Calendar dates are parsed strictly. Nonexistent dates, reversed statement periods, future period ends, and prior-season reports are rejected instead of being normalized or accepted silently.
+- A same-account, same-season report with the same ending date but different content is rejected; duplicate, older, newer, and different-account snapshot decisions have dedicated regression cases.
+- Base currency must resolve to one consistent three-letter code. Missing, malformed, and conflicting currency declarations are rejected, and display formatting falls back to an em dash instead of crashing on an invalid code.
+- Synthetic Demo, Fully Synthetic Test, Self-Reported, and Internal Checks Passed are separate UI concepts. The two repository-owned fictional CSVs are matched by normalized SHA-256 content digest plus a synthetic account marker; this is not a general authenticity detector. Internal arithmetic closure is not labelled `Reconciled`, broker-verified, or authentic.
+- A missing account identifier returns a fixed parser error and no report. Cross-file account identity uses a session-salted SHA-256 comparison key, not the masked suffix; the raw identifier and session salt are not displayed, logged, persisted, or shared.
+- Imported user results appear in Arena as an unranked current-tab snapshot. The synthetic leaderboard does not insert a fake local rank, synthetic data unlocks no achievements, and missing or non-USD NAV does not create an inferred USD capital division. Fixed monetary achievement thresholds are also USD-only until an exchange-rate policy exists.
+- Internal Checks Passed is shown only when every configured reconciliation has `PASS_EXACT` or `PASS_ROUNDED`. A missing check produces Review; the bundled sample and Demo no longer present two unavailable checks as passed.
+- The default share-card preview, copied summary, and generated PNG omit underlying symbols, account identifiers, and exact net liquidation value. A displayed USD capital division can still reveal a broad balance range. Product-policy canary tests cover all three outputs.
+- A dedicated product-policy suite covering trust labels, local ranking boundaries, achievements, share privacy, snapshot rules, missing-value semantics, and currency display safety is included in `npm run check` and passed.
 - A non-Activity Statement title is rejected.
 - Unterminated quoted fields, oversized payloads, oversized individual fields, and row-exhaustion payloads are rejected by regression tests.
 - Real TypeScript checking passed with installed dependencies.
 - Production Vite build passed locally.
 - Dependency lockfile created; installed dependency audit reported zero known vulnerabilities.
+- The current clean install, dependency audit, full check suite, and production build were run with Node 22.23.2 and npm 10.9.8.
+- Both beginner-facing macOS scripts selected Node 22.23.2 before invoking npm. `VERIFY_MAC.command` completed install, audit, checks, and build; `START_MAC.command` completed the same preflight and started Vite successfully before the test process was stopped.
 - A dedicated Privacy & Data dialog is available from both the desktop privacy card and the page footer.
 - English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, locale-only persistence, no statement upload, the Self-Reported authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
 - The privacy dialog exposes `role="dialog"`, `aria-modal`, a labelled title and description, initial focus, Tab/Shift+Tab containment, Escape close, backdrop close, background interaction lock, and focus return to the opening control.
@@ -79,9 +91,11 @@ Last updated: 2026-08-30
 - Desktop browser keyboard and focus checks passed for both the privacy dialog and symbol drawer: opening moves focus inside, Tab and Shift+Tab wrap at the boundaries, Escape closes, the background remains inert, and focus returns to the opening control.
 - Both the sidebar and footer privacy controls opened the dialog. Backdrop close and the visible close controls worked.
 - The privacy notice was visually checked in English, Simplified Chinese, and Traditional Chinese.
-- At a simulated 320 px browser width, the bottom navigation, Ledger table, share card, Arena horizontal scroll region, privacy dialog, and symbol drawer remained contained. The table and Arena use their own scroll regions, and the share-card content no longer overlaps its footer. This was a desktop simulation, not a real iPhone test.
+- At a simulated 320 px browser width, the bottom navigation, Ledger table, share card, Arena local-snapshot card and horizontal scroll region, privacy dialog, and symbol drawer remained contained. The document width stayed at 320 px without whole-page horizontal overflow. This was a desktop simulation, not a real iPhone test.
 - The fully synthetic current-schema CSV imported successfully through the visible file chooser.
-- The import completed through the Worker-backed path and changed the UI from Demo to Local Report.
+- The import completed through the Worker-backed path and changed the UI from Demo to Fully Synthetic Test.
+- The known fictional fixture was labelled Fully Synthetic Test, not Self-Reported. It created no local ranking snapshot and unlocked no local achievements; its parser source rows remained inspectable.
+- The share-card preview showed Source instead of an underlying and explicitly stated that holdings, account identifiers, and exact net liquidation value were excluded.
 - All three reconciliation checks displayed `PASS_EXACT`, and expandable source cards exposed only CSV section, one-based row, record type, field, and a technical header signature.
 - The first underlying drawer exposed six source groups: total, stock, option, realized, current unrealized and one lifecycle event. Its source-card text contained neither currency/financial values nor the fictional instrument/contract values shown elsewhere in the drawer.
 - Reloading the page returned to Demo, confirming that the complete imported report was not restored.
@@ -98,5 +112,3 @@ Last updated: 2026-08-30
 - Exercise remains uncovered by a qualified real or independently proven fixture.
 - Protected private-host header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari and PNG export remain unverified.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.
-- Node 25.8.1 was used for this local run; Node 22 LTS remains the recommended repeatable user environment.
-- The private GitHub remote exists and the `main` history has been pushed successfully. Under the user's A + C decision, Vercel remains at zero deployments and no researched alternate route is authorized yet.

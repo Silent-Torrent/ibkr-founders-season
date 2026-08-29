@@ -177,4 +177,5 @@ The two valid totals intentionally differ by `233.396184`. This is a regression 
 - Metadata: accepted as one English 2026 YTD account.
 - MTM reconciliation: `PASS_EXACT` with signed difference `0.000000` and CSV tolerance no greater than `0.000001`.
 - NAV bridge: `PASS_EXACT` with signed difference `0.000000`.
-- Ranking source tier: fixture/demo only; never a user ranking record.
+- UI source label: `Fully Synthetic Test` / `全虚构测试` / `全虛構測試` when the normalized SHA-256 digest matches this exact repository fixture.
+- Ranking source tier: fixture/demo only; never Self-Reported and never a user ranking or local-achievement record.

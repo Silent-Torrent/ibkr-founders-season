@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
-import { buildSeasonSummary, downloadSeasonCard } from '../lib/shareCard'
+import { buildSeasonSummary, downloadSeasonCard, getShareSourceLabel } from '../lib/shareCard'
 import { getDivision } from '../lib/season'
 
 interface ShareCardPreviewProps {
@@ -13,7 +13,8 @@ interface ShareCardPreviewProps {
 export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
   const copyResetTimerRef = useRef<number | null>(null)
-  const best = [...report.symbols].sort((a, b) => b.totalYtdMtm - a.totalYtdMtm)[0]
+  const sourceLabel = getShareSourceLabel(report, locale)
+  const division = getDivision(report.netLiquidationValue, report.baseCurrency)
 
   useEffect(() => () => {
     if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
@@ -83,16 +84,16 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           </div>
           <div>
             <span>{t(locale, 'division')}</span>
-            <strong>{t(locale, getDivision(report.netLiquidationValue))}</strong>
+            <strong>{division ? t(locale, division) : t(locale, 'divisionUnavailable')}</strong>
           </div>
           <div>
-            <span>BEST</span>
-            <strong>{best?.symbol ?? '—'}</strong>
+            <span>{t(locale, 'sourceType')}</span>
+            <strong>{sourceLabel}</strong>
           </div>
         </div>
         <div className="share-card-bottom">
           <span>{t(locale, 'dataThrough')} {formatDate(report.endDate, locale)}</span>
-          <span>{t(locale, 'selfReported')}</span>
+          <span>{sourceLabel} · {t(locale, 'shareNoHoldings')}</span>
         </div>
       </div>
     </section>

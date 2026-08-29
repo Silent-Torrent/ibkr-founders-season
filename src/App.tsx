@@ -9,6 +9,8 @@ import { ArenaPage } from './pages/ArenaPage'
 import { TrophiesPage } from './pages/TrophiesPage'
 import { ImportPage } from './pages/ImportPage'
 import { t } from './i18n'
+import { decideSnapshotImport } from './lib/snapshot'
+import { createSessionComparisonSalt } from './lib/sessionIdentity'
 
 const LOCALE_STORAGE_KEY = 'pnl-arena.locale.v1'
 
@@ -33,6 +35,7 @@ export default function App() {
   const [page, setPage] = useState<PageId>('ledger')
   const [report, setReport] = useState<PortfolioReport>(demoReport)
   const [isPrivacyNoticeOpen, setIsPrivacyNoticeOpen] = useState(false)
+  const [accountComparisonSalt] = useState(createSessionComparisonSalt)
 
   useEffect(() => {
     document.documentElement.lang = locale
@@ -45,16 +48,16 @@ export default function App() {
   }
 
   function importReport(nextReport: PortfolioReport) {
-    if (report.source === 'local' && report.fingerprint === nextReport.fingerprint) {
+    const decision = decideSnapshotImport(report, nextReport)
+    if (decision === 'duplicate') {
       window.alert(t(locale, 'duplicateReport'))
       return
     }
-
-    if (
-      report.source === 'local' &&
-      report.seasonYear === nextReport.seasonYear &&
-      nextReport.endDate < report.endDate
-    ) {
+    if (decision === 'same_date') {
+      window.alert(t(locale, 'sameDateReport'))
+      return
+    }
+    if (decision === 'older') {
       window.alert(t(locale, 'olderReport'))
       return
     }
@@ -89,7 +92,12 @@ export default function App() {
         {page === 'arena' && <ArenaPage locale={locale} report={report} />}
         {page === 'trophies' && <TrophiesPage locale={locale} report={report} />}
         {page === 'import' && (
-          <ImportPage locale={locale} onImport={importReport} onUseDemo={useDemo} />
+          <ImportPage
+            accountComparisonSalt={accountComparisonSalt}
+            locale={locale}
+            onImport={importReport}
+            onUseDemo={useDemo}
+          />
         )}
       </AppShell>
       <PrivacyNoticeModal

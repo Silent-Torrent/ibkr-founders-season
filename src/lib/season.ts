@@ -7,8 +7,13 @@ export type DivisionKey =
   | 'capitalLeague'
   | 'whaleLeague'
 
-export function getDivision(netLiquidationValue: number | undefined): DivisionKey {
-  if (netLiquidationValue == null || netLiquidationValue < 25_000) return 'rookieLeague'
+export function getDivision(
+  netLiquidationValue: number | undefined,
+  baseCurrency: string,
+): DivisionKey | undefined {
+  if (netLiquidationValue == null || !Number.isFinite(netLiquidationValue)) return undefined
+  if (baseCurrency.toUpperCase() !== 'USD') return undefined
+  if (netLiquidationValue < 25_000) return 'rookieLeague'
   if (netLiquidationValue < 100_000) return 'retailLeague'
   if (netLiquidationValue < 500_000) return 'sixFigureLeague'
   if (netLiquidationValue < 1_000_000) return 'capitalLeague'
@@ -16,6 +21,9 @@ export function getDivision(netLiquidationValue: number | undefined): DivisionKe
 }
 
 export function getTrophies(report: PortfolioReport): TrophyDefinition[] {
+  const isEligibleLocalReport = report.source === 'local'
+  const hasUsdAmountThresholds =
+    isEligibleLocalReport && report.baseCurrency.toUpperCase() === 'USD'
   const worstUnrealized = Math.min(
     0,
     ...report.symbols.map((symbol) => symbol.totalCurrentUnrealized),
@@ -41,42 +49,49 @@ export function getTrophies(report: PortfolioReport): TrophyDefinition[] {
       id: 'founders',
       icon: 'F0',
       tone: 'rare',
-      unlocked: report.seasonYear === 2026,
+      unlocked: isEligibleLocalReport && report.seasonYear === 2026,
     },
     {
       id: 'theta',
       icon: 'Θ',
       tone: 'positive',
-      unlocked: report.optionPnl >= 2_000,
-      progress: Math.min(1, Math.max(0, report.optionPnl / 2_000)),
+      unlocked: hasUsdAmountThresholds && report.optionPnl >= 2_000,
+      progress: hasUsdAmountThresholds
+        ? Math.min(1, Math.max(0, report.optionPnl / 2_000))
+        : undefined,
     },
     {
       id: 'assigned',
       icon: 'A',
       tone: 'warning',
-      unlocked: assignmentCount > 0,
-      progress: Math.min(1, assignmentCount),
+      unlocked: isEligibleLocalReport && assignmentCount > 0,
+      progress: isEligibleLocalReport ? Math.min(1, assignmentCount) : undefined,
     },
     {
       id: 'green',
       icon: 'G',
       tone: 'positive',
       unlocked:
-        report.seasonPnl > 0 && positiveSymbols.length >= 2 && topContribution < 0.8,
+        isEligibleLocalReport &&
+        report.seasonPnl > 0 &&
+        positiveSymbols.length >= 2 &&
+        topContribution < 0.8,
     },
     {
       id: 'bagholder',
       icon: 'B',
       tone: 'warning',
-      unlocked: worstUnrealized <= -5_000,
-      progress: Math.min(1, Math.abs(worstUnrealized) / 5_000),
+      unlocked: hasUsdAmountThresholds && worstUnrealized <= -5_000,
+      progress: hasUsdAmountThresholds
+        ? Math.min(1, Math.abs(worstUnrealized) / 5_000)
+        : undefined,
     },
     {
       id: 'cash',
       icon: '$',
       tone: 'neutral',
-      unlocked: cashRatio >= 0.15,
-      progress: Math.min(1, cashRatio / 0.15),
+      unlocked: isEligibleLocalReport && cashRatio >= 0.15,
+      progress: isEligibleLocalReport ? Math.min(1, cashRatio / 0.15) : undefined,
     },
     {
       id: 'reverse',

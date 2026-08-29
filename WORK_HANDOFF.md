@@ -2,25 +2,29 @@
 
 ## Current status
 
-A desktop development copy is now active at `IBKR Founders Season/项目工作区/ibkr-founders-season`. The original 2026-08-27 handoff archive remains unchanged. On 2026-08-29 the project gained a lockfile, dependencies were installed, the TypeScript/parser/Worker checks passed, the production build passed, and the installed dependency audit reported no known vulnerabilities.
+A desktop development copy is now active at `IBKR Founders Season/项目工作区/ibkr-founders-season`. The original 2026-08-27 handoff archive remains unchanged. On 2026-08-30 a clean Node 22.23.2 / npm 10.9.8 run completed the dependency audit, TypeScript/parser/Worker/accessibility/compatibility/product-policy checks, and production build with zero known installed-package vulnerabilities. Both beginner-facing macOS scripts select Node 22 before invoking npm.
 
 One private English single-account 2026 YTD Activity Statement CSV was parsed locally without copying it into the repository. Its all-assets total, stock/options/other breakdown, TWR and lifecycle events matched the independently audited source relationships. The matching PDF was manually cross-reconciled outside the Web App; automated PDF reconciliation is not implemented.
 
-Checkpoint 0.5 retains the repository-safe current-schema fixture whose values, identifiers and instruments are entirely fictional. It covers repeated and multiple header shapes, `Data`/`SubTotal`/`Total` rows, and the tested empty-record-type Total P/L row. The fixture is not an anonymized or transformed private statement.
+Checkpoint 0.6 retains the repository-safe current-schema fixture whose values, identifiers and instruments are entirely fictional. It covers repeated and multiple header shapes, `Data`/`SubTotal`/`Total` rows, and the tested empty-record-type Total P/L row. The fixture is not an anonymized or transformed private statement.
 
 The accounting fields have migrated to `reportedAllAssetsYtdMtm`, `parsedAllAssetsYtdMtm`, and `mtmReconciliationDifference`; the difference direction is `reported - parsed`. MTM, statement-period P/L, and NAV-bridge diagnostics use a fixed CSV epsilon of `0.000001` and all three return `PASS_EXACT` for both the synthetic fixture and the read-only private calibration run. `SourceRef` provenance stores local section/record type/row/header/field metadata without retaining raw rows. The Ledger exposes expandable sources for major metrics and all three checks, while the symbol drawer exposes per-value and per-event sources without displaying raw values, filenames, accounts or instrument values in the source cards.
 
-CSV reading and parsing now run inside a dedicated module Web Worker. A 12-second timeout covers reading, parsing and response transfer; active work can be cancelled explicitly and is also terminated on a valid replacement, Demo switch or unmount. Invalid replacement files are rejected before they can cancel valid work. The parser enforces its row cap incrementally, and Worker output caps prevent abnormally large reports from being copied back to the UI.
+CSV reading and parsing now run inside a dedicated module Web Worker. A 12-second timeout covers reading, parsing and response transfer; active work can be cancelled explicitly and is also terminated when a replacement passes the filename, non-empty and size preflight, or on Demo switch or unmount. Files that fail that preflight are rejected without cancelling active work; a content-invalid CSV can still replace the active task and then fail parsing. The parser enforces its row cap incrementally, and Worker output caps prevent abnormally large reports from being copied back to the UI.
 
 The user also approved v0.2 identity, verification, privacy and security decisions. Complete normalized financial reports are no longer persisted to `localStorage` by default.
 
-Checkpoint 0.5 adds a complete English, Simplified Chinese, and Traditional Chinese Privacy & Data dialog. It accurately states the local Worker, current-tab-memory, locale-only persistence, no-upload, Self-Reported authenticity, optional/unparsed PDF, disclaimer, clearing boundaries, and the fact that a deliberately downloaded PNG is a separate browser file. Desktop browser keyboard/focus behavior passed for both dialogs, page focus, control semantics, report clearing, and live-status placement. A simulated 320 px check covered bottom navigation, Ledger table/share card, Arena scrolling, the privacy dialog and symbol drawer. Neither result is evidence of a real iPhone or VoiceOver pass.
+Checkpoint 0.6 includes a complete English, Simplified Chinese, and Traditional Chinese Privacy & Data dialog. It accurately states the local Worker, current-tab-memory, locale-only persistence, no-upload, Self-Reported authenticity, optional/unparsed PDF, disclaimer, clearing boundaries, and the fact that a deliberately downloaded PNG is a separate browser file. Desktop browser keyboard/focus behavior passed for both dialogs, page focus, control semantics, report clearing, and live-status placement. A simulated 320 px check covered bottom navigation, Ledger table/share card, the Arena local-snapshot card and scrolling, the privacy dialog and symbol drawer. Neither result is evidence of a real iPhone or VoiceOver pass.
+
+Checkpoint 0.6 also tightens product trust boundaries. Strict dates reject impossible, reversed, future and wrong-season periods; same-date replacement files for the same account-season are rejected; and base currency must be a consistent three-letter code. Missing accounts are rejected, while cross-file account comparison uses a current-tab salt and SHA-256 instead of the display-only masked suffix. Synthetic Demo, normalized-SHA-256-matched Fully Synthetic Test, Self-Reported and Internal Checks Passed are separate statuses. Internal Checks Passed requires every configured reconciliation to pass; unavailable checks display Review. Local imports are unranked, synthetic data cannot unlock achievements, USD amount thresholds are not applied to non-USD achievements, missing or non-USD NAV does not invent a USD capital division, and default share outputs omit holdings, account identifiers, comparison keys, and exact net liquidation value. These rules are covered by a dedicated product-policy test suite.
 
 The user subsequently froze three release-boundary choices: the supported baseline is iOS 16.4+ and Safari 16.4+; the remote must be a GitHub private repository whose commits use the user's approved GitHub `noreply` email; and the only permitted external deployment is an access-protected Vercel Preview. The Vite production target is now explicit, the TypeScript application library guard is ES2022, and Safari 16.4-prefixed backdrop filters are protected by a compatibility contract check. This is configuration evidence, not a real 16.4 device pass. The local `main` branch now tracks the private `Silent-Torrent/ibkr-founders-season` GitHub remote, using the approved `noreply` identity and a repository-scoped read/write deploy key.
 
 An empty Vercel project now exists and is locally linked through ignored `.vercel/` and `.env.local` state. Its settings are Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. Vercel Authentication reports Standard Protection (`all_except_custom_domains`), no bypass secret, share link, exception, custom domain or Git integration was created. The first explicit `--target=preview` upload was nevertheless classified by Vercel as Production and received the default production alias. It was removed immediately; the project now has zero deployments and both generated URLs return `404 DEPLOYMENT_NOT_FOUND`. Current provider behavior forces a new project's first deployment to Production, so the Preview-only gate is blocked pending a new user decision. Do not retry while the project remains empty.
 
 On 2026-08-30 the user selected **A + C**: preserve that empty Vercel state and research alternatives without registering, authorizing, installing provider tooling, uploading, connecting GitHub or paying. The research in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md` recommends Netlify Free Private + a manual Draft Deploy as the best owner-only persistent-cloud candidate, with Tailscale Serve as an optional temporary private-iPhone bridge and Cloudflare Pages + Access as a more complex multi-user fallback. No route has been approved for implementation; all external uploads remain paused.
+
+The user then selected **L**: continue developing locally, keep private GitHub as the remote backup, and revisit deployment only after the local product is ready. Do not treat the hosting comparison as a pending setup task and do not create or connect another hosting account while this decision remains active.
 
 ## Product thesis
 
@@ -46,14 +50,20 @@ The engagement layer adds:
 - Required period: current-year YTD, beginning January 1.
 - One account only.
 - A newer YTD report replaces an older YTD report.
+- A different same-date file for the same account-season is rejected rather than silently replacing the current snapshot.
 - Reports are not summed or stitched.
 - Season P&L: IBKR YTD MTM P&L.
 - Current unrealized P&L: shown separately for explanation.
 - User upload status: Self-Reported.
+- The two repository-owned fictional CSVs are matched by normalized SHA-256 content digest and labelled Fully Synthetic Test; this is not a general fake-report detector.
+- Cross-file account comparison uses a session-salted SHA-256 key; masked suffixes are for display only and raw account identifiers are discarded after parsing.
+- Internal arithmetic checks do not prove report authenticity and are labelled only Internal Checks Passed.
+- Local imports are not ranked; the current Arena table is explicitly synthetic Demo data.
+- Capital divisions currently apply only to USD NAV. Non-USD reports remain ungrouped until an exchange-rate policy is approved.
 - Raw statement: local browser parsing only.
 - Supported browser baseline: iOS 16.4+ and Safari 16.4+.
 - Remote backup boundary: GitHub private repository with the user's approved GitHub `noreply` commit email.
-- Deployment boundary: Vercel remains empty; no alternate host or external upload is approved after the 2026-08-30 A + C decision. Any future route requires a separate explicit decision and provider-specific gate.
+- Deployment boundary: Vercel remains empty. Under the 2026-08-30 L decision, all hosting work is deferred until the local product is ready; any future route still requires a separate explicit decision and provider-specific gate.
 
 ## MVP surfaces already represented in code
 
@@ -89,24 +99,27 @@ Smoke cases also cover:
 - missing NAV components becoming `NOT_AVAILABLE` instead of silently becoming zero
 - source references excluding raw rows and raw values
 - exact MTM, statement-period P/L, and NAV-bridge closure at `0.000001` epsilon
+- strict invalid/future/reversed/prior-season date rejection
+- missing, malformed, and conflicting base-currency rejection
+- privacy-safe share outputs and no fake local ranking or synthetic achievement unlocks
 
 These checks do not replace testing against a real IBKR statement.
 
 ## Main unverified risks
 
 1. Assignment and expiration are covered by the private calibration and the synthetic fixture, but no qualified exercise event is available.
-2. Protected private-host Network/Storage verification, Worker response-header/MIME inspection and near-limit device responsiveness remain incomplete; local Worker lifecycle and parser limits now have regression cases.
+2. The existing Worker object-count caps need a stronger serialized-response protocol boundary; near-limit device responsiveness also remains incomplete. Protected-host header/MIME inspection is deferred with all hosting work under L.
 3. Real iPhone Safari 16.4+ file import, cancellation, timeout and PNG export have not been tested. VoiceOver also remains untested; the broader desktop keyboard/focus and simulated 320 px checks are only preliminary coverage.
 4. PDF checks are manual; PDF parsing is not automated and PDF-only remains unsupported for ranked results.
 5. The project has a private GitHub remote backup. The local and remote `main` branches are connected through a repository-scoped read/write deploy key. The Vercel project exists but has zero deployments after the misclassified first upload was removed.
 
 ## Immediate next milestone
 
-Do not add social features or polish first. The next milestone is:
+Do not add social features or deployment work first. The next milestone is:
 
-> Complete the static-Beta security and device gate around the now-repeatable accounting parser, without broadening the product's data boundary.
+> Finish the remaining local parser-integrity and Worker-protocol gates, then automate the synthetic browser-import regression without broadening the product's data boundary.
 
-The accounting checkpoint is repeatable with a fully synthetic current-schema fixture, and the private sample remains a separate read-only calibration source. The Worker boundary, complete underlying-value provenance UI, and three-locale privacy dialog are now implemented. Desktop keyboard/focus behavior and the principal simulated 320 px surfaces have passed. The GitHub private remote gate is complete. Under the 2026-08-30 A + C decision, Vercel remains empty and alternative private-test hosting has been researched but not approved for implementation. After a route is explicitly chosen, Network/Storage and Worker-response inspection remain the next technical gate. The fictional-data real-iPhone Safari 16.4+ procedure in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` and VoiceOver remain required. Automated PDF reconciliation remains a later workstream.
+The accounting checkpoint is repeatable with a fully synthetic current-schema fixture, and the private sample remains a separate read-only calibration source. The Worker boundary, complete underlying-value provenance UI, three-locale privacy dialog, strict date/currency/snapshot rules, trust-status separation, and privacy-safe default sharing are implemented. Desktop keyboard/focus behavior and the principal simulated 320 px surfaces have passed. The GitHub private remote gate is complete. Under the 2026-08-30 L decision, hosting is not a pending implementation task. The next local items are underlying-alias conflict reporting, a stronger Worker serialized-response boundary, localized parser errors, and an automated fictional-data browser import check. The real-iPhone Safari 16.4+ procedure in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md`, VoiceOver, and automated PDF reconciliation remain later workstreams.
 
 ## Longer-term roadmap
 

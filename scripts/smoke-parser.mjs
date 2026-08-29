@@ -39,21 +39,35 @@ try {
 
   writeFileSync(join(output, 'package.json'), '{"type":"commonjs"}\n')
   const require = createRequire(import.meta.url)
-  const { parseIbkrActivityStatement } = require(join(output, 'lib/ibkr.js'))
+  const { parseIbkrActivityStatement: parseIbkrActivityStatementRaw } = require(join(output, 'lib/ibkr.js'))
+  const { parseDateFlexible, toIsoDate } = require(join(output, 'lib/csv.js'))
+  const fixtureCurrentDate = new Date(2026, 7, 30)
+  const parseIbkrActivityStatement = (text) =>
+    parseIbkrActivityStatementRaw(text, { currentDate: fixtureCurrentDate })
   const sample = readFileSync(resolve(projectRoot, 'public/sample-ibkr-ytd.csv'), 'utf8')
   const currentSchemaFixture = readFileSync(
     resolve(projectRoot, 'tests/fixtures/ibkr-current-schema-synthetic.csv'),
     'utf8',
   )
 
+  assert(toIsoDate(parseDateFlexible('2024-02-29')) === '2024-02-29', 'A valid leap date was rejected.')
+  assert(parseDateFlexible('2026-02-29') === undefined, 'A nonexistent numeric date was normalized instead of rejected.')
+  assert(toIsoDate(parseDateFlexible('February 29, 2024')) === '2024-02-29', 'A valid English leap date was rejected.')
+  assert(parseDateFlexible('February 30, 2026') === undefined, 'A nonexistent English date was normalized instead of rejected.')
+
   const result = parseIbkrActivityStatement(sample, 'sample-ibkr-ytd.csv')
   assert(result.errors.length === 0 && result.report, `Parser errors: ${result.errors.join('; ')}`)
+  assert(result.report.source === 'synthetic', 'The bundled sample was not labelled as synthetic test data.')
   assert(result.report.seasonPnl === 20040, `Unexpected season P&L: ${result.report.seasonPnl}`)
   assert(result.report.stockPnl === 13690, `Unexpected stock P&L: ${result.report.stockPnl}`)
   assert(result.report.optionPnl === 6350, `Unexpected options P&L: ${result.report.optionPnl}`)
   assert(result.report.events.length === 5, `Unexpected event count: ${result.report.events.length}`)
   assert(result.report.mtmReconciliationDifference === 0, `Unexpected reconciliation difference: ${result.report.mtmReconciliationDifference}`)
   assert(result.report.symbols.length === 6, `Unexpected symbol count: ${result.report.symbols.length}`)
+  assert(
+    result.report.dataQuality === 'warning',
+    'Unavailable reconciliation checks were incorrectly labelled as fully passed.',
+  )
   assert(
     result.report.reconciliations.find((check) => check.id === 'mtm_all_assets')?.status === 'PASS_EXACT',
     'The bundled sample MTM check did not pass exactly.',
@@ -65,10 +79,13 @@ try {
     `Current-schema fixture errors: ${currentSchemaResult.errors.join('; ')}`,
   )
   const currentReport = currentSchemaResult.report
+  assert(currentReport.source === 'synthetic', 'The current-schema fixture was not labelled as synthetic test data.')
   assert(currentReport.seasonPnl === 740.123456, `Unexpected current-schema Season P&L: ${currentReport.seasonPnl}`)
   assert(currentReport.stockPnl === 167.622477, `Unexpected current-schema Stock P&L: ${currentReport.stockPnl}`)
   assert(currentReport.optionPnl === 450.222223, `Unexpected current-schema Options P&L: ${currentReport.optionPnl}`)
   assert(currentReport.otherPnl === 122.278756, `Unexpected current-schema Other P&L: ${currentReport.otherPnl}`)
+  assert(currentReport.symbols.length === 3, `Unexpected current-schema symbol count: ${currentReport.symbols.length}`)
+  assert(currentReport.events.length === 2, `Unexpected current-schema event count: ${currentReport.events.length}`)
   assert(currentReport.dataQuality === 'good', 'A supported Other bucket was incorrectly treated as a reconciliation failure.')
   assert(currentReport.statementPeriodTotalPnl === 750.243455, 'Statement-period P&L was not parsed from the verified empty record-type row.')
   assert(currentReport.beginningNav === 25000.125, 'Beginning NAV was not parsed.')
@@ -160,6 +177,42 @@ try {
     'A non-YTD report was not rejected.',
   )
 
+  const futureDated = sample.replace(
+    'January 1, 2026 - August 27, 2026',
+    'January 1, 2026 - August 31, 2026',
+  )
+  assert(
+    parseIbkrActivityStatement(futureDated).errors.some((error) => error.includes('future end date')),
+    'A future statement end date was not rejected.',
+  )
+
+  const invalidCalendarDate = sample.replace(
+    'January 1, 2026 - August 27, 2026',
+    'January 1, 2026 - February 30, 2026',
+  )
+  assert(
+    parseIbkrActivityStatement(invalidCalendarDate).errors.some((error) => error.includes('period could not be detected')),
+    'A nonexistent statement date was not rejected.',
+  )
+
+  const priorSeason = sample.replace(
+    'January 1, 2026 - August 27, 2026',
+    'January 1, 2025 - August 27, 2025',
+  )
+  assert(
+    parseIbkrActivityStatement(priorSeason).errors.some((error) => error.includes('current 2026 season')),
+    'A prior-year statement was not rejected against the injected current date.',
+  )
+
+  const reversedPeriod = sample.replace(
+    'January 1, 2026 - August 27, 2026',
+    'December 31, 2026 - August 27, 2026',
+  )
+  assert(
+    parseIbkrActivityStatement(reversedPeriod).errors.some((error) => error.includes('later than its end date')),
+    'A reversed statement date range was not rejected.',
+  )
+
   const multiAccount = `${sample}\nAccount Information,Data,Account,U9992026\n`
   const multiResult = parseIbkrActivityStatement(multiAccount, 'multi-account.csv')
   assert(
@@ -207,6 +260,52 @@ try {
     'A non-Activity Statement title was not rejected.',
   )
 
+  for (const invalidCurrency of ['US', '', '<img>', 'TOO_LONG', 'U\u0000D']) {
+    const invalidCurrencyFixture = currentSchemaFixture.replace(
+      'Account Information,Data,Base Currency,USD',
+      `Account Information,Data,Base Currency,${invalidCurrency}`,
+    )
+    const invalidCurrencyResult = parseIbkrActivityStatement(invalidCurrencyFixture)
+    assert(
+      invalidCurrencyResult.errors.some((error) => error.includes('base currency')),
+      'An invalid or missing base currency was not rejected.',
+    )
+    if (invalidCurrency) {
+      assert(
+        !invalidCurrencyResult.errors.join(' ').includes(invalidCurrency),
+        'A rejected base currency was reflected into an error message.',
+      )
+    }
+  }
+
+  for (const validCurrency of ['USD', 'HKD', 'CNY']) {
+    const validCurrencyFixture = currentSchemaFixture.replace(
+      'Account Information,Data,Base Currency,USD',
+      `Account Information,Data,Base Currency,${validCurrency}`,
+    )
+    assert(
+      parseIbkrActivityStatement(validCurrencyFixture).report?.baseCurrency === validCurrency,
+      `A valid ${validCurrency} base currency was rejected.`,
+    )
+  }
+
+  const conflictingCurrency = `${currentSchemaFixture}\nAccount Information,Data,Base Currency,CNY\n`
+  assert(
+    parseIbkrActivityStatement(conflictingCurrency).errors.some((error) => error.includes('Conflicting statement base currencies')),
+    'Conflicting base currencies were not rejected.',
+  )
+
+  const missingAccount = currentSchemaFixture.replace(
+    'Account Information,Data,Account,SYNTHETIC_ACCOUNT_2026_A\n',
+    '',
+  )
+  const missingAccountResult = parseIbkrActivityStatement(missingAccount)
+  assert(
+    missingAccountResult.errors.includes('The statement account identifier could not be detected.'),
+    'A missing account identifier was not rejected with a fixed error.',
+  )
+  assert(!missingAccountResult.report, 'A report was created without an account identifier.')
+
   const malformedResult = parseIbkrActivityStatement('Statement,Data,"unterminated')
   assert(
     malformedResult.errors.some((error) => error.includes('unterminated')),
@@ -242,11 +341,11 @@ try {
     optionPnl: result.report.optionPnl,
     symbols: result.report.symbols.length,
     events: result.report.events.length,
-      negativeCases: 7,
-      compatibilityCases: 3,
-      currentSchemaChecks: 5,
-      sourceReferenceChecks: allSourceRefs.length,
-    })
+    negativeCases: 19,
+    compatibilityCases: 3,
+    currentSchemaChecks: 5,
+    sourceReferenceChecks: allSourceRefs.length,
+  })
 } finally {
   rmSync(output, { recursive: true, force: true })
 }
