@@ -56,7 +56,7 @@ Open the local URL printed by Vite, normally `http://localhost:5173`. Vite 8 req
 - Git commits must use the user's approved GitHub `noreply` email rather than a personal email address.
 - The only permitted external deployment in the current stage is an access-protected Vercel Preview.
 - Do not create, publish, or expose a Vercel Production deployment or production domain. Public/Production release requires a separate future approval and release-gate review.
-- The local `main` branch now tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and this Mac connects through a repository-scoped read/write deploy key. No Vercel project, Preview, or Production deployment exists yet.
+- The local `main` branch now tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and this Mac connects through a repository-scoped read/write deploy key. An empty, Standard-Protected Vercel project exists with zero deployments. Vercel currently forces the first deployment to Production even when Preview is requested, so deployment is paused pending a new user decision.
 
 ## Validate before a commit
 
@@ -164,7 +164,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Create only an access-protected Vercel Preview after the local release gate passes, then verify Network/Storage, Worker response headers/MIME and security headers there. Do not create Production.
+1. Resolve Vercel's forced-first-Production blocker without weakening the frozen access boundary. Do not retry the empty project's upload before a user decision; after a safe route is approved, verify Network/Storage, Worker response headers/MIME and security headers on the protected non-public deployment.
 2. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` to verify real iPhone Safari 16.4+ import, cancellation, timeout and share-card export with fictional data only.
 3. Run VoiceOver checks on the supported real iPhone; do not treat the desktop keyboard or simulated-width result as a substitute.
 4. Refine the dashboard after real-data density is known. A public or Production release remains outside the approved current scope.

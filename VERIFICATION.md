@@ -10,7 +10,9 @@ Last updated: 2026-08-29
 - The remote must be a GitHub private repository, and commits must use the user's approved GitHub `noreply` email rather than a personal email address.
 - The only permitted external deployment in the current stage is an access-protected Vercel Preview.
 - A Vercel Production deployment or production domain must not be created, published, or exposed without a new explicit user decision.
-- The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac. No Vercel project, Preview, or Production deployment exists yet.
+- The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac.
+- An empty Vercel project exists with Standard Protection enabled and build settings frozen to Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. It currently has zero deployments.
+- A first upload explicitly requested as Preview was classified by Vercel as Production and received the default production alias. It was immediately removed; both generated URLs were then verified as `404 DEPLOYMENT_NOT_FOUND`. This is a failed release-gate attempt, not a successful Preview or Production release.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
@@ -96,4 +98,4 @@ Last updated: 2026-08-29
 - Protected-Preview header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari and PNG export remain unverified.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.
 - Node 25.8.1 was used for this local run; Node 22 LTS remains the recommended repeatable user environment.
-- The private GitHub remote exists and the initial `main` history has been pushed successfully. No Vercel project, Preview or Vercel Production deployment has been created yet.
+- The private GitHub remote exists and the `main` history has been pushed successfully. The Vercel project exists but has zero deployments; the frozen Preview-only gate is blocked by Vercel's current forced-first-Production behavior.

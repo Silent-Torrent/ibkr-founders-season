@@ -64,6 +64,13 @@ Exact account balance is private by default. Net liquidation value determines a 
 - External deployment is limited to a Vercel Preview protected by access control. Do not create, publish, or expose a Vercel Production deployment or production domain in the current stage.
 - Any future public or Production deployment requires a new explicit user decision and a fresh release-gate review.
 
+### Deployment implementation status — 2026-08-29
+
+- An empty Hobby-plan Vercel project now exists with Vercel Authentication set to Standard Protection. It has no surviving deployment and no connected Git repository.
+- Vercel classified the first upload as Production even though the CLI request explicitly used `--target=preview`; it also assigned the default production alias. The deployment was immediately removed, and both generated URLs were verified as `404 DEPLOYMENT_NOT_FOUND`.
+- The provider currently forces a new project's first deployment to Production. Therefore the frozen Preview-only decision cannot be completed on this empty Vercel project without a new user decision about a non-public Production bootstrap or a different hosting route. Do not retry the upload while the project has zero deployments.
+- Provider evidence: [open Vercel CLI issue #17069](https://github.com/vercel/vercel/issues/17069) and [Vercel staff confirmation on 2026-08-22](https://community.vercel.com/t/fresh-no-git-cli-and-rest-deployments-classified-as-production-despite-documented-preview-defaults/46150).
+
 ## Security and data collection
 
 - The MVP sends no raw statement, account identifier, symbol, holding, amount, filename, or full error object to a server or analytics provider.

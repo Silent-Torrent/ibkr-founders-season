@@ -68,7 +68,7 @@
 - [x] Add a three-locale privacy notice and disclaimer modal.
 - [x] Initialize local Git history with the approved GitHub `noreply` identity.
 - [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
-- [ ] Deploy only after the static-Beta security gate passes.
+- [ ] Resolve Vercel's forced-first-Production blocker by explicit user decision, then deploy only through the approved protected route.
 
 ## P1 — after first testers
 
