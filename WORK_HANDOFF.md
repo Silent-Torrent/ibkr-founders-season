@@ -16,7 +16,7 @@ The user also approved v0.2 identity, verification, privacy and security decisio
 
 Checkpoint 0.5 adds a complete English, Simplified Chinese, and Traditional Chinese Privacy & Data dialog. It accurately states the local Worker, current-tab-memory, locale-only persistence, no-upload, Self-Reported authenticity, optional/unparsed PDF, disclaimer, clearing boundaries, and the fact that a deliberately downloaded PNG is a separate browser file. Desktop browser keyboard/focus behavior passed for both dialogs, page focus, control semantics, report clearing, and live-status placement. A simulated 320 px check covered bottom navigation, Ledger table/share card, Arena scrolling, the privacy dialog and symbol drawer. Neither result is evidence of a real iPhone or VoiceOver pass.
 
-The user subsequently froze three release-boundary choices: the supported baseline is iOS 16.4+ and Safari 16.4+; the remote must be a GitHub private repository whose commits use the user's approved GitHub `noreply` email; and the only permitted external deployment is an access-protected Vercel Preview. The Vite production target is now explicit, the TypeScript application library guard is ES2022, and Safari 16.4-prefixed backdrop filters are protected by a compatibility contract check. This is configuration evidence, not a real 16.4 device pass. A local Git repository has been initialized with the approved `noreply` identity; no GitHub remote or Vercel deployment has yet been created. No Vercel Production deployment or production domain may be created or exposed without a new explicit user decision.
+The user subsequently froze three release-boundary choices: the supported baseline is iOS 16.4+ and Safari 16.4+; the remote must be a GitHub private repository whose commits use the user's approved GitHub `noreply` email; and the only permitted external deployment is an access-protected Vercel Preview. The Vite production target is now explicit, the TypeScript application library guard is ES2022, and Safari 16.4-prefixed backdrop filters are protected by a compatibility contract check. This is configuration evidence, not a real 16.4 device pass. The local `main` branch now tracks the private `Silent-Torrent/ibkr-founders-season` GitHub remote, using the approved `noreply` identity and a repository-scoped read/write deploy key. No Vercel project or deployment has yet been created. No Vercel Production deployment or production domain may be created or exposed without a new explicit user decision.
 
 ## Product thesis
 
@@ -94,7 +94,7 @@ These checks do not replace testing against a real IBKR statement.
 2. Protected-Preview Network/Storage verification, Worker response-header/MIME inspection and near-limit device responsiveness remain incomplete; local Worker lifecycle and parser limits now have regression cases.
 3. Real iPhone Safari 16.4+ file import, cancellation, timeout and PNG export have not been tested. VoiceOver also remains untested; the broader desktop keyboard/focus and simulated 320 px checks are only preliminary coverage.
 4. PDF checks are manual; PDF parsing is not automated and PDF-only remains unsupported for ranked results.
-5. The project directory is now a local Git repository using the approved `noreply` identity. It has not yet been connected to a GitHub private remote or deployed.
+5. The project has a private GitHub remote backup. The local and remote `main` branches are connected through a repository-scoped read/write deploy key; no Vercel deployment exists yet.
 
 ## Immediate next milestone
 
@@ -102,7 +102,7 @@ Do not add social features or polish first. The next milestone is:
 
 > Complete the static-Beta security and device gate around the now-repeatable accounting parser, without broadening the product's data boundary.
 
-The accounting checkpoint is repeatable with a fully synthetic current-schema fixture, and the private sample remains a separate read-only calibration source. The Worker boundary, complete underlying-value provenance UI, and three-locale privacy dialog are now implemented. Desktop keyboard/focus behavior and the principal simulated 320 px surfaces have passed. The next gate is preparation for a GitHub private remote using the approved `noreply` identity, followed only after local checks by a protected Vercel Preview for Network/Storage and Worker-response inspection. The fictional-data real-iPhone Safari 16.4+ procedure in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` and VoiceOver remain required. Automated PDF reconciliation remains a later workstream.
+The accounting checkpoint is repeatable with a fully synthetic current-schema fixture, and the private sample remains a separate read-only calibration source. The Worker boundary, complete underlying-value provenance UI, and three-locale privacy dialog are now implemented. Desktop keyboard/focus behavior and the principal simulated 320 px surfaces have passed. The GitHub private remote gate is complete. The next gate is an empty Vercel project whose access protection is confirmed before any Preview upload, followed by Network/Storage and Worker-response inspection. The fictional-data real-iPhone Safari 16.4+ procedure in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` and VoiceOver remain required. Automated PDF reconciliation remains a later workstream.
 
 ## Longer-term roadmap
 

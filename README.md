@@ -56,7 +56,7 @@ Open the local URL printed by Vite, normally `http://localhost:5173`. Vite 8 req
 - Git commits must use the user's approved GitHub `noreply` email rather than a personal email address.
 - The only permitted external deployment in the current stage is an access-protected Vercel Preview.
 - Do not create, publish, or expose a Vercel Production deployment or production domain. Public/Production release requires a separate future approval and release-gate review.
-- The local Git repository now exists and uses the approved GitHub `noreply` identity for commits. The private GitHub remote, Vercel project, Preview, and Production deployment do not yet exist.
+- The local `main` branch now tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and this Mac connects through a repository-scoped read/write deploy key. No Vercel project, Preview, or Production deployment exists yet.
 
 ## Validate before a commit
 
@@ -164,8 +164,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Create the GitHub private remote, recheck privacy and staged content, then push the local history using the approved GitHub `noreply` identity.
-2. Create only an access-protected Vercel Preview after the local release gate passes, then verify Network/Storage, Worker response headers/MIME and security headers there. Do not create Production.
-3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` to verify real iPhone Safari 16.4+ import, cancellation, timeout and share-card export with fictional data only.
-4. Run VoiceOver checks on the supported real iPhone; do not treat the desktop keyboard or simulated-width result as a substitute.
-5. Refine the dashboard after real-data density is known. A public or Production release remains outside the approved current scope.
+1. Create only an access-protected Vercel Preview after the local release gate passes, then verify Network/Storage, Worker response headers/MIME and security headers there. Do not create Production.
+2. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` to verify real iPhone Safari 16.4+ import, cancellation, timeout and share-card export with fictional data only.
+3. Run VoiceOver checks on the supported real iPhone; do not treat the desktop keyboard or simulated-width result as a substitute.
+4. Refine the dashboard after real-data density is known. A public or Production release remains outside the approved current scope.

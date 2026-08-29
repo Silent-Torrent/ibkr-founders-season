@@ -10,7 +10,7 @@ Last updated: 2026-08-29
 - The remote must be a GitHub private repository, and commits must use the user's approved GitHub `noreply` email rather than a personal email address.
 - The only permitted external deployment in the current stage is an access-protected Vercel Preview.
 - A Vercel Production deployment or production domain must not be created, published, or exposed without a new explicit user decision.
-- A local Git repository has been initialized on `main` with the approved GitHub username and `noreply` commit identity. No GitHub remote, Vercel project, Preview, or Production deployment exists yet.
+- The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac. No Vercel project, Preview, or Production deployment exists yet.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
@@ -96,4 +96,4 @@ Last updated: 2026-08-29
 - Protected-Preview header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari and PNG export remain unverified.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.
 - Node 25.8.1 was used for this local run; Node 22 LTS remains the recommended repeatable user environment.
-- No GitHub private remote, Vercel project, Preview or Vercel Production deployment has been created yet.
+- The private GitHub remote exists and the initial `main` history has been pushed successfully. No Vercel project, Preview or Vercel Production deployment has been created yet.

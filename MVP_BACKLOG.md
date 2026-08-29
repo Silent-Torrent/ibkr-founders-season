@@ -67,7 +67,7 @@
 - [ ] Run VoiceOver and real-device accessibility checks on the supported iPhone Safari baseline.
 - [x] Add a three-locale privacy notice and disclaimer modal.
 - [x] Initialize local Git history with the approved GitHub `noreply` identity.
-- [ ] Create and verify the GitHub private remote backup.
+- [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
 - [ ] Deploy only after the static-Beta security gate passes.
 
 ## P1 — after first testers
