@@ -1,0 +1,40 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,Period,"January 1, 2026 - August 27, 2026"
+Account Information,Header,Field Name,Field Value
+Account Information,Data,Account,U1232026
+Account Information,Data,Base Currency,USD
+Change in NAV,Header,Field Name,Field Value
+Change in NAV,Data,Time Weighted Rate of Return,21.3%
+Net Asset Value,Header,Asset Class,Prior Total,Current Long,Current Short,Current Total,Change
+Net Asset Value,Data,Cash,22000,28700,0,28700,6700
+Net Asset Value,Data,Stock,102380,126120,0,126120,23740
+Net Asset Value,Data,Total,124380,154820,0,154820,30440
+Month & Year to Date Performance Summary,Header,Asset Class,Symbol,Description,MTD Mark-to-Market,YTD Mark-to-Market,MTD Realized S/T,YTD Realized S/T,MTD Realized L/T,YTD Realized L/T
+Month & Year to Date Performance Summary,Data,Stocks,NVDA,NVIDIA Corp.,600,9840,500,4100,0,0
+Month & Year to Date Performance Summary,Data,Equity and Index Options,NVDA,NVIDIA options,220,2850,190,2350,0,0
+Month & Year to Date Performance Summary,Data,Stocks,GOOGL,Alphabet Class A,410,5110,250,1800,0,0
+Month & Year to Date Performance Summary,Data,Equity and Index Options,GOOGL,Alphabet options,180,1680,160,1440,0,0
+Month & Year to Date Performance Summary,Data,Equity and Index Options,SPY,SPY options,320,3420,290,3180,0,0
+Month & Year to Date Performance Summary,Data,Stocks,RKLB,Rocket Lab USA,280,2740,80,620,0,0
+Month & Year to Date Performance Summary,Data,Equity and Index Options,RKLB,Rocket Lab options,-60,-380,-40,-210,0,0
+Month & Year to Date Performance Summary,Data,Stocks,AMD,Advanced Micro Devices,-120,-820,-80,-320,0,0
+Month & Year to Date Performance Summary,Data,Stocks,TSLA,"Tesla, Inc.",-520,-3180,-240,-900,0,0
+Month & Year to Date Performance Summary,Data,Equity and Index Options,TSLA,Tesla options,-180,-1220,-140,-780,0,0
+Month & Year to Date Performance Summary,Data,Total (All Assets),,,0,20040,0,0,0,0
+Realized & Unrealized Performance Summary,Header,Asset Class,Symbol,Description,Realized Total,Unrealized Total,Total
+Realized & Unrealized Performance Summary,Data,Stocks,NVDA,NVIDIA Corp.,4100,2640,6740
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,NVDA,NVIDIA options,2350,420,2770
+Realized & Unrealized Performance Summary,Data,Stocks,GOOGL,Alphabet Class A,1800,2310,4110
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,GOOGL,Alphabet options,1440,120,1560
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,SPY,SPY options,3180,240,3420
+Realized & Unrealized Performance Summary,Data,Stocks,RKLB,Rocket Lab USA,620,2120,2740
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,RKLB,Rocket Lab options,-210,-170,-380
+Realized & Unrealized Performance Summary,Data,Stocks,AMD,Advanced Micro Devices,-320,-500,-820
+Realized & Unrealized Performance Summary,Data,Stocks,TSLA,"Tesla, Inc.",-900,-5680,-6580
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,TSLA,Tesla options,-780,-440,-1220
+"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
+"Options Exercises, Assignments and Expirations",Data,OPT,NVDA 260320P00140000,NVDA,2026-07-18,Assignment
+"Options Exercises, Assignments and Expirations",Data,OPT,TSLA 260619P00220000,TSLA,2026-06-20,Assignment
+"Options Exercises, Assignments and Expirations",Data,OPT,RKLB 260515C00025000,RKLB,2026-05-15,Exercise
+"Options Exercises, Assignments and Expirations",Data,OPT,SPY 260821C00680000,SPY,2026-08-21,Expiration
+"Options Exercises, Assignments and Expirations",Data,OPT,GOOGL 260814C00210000,GOOGL,2026-08-14,Expiration

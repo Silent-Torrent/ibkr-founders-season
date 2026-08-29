@@ -1,0 +1,52 @@
+node_modules
+dist
+.DS_Store
+*.local
+.env
+.env.*
+!.env.example
+.envrc
+.npmrc
+.vercel/
+.vscode/
+.private-data/
+private-data/
+tests/fixtures/private/
+*.private.*
+*.secret.*
+
+# Local test/build output must not enter the private remote by accident.
+coverage/
+test-results/
+playwright-report/
+screenshots/
+*.tsbuildinfo
+
+# Credentials and signing material are always local-only.
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Financial statements and handoff archives are private by default.
+# Repository-safe fixtures must be explicitly allowed below.
+*.csv
+*.tsv
+*.pdf
+*.xls
+*.xlsx
+*.ofx
+*.qfx
+*.xml
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.7z
+*.rar
+*.zip
+*.sha256
+!public/sample-ibkr-ytd.csv
+!tests/fixtures/ibkr-current-schema-synthetic.csv

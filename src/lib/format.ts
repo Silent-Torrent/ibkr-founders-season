@@ -1,0 +1,47 @@
+import type { Locale } from '../types'
+
+const localeMap: Record<Locale, string> = {
+  en: 'en-US',
+  'zh-CN': 'zh-CN',
+  'zh-TW': 'zh-TW',
+}
+
+export function formatCurrency(
+  value: number | undefined,
+  currency: string,
+  locale: Locale,
+  compact = false,
+): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat(localeMap[locale], {
+    style: 'currency',
+    currency,
+    notation: compact ? 'compact' : 'standard',
+    maximumFractionDigits: compact ? 1 : 0,
+    signDisplay: 'exceptZero',
+  }).format(value)
+}
+
+export function formatPercent(value: number | undefined, locale: Locale): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return new Intl.NumberFormat(localeMap[locale], {
+    style: 'percent',
+    maximumFractionDigits: 1,
+    signDisplay: 'exceptZero',
+  }).format(value)
+}
+
+export function formatDate(value: string, locale: Locale): string {
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(localeMap[locale], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date)
+}
+
+export function pnlClass(value: number | undefined): string {
+  if (value == null || value === 0) return 'neutral'
+  return value > 0 ? 'positive' : 'negative'
+}

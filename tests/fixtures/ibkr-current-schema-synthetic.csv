@@ -1,0 +1,133 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,Title,Activity Statement
+Statement,Data,Period,"January 1, 2026 - August 15, 2026"
+Statement,Data,Generated,2026-08-16 07:13:29 EDT
+Account Information,Header,Field Name,Field Value
+Account Information,Data,Account,SYNTHETIC_ACCOUNT_2026_A
+Account Information,Data,Name,Synthetic Regression Fixture
+Account Information,Header,Field Name,Field Value
+Account Information,Data,Account Type,Synthetic Test Account
+Account Information,Data,Base Currency,USD
+Net Asset Value,Header,Asset Class,Prior Total,Current Long,Current Short,Current Total,Change
+Net Asset Value,Data,Cash,15000.125000,17113.340479,0.000000,17113.340479,2113.215479
+Net Asset Value,Data,Stock,10000.000000,16500.250000,0.000000,16500.250000,6500.250000
+Net Asset Value,Data,Options,0.000000,135.666865,0.000000,135.666865,135.666865
+Net Asset Value,Data,Interest Accruals,0.000000,1.111111,0.000000,1.111111,1.111111
+Net Asset Value,Data,Total,25000.125000,33750.368455,0.000000,33750.368455,8750.243455
+Net Asset Value,Header,Time Weighted Rate of Return
+Net Asset Value,Data,7.654321%
+Change in NAV,Header,Field Name,Field Value
+Change in NAV,Data,Starting Value,25000.125000
+Change in NAV,Data,Mark-to-Market,742.343458
+Change in NAV,Data,Deposits & Withdrawals,8000.000000
+Change in NAV,Data,Dividends,15.500000
+Change in NAV,Data,Withholding Tax,-3.100000
+Change in NAV,Data,Interest,12.340001
+Change in NAV,Data,Change in Interest Accruals,1.111111
+Change in NAV,Data,Other Fees,-2.220002
+Change in NAV,Data,Commissions,-14.620002
+Change in NAV,Data,Other FX Translations,-1.111111
+Change in NAV,Header,Field Name,Field Value
+Change in NAV,Data,Ending Value,33750.368455
+Mark-to-Market Performance Summary,Header,Asset Category,Symbol,Prior Quantity,Current Quantity,Prior Price,Current Price,Mark-to-Market P/L Position,Mark-to-Market P/L Transaction,Mark-to-Market P/L Commissions,Mark-to-Market P/L Other,Mark-to-Market P/L Total,Code
+Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,"1,234.000000","1,111.000000",12.345600,12.507800,180.123456,20.250000,(1.010101),9.500000,208.863355,
+Mark-to-Market Performance Summary,Data,Stocks,ZZFICTB,0.000000,50.000000,-,80.250000,(90.456789),50.125001,-0.909090,0.000000,-41.240878,
+Mark-to-Market Performance Summary,Data,Total,,,,,,89.666667,70.375001,-1.919191,9.500000,167.622477,
+Mark-to-Market Performance Summary,Header,Asset Category,Symbol,Prior Quantity,Current Quantity,Prior Price,Current Price,Mark-to-Market P/L Position,Mark-to-Market P/L Transaction,Mark-to-Market P/L Commissions,Mark-to-Market P/L Other,Mark-to-Market P/L Total,Code
+Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,-1.000000,0.000000,4.500000,0.000000,300.111111,60.222222,-5.555555,0.000000,354.777778,A
+Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTB 17JUL26 80 C,2.000000,0.000000,2.250000,0.000000,120.333333,-20.444444,-4.444444,0.000000,95.444445,Ep
+Mark-to-Market Performance Summary,Data,Total,,,,,,420.444444,39.777778,-9.999999,0.000000,450.222223,
+Mark-to-Market Performance Summary,Data,Forex,XTS.USD,"12,345.678900","13,210.987600",1.000000,1.000000,130.845000,-8.765432,-2.700812,2.900000,122.278756,
+Mark-to-Market Performance Summary,Data,Total,,,,,,130.845000,-8.765432,-2.700812,2.900000,122.278756,
+Mark-to-Market Performance Summary,Data,Total (All Assets),,,,,,640.956111,101.387347,-14.620002,12.400000,740.123456,
+Mark-to-Market Performance Summary,Data,Broker Interest Paid and Received,,,,,,,,,,12.340001,
+Mark-to-Market Performance Summary,Data,Other Fees,,,,,,,,,,-2.220002,
+Total P/L for Statement Period,,,,,,,,,,,,750.243455,
+Realized & Unrealized Performance Summary,Header,Asset Class,Symbol,Cost Adj.,Realized S/T Profit,Realized S/T Loss,Realized L/T Profit,Realized L/T Loss,Total Realized P/L,Unrealized S/T Profit,Unrealized S/T Loss,Unrealized L/T Profit,Unrealized L/T Loss,Total Unrealized P/L,Total,Code
+Realized & Unrealized Performance Summary,Data,Stocks,ZZFICTA,0.000000,150.111111,0.000000,0.000000,0.000000,150.111111,100.222222,0.000000,0.000000,0.000000,100.222222,250.333333,
+Realized & Unrealized Performance Summary,Data,Stocks,ZZFICTB,0.000000,0.000000,-50.333333,0.000000,0.000000,-50.333333,0.000000,-30.444444,0.000000,0.000000,-30.444444,-80.777777,
+Realized & Unrealized Performance Summary,Header,Asset Class,Symbol,Cost Adj.,Realized S/T Profit,Realized S/T Loss,Realized L/T Profit,Realized L/T Loss,Total Realized P/L,Unrealized S/T Profit,Unrealized S/T Loss,Unrealized L/T Profit,Unrealized L/T Loss,Total Unrealized P/L,Total,Code
+Realized & Unrealized Performance Summary,SubTotal,Total Stocks,,0.000000,150.111111,-50.333333,0.000000,0.000000,99.777778,100.222222,-30.444444,0.000000,0.000000,69.777778,169.555556,
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,0.000000,220.555555,0.000000,0.000000,0.000000,220.555555,40.666666,0.000000,0.000000,0.000000,40.666666,261.222221,
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,ZZFICTB 17JUL26 80 C,0.000000,80.777777,0.000000,0.000000,0.000000,80.777777,0.000000,-10.888888,0.000000,0.000000,-10.888888,69.888889,
+Realized & Unrealized Performance Summary,SubTotal,Total Equity and Index Options,,0.000000,301.333332,0.000000,0.000000,0.000000,301.333332,40.666666,-10.888888,0.000000,0.000000,29.777778,331.111110,
+Realized & Unrealized Performance Summary,Data,Forex,XTS.USD,0.000000,10.101010,0.000000,0.000000,0.000000,10.101010,0.000000,-4.040404,0.000000,0.000000,-4.040404,6.060606,
+Realized & Unrealized Performance Summary,Total,Total (All Assets),,0.000000,461.545453,-50.333333,0.000000,0.000000,411.212120,140.888888,-45.373736,0.000000,0.000000,95.515152,506.727272,
+Cash Report,Header,Currency Summary,Currency,Starting Cash,Ending Cash,Ending Settled Cash
+Cash Report,Data,Base Currency Summary,USD,15000.125000,17113.340479,17113.340479
+Open Positions,Header,Asset Class,Currency,Symbol,Quantity,Multiplier,Cost Price,Cost Basis,Close Price,Value,Unrealized P/L,Code
+Open Positions,Data,Stocks,USD,ZZFICTA,"1,111.000000",1,11.909791,13231.777778,12.000000,13332.000000,100.222222,
+Open Positions,Data,Stocks,USD,ZZFICTB,50.000000,1,63.973889,3198.694444,63.365000,3168.250000,-30.444444,
+Open Positions,Header,Asset Class,Currency,Symbol,Underlying,Quantity,Multiplier,Cost Price,Cost Basis,Close Price,Value,Unrealized P/L,Code
+Open Positions,Data,Equity and Index Options,USD,ZZFICTC 18DEC26 25 C,ZZFICTC,1.000000,100,1.35666865,135.666865,1.35666865,135.666865,0.000000,O
+Forex Balances,Header,Currency,Quantity,Cost Price,Cost Basis in USD,Close Price,Value in USD,Unrealized P/L in USD
+Forex Balances,Data,XTS,"13,210.987600",1.000000,13210.987600,1.000000,13210.987600,0.000000
+Net Stock Position Summary,Header,Symbol,Beginning Quantity,Transactions,Ending Quantity
+Net Stock Position Summary,Data,ZZFICTA,"1,234.000000",-123.000000,"1,111.000000"
+Net Stock Position Summary,Data,ZZFICTB,0.000000,50.000000,50.000000
+Trades,Header,Asset Class,Currency,Symbol,Date/Time,Quantity,Trade Price,Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code
+Trades,Data,Stocks,USD,ZZFICTA,"2026-02-10, 10:15:00",200.000000,11.111111,-2222.222200,-1.010101,2223.232301,0.000000,20.250000,O
+Trades,Data,Stocks,USD,ZZFICTB,"2026-03-11, 11:16:00",50.000000,60.000000,-3000.000000,-0.909090,3000.909090,0.000000,50.125001,O
+Trades,SubTotal,Stocks,USD,Total Stocks,,250.000000,,-5222.222200,-1.919191,5224.141391,0.000000,70.375001,
+Trades,Header,Asset Class,Currency,Symbol,Underlying,Date/Time,Quantity,Trade Price,Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code
+Trades,Header,Asset Class,Currency,Symbol,Underlying,Date/Time,Quantity,Trade Price,Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code
+Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A
+Trades,Data,Equity and Index Options,USD,ZZFICTB 17JUL26 80 C,ZZFICTB,"2026-07-17, 16:00:00",2.000000,0.000000,0.000000,-4.444444,0.000000,80.777777,-20.444444,Ep
+Trades,SubTotal,Equity and Index Options,USD,Total Options,,,1.000000,,0.000000,-9.999999,0.000000,301.333332,39.777778,
+Trades,Header,Asset Class,Currency,Symbol,Date/Time,Quantity,Trade Price,Proceeds,Comm/Fee,MTM P/L,Code
+Trades,Data,Forex,USD,XTS.USD,"2026-04-12, 09:30:00","1,234.567890",1.111111,-1371.741851,-2.700812,-8.765432,C
+Trades,Header,Asset Class,Currency,Symbol,Date/Time,Quantity,Trade Price,Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code
+Trades,Total,Total (All Assets),USD,Total,,,,-6593.964051,-14.620002,5224.141391,411.212120,101.387347,
+Deposits & Withdrawals,Header,Currency,Settle Date,Description,Amount
+Deposits & Withdrawals,Data,USD,2026-01-05,Synthetic opening contribution,8000.000000
+Deposits & Withdrawals,Data,Total,,,8000.000000
+Deposits & Withdrawals,Data,Total in USD,,,8000.000000
+Fees,Header,Subtitle,Currency,Date,Description,Amount
+Fees,Data,Other Fees,USD,2026-05-01,Synthetic account service fee,-2.220002
+Fees,Data,Total,USD,,,-2.220002
+Dividends,Header,Currency,Date,Description,Amount
+Dividends,Data,USD,2026-04-15,ZZFICTA synthetic cash dividend,15.500000
+Dividends,Data,Total,,,15.500000
+Withholding Tax,Header,Currency,Date,Description,Amount,Code
+Withholding Tax,Data,USD,2026-04-15,Tax on synthetic dividend,-3.100000,WH
+Withholding Tax,Data,Total,,,-3.100000,
+Interest,Header,Currency,Date,Description,Amount
+Interest,Data,USD,2026-08-15,Synthetic credit interest,12.340001
+Interest,Data,Total,,,12.340001
+Interest,Data,Total in USD,,,12.340001
+Interest,Data,Total Interest in USD,,,12.340001
+Interest Accruals,Header,Currency,Field Name,Field Value
+Interest Accruals,Data,Base Currency Summary,Starting Accrual Balance,0.000000
+Interest Accruals,Data,Base Currency Summary,Interest Accrued,1.111111
+Interest Accruals,Data,Base Currency Summary,Accrual Reversal,0.000000
+Interest Accruals,Data,Base Currency Summary,FX Translation,0.000000
+Interest Accruals,Data,Base Currency Summary,Ending Accrual Balance,1.111111
+Change in Dividend Accruals,Header,Asset Category,Currency,Symbol,Date,Ex Date,Pay Date,Quantity,Tax,Fee,Gross Rate,Gross Amount,Net Amount,Code
+Change in Dividend Accruals,Data,Starting Dividend Accruals in USD,,,,,,,,,,,0.000000,
+Change in Dividend Accruals,Data,Stocks,USD,ZZFICTA,2026-04-15,2026-04-01,2026-04-15,10.000000,0.000000,0.000000,0.000000,0.000000,0.000000,Re
+Change in Dividend Accruals,Data,Total,,,,,,,,,,,0.000000,
+Change in Dividend Accruals,Data,Ending Dividend Accruals in USD,,,,,,,,,,,0.000000,
+Stock Yield Enhancement Program Securities Lent,Header,Currency,Symbol,Quantity,Value,Code
+Stock Yield Enhancement Program Securities Lent,Data,USD,ZZFICTA,1.000000,12.000000,SL
+Collateral,Header,Currency,Description,Starting Value,Ending Value,Change
+Collateral,Data,USD,Synthetic securities-lending collateral,0.000000,12.000000,12.000000
+Lent Activity,Header,Currency,Date,Symbol,Activity,Quantity,Code
+Lent Activity,Data,USD,2026-08-01,ZZFICTA,Loan,1.000000,SL
+Fee Earned Details,Header,Currency,Date,Symbol,Description,Amount
+Fee Earned Details,Data,USD,2026-08-15,ZZFICTA,Synthetic lending fee,0.000000
+Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Security ID,Listing Exch,Multiplier,Type,Code
+Financial Instrument Information,Data,Stocks,ZZFICTA,Synthetic Alpha Systems,SYNTH-CONID-STK-A,SYNTH-SECURITY-ID-A,TESTEX,1,COMMON,
+Financial Instrument Information,Data,Stocks,ZZFICTB,Synthetic Beta Dynamics,SYNTH-CONID-STK-B,SYNTH-SECURITY-ID-B,TESTEX,1,COMMON,
+Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code
+Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code
+Financial Instrument Information,Data,Equity and Index Options,ZZFICTA,ZZFICTA 19JUN26 125 P,SYNTH-CONID-OPT-A,ZZFICTA,100,2026-06-19,P,125.000000,
+Financial Instrument Information,Data,Equity and Index Options,ZZFICTB,ZZFICTB 17JUL26 80 C,SYNTH-CONID-OPT-B,ZZFICTB,100,2026-07-17,C,80.000000,
+Financial Instrument Information,Data,Equity and Index Options,ZZFICTC,ZZFICTC 18DEC26 25 C,SYNTH-CONID-OPT-C,ZZFICTC,100,2026-12-18,C,25.000000,
+Codes,Header,Code,Meaning
+Codes,Data,A,Assignment
+Codes,Data,Ep,Expired
+Codes,Data,O,Opening Trade
+Codes,Data,C,Closing Trade
+Codes,Data,P,Partial Execution
+Notes/Legal Notes,Header,Type,Text
+Notes/Legal Notes,Data,Synthetic Fixture,All identifiers instruments dates and monetary values in this file are fabricated for local regression testing.

@@ -1,0 +1,1 @@
+先不要运行、安装或修改任何文件。请依次读取 AGENTS.md、WORK_HANDOFF.md、PROJECT_DECISIONS.md、MVP_BACKLOG.md、VERIFICATION.md 和 README.md，然后审计整个仓库：说明现有代码结构、已经实现的功能、仍未验证的假设、潜在的数据口径风险，以及下一步最小且最安全的动作。重点检查 src/lib/ibkr.ts 和 scripts/smoke-parser.mjs。回答用中文，先给结论，再给证据。未经我明确授权，不要执行 npm install、npm run dev、npm run build，也不要重构。
