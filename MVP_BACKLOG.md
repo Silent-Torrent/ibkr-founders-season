@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.7
+## Completed through coding checkpoint 0.8
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -39,7 +39,7 @@
 - [x] Versioned Worker request/response protocol with strict runtime, reconciliation-semantics, fixed parser-fact, and deterministic-warning validation; capacity caps are aligned to the current unpaginated UI (500 underlyings, 1,000 events, 20,000 total references, 501 per rendered reference collection: 500 detail references plus one broker-total reference).
 - [x] Structured parser/import diagnostics rendered in English, Simplified Chinese, and Traditional Chinese without interpolating unvalidated free-form statement text; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
 - [x] Deterministic option-underlying alias candidates: retain agreeing duplicate provenance and reject the whole report on any conflicting Symbol/Description alias, independent of row order.
-- [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
+- [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, a real downloaded/decoded 1200×1500 PNG with privacy canaries, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
 - [x] Three-locale Privacy & Data dialog with the approved local-processing, storage, authenticity, PDF, disclaimer, and clearing boundaries.
 - [x] Accessible privacy-dialog focus behavior: initial focus, Tab/Shift+Tab containment, Escape/backdrop close, background lock, and focus return.
 - [x] Matching modal focus behavior for the symbol drawer, including native source-row summaries.
@@ -53,7 +53,8 @@
 - [x] Restrict fixed monetary achievement thresholds to USD until an exchange-rate policy exists.
 - [x] Treat unavailable or warning reconciliation checks as Review, not Internal Checks Passed.
 - [x] Product-policy regression suite for trust labels, rankings, achievements, share-card privacy, currency safety, and snapshot replacement.
-- [x] Beginner launcher and project engine pinned to maintained Node.js 22 LTS; full checks and build passed on Node 22.23.2.
+- [x] Beginner launcher and project engine pinned to maintained Node.js 22 LTS; daily startup skips repeat audit/tests/build when the locked dependencies are already prepared, while the separate verification launcher retains the complete gate.
+- [x] Import errors and warnings use readable 14 px / 1.5-line-height text, safe wrapping, and a real desktop-Chrome check at a simulated 320 px viewport.
 
 ## P0 — before public deployment
 
@@ -89,6 +90,7 @@
 - [x] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
 - [x] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
 - [x] Add an automated local-browser import regression for the synthetic fixture.
+- [x] Add an automated desktop-Chrome PNG download regression that verifies filename, file count, PNG structure, dimensions, decoding and privacy canaries; keep real-iPhone PNG verification open.
 - [x] Localize remaining parser rejection messages in all three interface languages.
 
 ## P1 — after first testers

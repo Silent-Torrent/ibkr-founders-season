@@ -2,7 +2,7 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current coded checkpoint 0.7
+## Current coded checkpoint 0.8
 
 The repository already contains:
 
@@ -34,13 +34,15 @@ The repository already contains:
 - Frozen browser support baseline: iOS 16.4+ and Safari 16.4+. The production build target is explicit and covered by a compatibility contract check; the development server is not used as proof of that floor.
 - Desktop browser keyboard/focus checks have passed for page changes, both dialogs, controls, status messages, and focus return. A 320 px simulated narrow-screen check also covered bottom navigation, the Ledger table and share card, the Arena scroll region, the privacy dialog, and the symbol drawer. This is not a real-iPhone or VoiceOver result.
 - All parser/import diagnostics are fixed structured codes rendered in English, Simplified Chinese, or Traditional Chinese at display time. No unvalidated free-form statement text, filename, account identifier, or holding value is interpolated; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
-- Synthetic sample statement, a fully fictional current-schema regression fixture, parser/Worker/product-policy suites, and an automated production-build import test in a real local headless Chrome. That browser test confirms the real module Worker path, three exact reconciliations, no synthetic ranking/achievement, refresh-to-Demo behavior, and no external page request or POST.
+- Synthetic sample statement, a fully fictional current-schema regression fixture, parser/Worker/product-policy suites, and an automated production-build import/download test in a real local headless Chrome. That browser test confirms the real module Worker path, three exact reconciliations, a 320 px readable invalid-file state, a downloaded and decoded 1200×1500 PNG with privacy canaries, no synthetic ranking/achievement, refresh-to-Demo behavior, and no external page request or POST.
 
 ## Run on macOS
 
 ### Easiest route
 
-Install Google Chrome (or Chrome Canary) in the standard macOS Applications folder, then double-click `START_MAC.command`. It checks Node.js, installs the pinned dependencies, runs the full checks—including the isolated production-Chrome import regression—and opens the local app. Keep the Terminal window open while using it.
+For ordinary daily use, double-click `START_MAC.command`. It selects the supported Node.js 22 runtime, checks the local dependency tree, installs the pinned dependencies only when they are missing or the dependency manifests have changed, and opens the local app on `127.0.0.1`. A first or repair installation may require network access. Keep the Terminal window open while using it; closing that window stops the local site. It does not upload or deploy anything.
+
+After code changes or before a handoff, double-click `VERIFY_MAC.command`. That separate full gate performs a clean locked install, dependency audit, every automated test—including the isolated production-Chrome import/PNG regression—and a final production build. The install and vulnerability audit require network access. Google Chrome or Chrome Canary must be installed in the standard macOS Applications folder for this full verification route.
 
 ### Terminal route
 
@@ -50,10 +52,10 @@ export PATH="/opt/homebrew/opt/node@22/bin:/usr/local/opt/node@22/bin:$PATH"
 node --version
 npm ci
 npm run check
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-`node --version` must show Node 22.12 or newer within the Node 22 line; this Mac currently uses v22.23.2. Repeat the `export PATH=...` line in each new Terminal window. The full check also requires Google Chrome or Chrome Canary. If its executable is not in a standard macOS Applications location, run `export CHROME_PATH="/absolute/path/to/Chrome"` before `npm run check`. Open the local URL printed by Vite, normally `http://localhost:5173`.
+`node --version` must show Node 22.12 or newer within the Node 22 line; this Mac currently uses v22.23.2. Repeat the `export PATH=...` line in each new Terminal window. The full check also requires Google Chrome or Chrome Canary. If its executable is not in a standard macOS Applications location, run `export CHROME_PATH="/absolute/path/to/Chrome"` before `npm run check`. Open the local URL printed by Vite, normally `http://127.0.0.1:5173`.
 
 ## Frozen source-control and deployment boundary
 
@@ -72,7 +74,7 @@ npm run dev
 npm run check
 ```
 
-This runs TypeScript checking, the parser smoke suite, the strict Worker protocol suite, the accessibility structure/keyboard contract suite, the frozen browser-compatibility contract, the product-policy/privacy suite, and a real local Chrome regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install, vulnerability audit, and a final production build. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
+This runs TypeScript checking, the parser smoke suite, the strict Worker protocol suite, the accessibility structure/keyboard contract suite, the frozen browser-compatibility contract, the product-policy/privacy suite, the macOS launcher static role/syntax contract, and a real local Chrome import/PNG regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install, vulnerability audit, and a final production build. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
 
 ```text
 Season P&L:  $20,040
@@ -159,10 +161,12 @@ tests/
 scripts/
   smoke-parser.mjs
   test-browser-import.mjs
+  test-mac-launchers.mjs
   test-product-policy.mjs
   test-worker-boundary.mjs
 docs/
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
+  OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required
   PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md  A + C private-host comparison, proposed gates and stop conditions
 ```
 
@@ -175,7 +179,7 @@ docs/
 - The Worker protocol checks the structure and internal consistency of the trusted same-origin parser result. It is not cryptographic proof that an uploaded statement came from IBKR, so local imports remain Self-Reported.
 - A structurally valid report above the current UI capacity caps fails closed with a generic background-parser message. A future larger-account workflow needs pagination/virtualization and a dedicated fixed capacity diagnostic before raising those limits.
 - Desktop keyboard/focus behavior and the principal narrow-screen surfaces have been checked, including at a simulated 320 px width. VoiceOver and real iPhone Safari have not been tested.
-- Assignment and expiration are covered by the private calibration and synthetic fixture; exercise detection still lacks a qualified real or independently proven fixture.
+- Assignment and expiration are covered by the private calibration and synthetic fixture; exercise detection still lacks a qualified real or independently proven CSV fixture. The official-source review in `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md` confirms the semantics but deliberately does not invent the missing CSV serialization.
 - The arena is intentionally a synthetic interface demo; it is not a real public leaderboard.
 - Ordinary user CSV uploads are Self-Reported and must not be labelled broker-verified.
 - The two exact repository-owned fictional CSVs are matched by normalized SHA-256 content digest and labelled Fully Synthetic Test when imported; this does not detect whether arbitrary third-party statements are authentic or AI-edited.

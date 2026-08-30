@@ -166,6 +166,11 @@ try {
     /@media \(max-width: 500px\)[\s\S]*?\.share-card-bottom\s*{[\s\S]*?position:\s*static;/,
     'The narrow share card footer must stay in normal flow to prevent content overlap.',
   )
+  assert.match(
+    styles,
+    /\.error-message,\s*\.warning-message\s*{[\s\S]*?font-size:\s*14px;[\s\S]*?line-height:\s*1\.5;[\s\S]*?overflow-wrap:\s*anywhere;/,
+    'Import errors and warnings must remain readable and safely wrappable on narrow screens.',
+  )
 
   console.log('Accessibility structure and keyboard contracts passed.')
 } finally {

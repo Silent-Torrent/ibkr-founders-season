@@ -1,4 +1,4 @@
-# Verification record — coding checkpoint 0.7
+# Verification record — coding checkpoint 0.8
 
 Last updated: 2026-08-30
 
@@ -68,7 +68,7 @@ Last updated: 2026-08-30
 - Production Vite build passed locally.
 - Dependency lockfile created; installed dependency audit reported zero known vulnerabilities.
 - The current clean install, dependency audit, full check suite, and production build were run with Node 22.23.2 and npm 10.9.8.
-- Both beginner-facing macOS scripts selected Node 22.23.2 before invoking npm. `VERIFY_MAC.command` completed install, audit, checks, and build; `START_MAC.command` completed the same preflight and started Vite successfully before the test process was stopped.
+- Both beginner-facing macOS scripts select a working Node 22.12+ runtime without exposing errors from this Mac's broken default Node 25 loader. `VERIFY_MAC.command` retains the clean install, audit, full checks and build; `START_MAC.command` conditionally repairs only missing/changed locked dependencies and otherwise starts the local site without repeating the full gate. Their shell syntax and separate roles have an automated contract test.
 - A dedicated Privacy & Data dialog is available from both the desktop privacy card and the page footer.
 - English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, locale-only persistence, no statement upload, the Self-Reported authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
 - The privacy dialog exposes `role="dialog"`, `aria-modal`, a labelled title and description, initial focus, Tab/Shift+Tab containment, Escape close, backdrop close, background interaction lock, and focus return to the opening control.
@@ -101,10 +101,12 @@ Last updated: 2026-08-30
 - Both the sidebar and footer privacy controls opened the dialog. Backdrop close and the visible close controls worked.
 - The privacy notice was visually checked in English, Simplified Chinese, and Traditional Chinese.
 - At a simulated 320 px browser width, the bottom navigation, Ledger table, share card, Arena local-snapshot card and horizontal scroll region, privacy dialog, and symbol drawer remained contained. The document width stayed at 320 px without whole-page horizontal overflow. This was a desktop simulation, not a real iPhone test.
+- A content-invalid `.csv` produced a visible alert in desktop Chrome at a simulated 320 px viewport. Its computed text size was at least 14 px with at least 21 px line height, and neither the message nor the document overflowed the viewport.
 - The fully synthetic current-schema CSV imported successfully through the visible file chooser.
 - The import completed through the Worker-backed path and changed the UI from Demo to Fully Synthetic Test.
 - The known fictional fixture was labelled Fully Synthetic Test, not Self-Reported. It created no local ranking snapshot and unlocked no local achievements; its parser source rows remained inspectable.
 - The share-card preview showed Source instead of an underlying and explicitly stated that holdings, account identifiers, and exact net liquidation value were excluded.
+- The real Download PNG button created exactly one `pnl-arena-2026-season.png` file in an isolated download directory. In this recorded run it was 1,268,971 bytes; it had valid PNG signature/IHDR/IEND structure, decoded in Chrome, and measured 1200×1500 pixels. Captured production-canvas text contained the required season metrics, synthetic-source and privacy labels but no fixture holdings, account identifier, or exact NAV canaries. The temporary file was deleted with the isolated browser profile after the test.
 - All three reconciliation checks displayed `PASS_EXACT`, and expandable source cards exposed only CSV section, one-based row, record type, field, and a technical header signature.
 - The first underlying drawer exposed six source groups: total, stock, option, realized, current unrealized and one lifecycle event. Its source-card text contained neither currency/financial values nor the fictional instrument/contract values shown elsewhere in the drawer.
 - Reloading the page returned to Demo, confirming that the complete imported report was not restored.
@@ -118,6 +120,6 @@ Last updated: 2026-08-30
 
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
-- Exercise remains uncovered by a qualified real or independently proven fixture.
-- Protected private-host header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari and PNG export remain unverified.
+- Exercise remains uncovered by a qualified real or independently proven CSV fixture. Official IBKR documentation confirms `Ex` and the lifecycle-field semantics, but the public samples are HTML and do not prove the completed-exercise CSV serialization; see `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
+- Protected private-host header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari import and real-iPhone PNG export remain unverified.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.

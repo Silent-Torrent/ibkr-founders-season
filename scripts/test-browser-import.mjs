@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
@@ -43,6 +52,9 @@ const chromePath = chromeCandidates.find(existsSync)
 
 const children = new Set()
 let profileDirectory
+let browserArtifactDirectory
+let downloadDirectory
+let invalidFixturePath
 let cdp
 let cleanupStarted = false
 
@@ -113,7 +125,9 @@ async function cleanup() {
     // The browser may already have closed its debugging socket.
   }
   await Promise.allSettled([...children].map(stopChild))
-  if (profileDirectory) {
+  if (browserArtifactDirectory) {
+    rmSync(browserArtifactDirectory, { force: true, recursive: true })
+  } else if (profileDirectory) {
     rmSync(profileDirectory, { force: true, recursive: true })
   }
 }
@@ -335,6 +349,27 @@ async function waitForPageValue(expression, predicate, label, timeoutMs = 15_000
   throw new Error(`${label} timed out. Last observed value: ${JSON.stringify(lastValue)}`)
 }
 
+async function waitForCondition(predicate, label, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (predicate()) return
+    await delay(100)
+  }
+  throw new Error(`${label} timed out.`)
+}
+
+function inspectPng(buffer) {
+  const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  assert(buffer.length > 1_000, `Downloaded PNG is unexpectedly small: ${buffer.length} bytes.`)
+  assert.deepEqual(buffer.subarray(0, signature.length), signature, 'Downloaded file has no PNG signature.')
+  assert.equal(buffer.subarray(12, 16).toString('ascii'), 'IHDR', 'Downloaded PNG has no leading IHDR chunk.')
+  assert.equal(buffer.subarray(-8, -4).toString('ascii'), 'IEND', 'Downloaded PNG has no terminal IEND chunk.')
+  return {
+    height: buffer.readUInt32BE(20),
+    width: buffer.readUInt32BE(16),
+  }
+}
+
 async function clickPrimaryNavigation(label) {
   const clicked = await evaluate(`(() => {
     const button = [...document.querySelectorAll('nav.side-nav button')]
@@ -371,6 +406,8 @@ const responseErrors = []
 const workerTargets = []
 const workerFixedTimes = []
 const asynchronousProtocolErrors = []
+const downloadStarts = []
+const downloadProgress = []
 
 try {
   if (process.env.IBKR_BROWSER_IMPORT_SKIP_BUILD === '1') {
@@ -408,7 +445,16 @@ try {
   await waitForHttp(previewUrl, preview, previewOutputRef)
 
   const debugPort = await reserveLocalPort()
-  profileDirectory = mkdtempSync(join(tmpdir(), 'pnl-arena-chrome-'))
+  browserArtifactDirectory = mkdtempSync(join(tmpdir(), 'pnl-arena-browser-'))
+  profileDirectory = join(browserArtifactDirectory, 'profile')
+  downloadDirectory = join(browserArtifactDirectory, 'downloads')
+  invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
+  mkdirSync(profileDirectory)
+  mkdirSync(downloadDirectory)
+  writeFileSync(
+    invalidFixturePath,
+    'Statement,Header,Field Name,Field Value\nStatement,Data,Title,Not an Activity Statement\n',
+  )
   const chrome = trackedSpawn(chromePath, [
     '--headless=new',
     '--disable-background-networking',
@@ -489,6 +535,20 @@ try {
       responseErrors.push({ status: params.response.status, url: params.response.url })
     }
   })
+  cdp.on('Browser.downloadWillBegin', (params) => {
+    downloadStarts.push({
+      guid: params.guid,
+      suggestedFilename: params.suggestedFilename,
+    })
+  })
+  cdp.on('Browser.downloadProgress', (params) => {
+    downloadProgress.push({
+      guid: params.guid,
+      receivedBytes: params.receivedBytes,
+      state: params.state,
+      totalBytes: params.totalBytes,
+    })
+  })
 
   cdp.on('Target.attachedToTarget', async (params) => {
     const { sessionId, targetInfo } = params
@@ -530,6 +590,11 @@ try {
     cdp.send('Network.enable'),
     cdp.send('Log.enable'),
   ])
+  await cdp.send('Browser.setDownloadBehavior', {
+    behavior: 'allow',
+    downloadPath: downloadDirectory,
+    eventsEnabled: true,
+  })
   await cdp.send('Emulation.setTimezoneOverride', { timezoneId: 'Asia/Shanghai' })
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: fixedDateSource })
   await cdp.send('Target.setAutoAttach', {
@@ -556,6 +621,66 @@ try {
     selector: 'input[type="file"]',
   })
   assert.notEqual(nodeId, 0, 'The Import page file input could not be resolved through DOM.setFileInputFiles.')
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 320,
+    width: 320,
+  })
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [invalidFixturePath],
+    nodeId,
+  })
+  const invalidMessageState = await waitForPageValue(
+    `(() => {
+      const message = document.querySelector('.error-message');
+      if (!message) return null;
+      const style = getComputedStyle(message);
+      const rect = message.getBoundingClientRect();
+      return {
+        clientWidth: message.clientWidth,
+        display: style.display,
+        documentWidth: document.documentElement.scrollWidth,
+        fontSize: Number.parseFloat(style.fontSize),
+        lineHeight: Number.parseFloat(style.lineHeight),
+        messageHeight: rect.height,
+        messageLeft: rect.left,
+        messageRight: rect.right,
+        messageWidth: rect.width,
+        opacity: Number.parseFloat(style.opacity),
+        scrollWidth: message.scrollWidth,
+        text: message.textContent?.trim() ?? '',
+        viewportWidth: window.innerWidth,
+        visibility: style.visibility,
+      };
+    })()`,
+    (value) => Boolean(value?.text),
+    'Readable invalid-file message',
+  )
+  assert.equal(invalidMessageState.viewportWidth, 320, 'Chrome did not apply the simulated 320 px viewport.')
+  assert.notEqual(invalidMessageState.display, 'none', 'Import error is display:none.')
+  assert.equal(invalidMessageState.visibility, 'visible', 'Import error is not visible.')
+  assert(invalidMessageState.opacity > 0, 'Import error is fully transparent.')
+  assert(invalidMessageState.messageWidth > 0 && invalidMessageState.messageHeight > 0, 'Import error has no visible box.')
+  assert(invalidMessageState.messageLeft >= 0, `Import error escaped left of the viewport: ${JSON.stringify(invalidMessageState)}`)
+  assert(invalidMessageState.fontSize >= 14, `Import error font is too small: ${invalidMessageState.fontSize}px.`)
+  assert(invalidMessageState.lineHeight >= 21, `Import error line height is too small: ${invalidMessageState.lineHeight}px.`)
+  assert(
+    invalidMessageState.scrollWidth <= invalidMessageState.clientWidth,
+    `Invalid-file message has clipped horizontal text: ${JSON.stringify(invalidMessageState)}`,
+  )
+  assert(
+    invalidMessageState.documentWidth <= invalidMessageState.viewportWidth,
+    `Invalid-file message caused page overflow: ${JSON.stringify(invalidMessageState)}`,
+  )
+  assert(
+    invalidMessageState.messageRight <= invalidMessageState.viewportWidth,
+    `Invalid-file message escaped the 320 px viewport: ${JSON.stringify(invalidMessageState)}`,
+  )
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
 
   console.log(`Selecting ${fixturePath.slice(projectRoot.length + 1)} through DevTools...`)
   await cdp.send('DOM.setFileInputFiles', {
@@ -596,6 +721,138 @@ try {
     /^\+(?:US)?\$740$/,
     `Unexpected rounded Season P&L display: ${seasonPnl}`,
   )
+
+  const canvasCaptureInstalled = await evaluate(`(() => {
+    if (globalThis.__pnlArenaCanvasCapture) return false;
+    const captured = { drawImage: 0, fillText: [], putImageData: 0, strokeText: [] };
+    const nativeFillText = CanvasRenderingContext2D.prototype.fillText;
+    const nativeStrokeText = CanvasRenderingContext2D.prototype.strokeText;
+    const nativeDrawImage = CanvasRenderingContext2D.prototype.drawImage;
+    const nativePutImageData = CanvasRenderingContext2D.prototype.putImageData;
+    Object.defineProperty(globalThis, '__pnlArenaCanvasCapture', {
+      configurable: false,
+      enumerable: false,
+      value: captured,
+      writable: false,
+    });
+    CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
+      captured.fillText.push(String(text));
+      return Reflect.apply(nativeFillText, this, [text, ...args]);
+    };
+    CanvasRenderingContext2D.prototype.strokeText = function (text, ...args) {
+      captured.strokeText.push(String(text));
+      return Reflect.apply(nativeStrokeText, this, [text, ...args]);
+    };
+    CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+      captured.drawImage += 1;
+      return Reflect.apply(nativeDrawImage, this, args);
+    };
+    CanvasRenderingContext2D.prototype.putImageData = function (...args) {
+      captured.putImageData += 1;
+      return Reflect.apply(nativePutImageData, this, args);
+    };
+    return true;
+  })()`)
+  assert.equal(canvasCaptureInstalled, true, 'Could not install the isolated canvas privacy capture.')
+  const downloadClicked = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('button')]
+      .find((candidate) => candidate.textContent?.trim() === 'Download PNG');
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(downloadClicked, true, 'Could not find the Download PNG button.')
+  await waitForCondition(() => downloadStarts.length > 0, 'PNG browser download start')
+  assert.equal(downloadStarts.length, 1, `Expected one download, observed ${downloadStarts.length}.`)
+  const expectedDownloadGuid = downloadStarts[0].guid
+  await waitForCondition(() => {
+    const matchingEvents = downloadProgress.filter(({ guid }) => guid === expectedDownloadGuid)
+    if (matchingEvents.some(({ state }) => state === 'canceled')) {
+      throw new Error(`PNG browser download was canceled: ${expectedDownloadGuid}`)
+    }
+    return matchingEvents.some(({ state }) => state === 'completed')
+  }, 'PNG browser download completion')
+  await waitForCondition(
+    () => {
+      const names = readdirSync(downloadDirectory)
+      return names.length > 0 && names.every((name) => !name.endsWith('.crdownload'))
+    },
+    'PNG file flush',
+  )
+
+  assert.equal(downloadStarts[0].suggestedFilename, 'pnl-arena-2026-season.png')
+  const downloadedFiles = readdirSync(downloadDirectory).filter((name) => !name.startsWith('.'))
+  assert.deepEqual(downloadedFiles, ['pnl-arena-2026-season.png'])
+  const downloadedPngPath = join(downloadDirectory, downloadedFiles[0])
+  const downloadedPng = readFileSync(downloadedPngPath)
+  assert.equal(statSync(downloadedPngPath).size, downloadedPng.length)
+  const pngDimensions = inspectPng(downloadedPng)
+  assert.deepEqual(pngDimensions, { height: 1500, width: 1200 })
+
+  const decodedPng = await evaluate(`(async () => {
+    const binary = atob(${JSON.stringify(downloadedPng.toString('base64'))});
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const result = { height: bitmap.height, width: bitmap.width };
+    bitmap.close();
+    return result;
+  })()`)
+  assert.deepEqual(decodedPng, { height: 1500, width: 1200 }, 'Chrome could not decode the downloaded PNG.')
+
+  const canvasCapture = await evaluate(`({
+    drawImage: globalThis.__pnlArenaCanvasCapture.drawImage,
+    fillText: [...globalThis.__pnlArenaCanvasCapture.fillText],
+    putImageData: globalThis.__pnlArenaCanvasCapture.putImageData,
+    strokeText: [...globalThis.__pnlArenaCanvasCapture.strokeText],
+  })`)
+  assert.equal(canvasCapture.drawImage, 0, 'PNG generation introduced an unreviewed image source.')
+  assert.equal(canvasCapture.putImageData, 0, 'PNG generation introduced unreviewed raw pixel data.')
+  assert.deepEqual(canvasCapture.strokeText, [], 'PNG generation introduced unreviewed stroked text.')
+  const capturedCanvasText = canvasCapture.fillText
+  const expectedCanvasText = [
+    '2026 FOUNDERS SEASON',
+    'Season P&L',
+    '+$740',
+    'Season return: +7.7%',
+    'Division: Retail League',
+    'Stocks',
+    '+$168',
+    'Options',
+    '+$450',
+    'Data through',
+    'Aug 15, 2026',
+    'Source',
+    'Fully synthetic test',
+    'Data through: 2026-08-15',
+    'Excludes holdings, account identifiers, and exact net liquidation value.',
+    'P&L ARENA',
+  ]
+  assert.deepEqual(
+    capturedCanvasText,
+    expectedCanvasText,
+    'PNG drawing text changed; review the complete privacy-safe allowlist before accepting it.',
+  )
+  for (const forbiddenValue of [
+    'ZZFICTA',
+    'ZZFICTB',
+    'ZZFICTC',
+    'SYNTHETIC_ACCOUNT_2026_A',
+    '••••26_A',
+    '33750',
+    '33,750',
+    '33750.368455',
+    '$33,750',
+    '$33,750.37',
+  ]) {
+    assert(
+      !capturedCanvasText.some((value) => value.includes(forbiddenValue)),
+      `PNG drawing received a sensitive synthetic canary: ${forbiddenValue}`,
+    )
+    assert(
+      !downloadedPng.includes(Buffer.from(forbiddenValue)),
+      `PNG binary contains a sensitive synthetic canary: ${forbiddenValue}`,
+    )
+  }
 
   await clickPrimaryNavigation('Arena')
   const arenaState = await waitForPageValue(
@@ -639,6 +896,12 @@ try {
 
   await delay(250)
 
+  assert.equal(downloadStarts.length, 1, 'A delayed second browser download was observed.')
+  assert(
+    downloadProgress.every(({ guid }) => guid === expectedDownloadGuid),
+    `Download progress included an unexpected GUID: ${JSON.stringify(downloadProgress)}`,
+  )
+
   const externalRequests = requests.filter(({ url }) => {
     if (!url || /^(about|blob|data):/.test(url)) return false
     let parsed
@@ -679,9 +942,11 @@ try {
     'The production parser Worker chunk was not requested.',
   )
 
-  console.log('Browser import regression passed.')
+  console.log('Browser import and PNG download regression passed.')
   console.log({
     chrome: basename(chromePath),
+    downloadedPngBytes: downloadedPng.length,
+    downloadedPngDimensions: pngDimensions,
     exactChecks: ledgerDetails.exactChecks,
     fixture: fixturePath.slice(projectRoot.length + 1),
     fixedNow: new Date(fixedNowMs).toISOString(),
