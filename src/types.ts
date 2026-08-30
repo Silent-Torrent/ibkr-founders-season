@@ -4,6 +4,63 @@ export type AssetClass = 'STOCK' | 'OPTION' | 'OTHER'
 export type DataQuality = 'good' | 'warning' | 'error'
 export type ReportSource = 'demo' | 'synthetic' | 'local'
 
+export type ParserDiagnosticCode =
+  | 'file_not_csv'
+  | 'file_empty'
+  | 'file_too_large'
+  | 'statement_unreadable'
+  | 'csv_too_large'
+  | 'csv_malformed'
+  | 'csv_not_enough_rows'
+  | 'csv_too_many_rows'
+  | 'csv_field_too_large'
+  | 'csv_unterminated_quote'
+  | 'not_activity_statement'
+  | 'statement_period_missing'
+  | 'not_ytd'
+  | 'period_reversed'
+  | 'future_end_date'
+  | 'wrong_season'
+  | 'account_missing'
+  | 'multi_account'
+  | 'currency_missing'
+  | 'currency_conflict'
+  | 'currency_invalid'
+  | 'mtm_total_conflict'
+  | 'mtm_section_missing'
+  | 'underlyings_missing'
+  | 'mtm_total_missing'
+  | 'instrument_alias_conflict'
+  | 'realized_section_missing'
+  | 'mtm_difference'
+  | 'other_pnl_included'
+  | 'no_option_events'
+  | 'nav_missing'
+  | 'twr_conflict'
+  | 'statement_pnl_mismatch'
+  | 'nav_bridge_review'
+  | 'worker_unavailable'
+  | 'worker_timeout'
+  | 'worker_failure'
+  | 'worker_cancelled'
+
+export type ParserDiagnostic =
+  | {
+      code: 'wrong_season'
+      params: { currentYear: number }
+    }
+  | {
+      code: 'mtm_difference'
+      params: { currency: string; difference: number }
+    }
+  | {
+      code: Exclude<
+        ParserDiagnosticCode,
+        'wrong_season' | 'mtm_difference'
+      >
+      params?: never
+    }
+
 export interface SourceRef {
   source: 'csv' | 'pdf'
   section: string
@@ -93,6 +150,11 @@ export interface SymbolPnl {
   sourceRefs: Partial<Record<SymbolMetricKey, SourceRef[]>>
 }
 
+export interface ParserFacts {
+  realizedSectionMissing: boolean
+  seasonReturnConflict: boolean
+}
+
 export interface PortfolioReport {
   source: ReportSource
   fingerprint?: string
@@ -121,16 +183,17 @@ export interface PortfolioReport {
   symbols: SymbolPnl[]
   events: OptionEvent[]
   metricSourceRefs: Partial<Record<PortfolioMetricKey, SourceRef[]>>
+  parserFacts: ParserFacts
   reconciliations: ReconciliationCheck[]
   sections: string[]
-  warnings: string[]
+  warnings: ParserDiagnostic[]
   dataQuality: DataQuality
 }
 
 export interface ParseResult {
   report?: PortfolioReport
-  errors: string[]
-  warnings: string[]
+  errors: ParserDiagnostic[]
+  warnings: ParserDiagnostic[]
 }
 
 export interface TrophyDefinition {

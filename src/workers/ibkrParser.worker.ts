@@ -1,13 +1,14 @@
 import { parseIbkrActivityStatement } from '../lib/ibkr'
-import type {
-  IbkrParserWorkerRequest,
-  IbkrParserWorkerResponse,
+import {
+  IBKR_PARSER_WORKER_PROTOCOL_VERSION,
+  isIbkrParserWorkerRequest,
+  isIbkrParserWorkerResponse,
+  type IbkrParserWorkerResponse,
 } from '../lib/ibkrParserWorkerProtocol'
-import { isWorkerReportWithinLimits } from '../lib/workerOutputLimits'
 import type { ParseResult } from '../types'
 
 interface ParserWorkerScope {
-  onmessage: ((event: MessageEvent<IbkrParserWorkerRequest>) => void) | null
+  onmessage: ((event: MessageEvent<unknown>) => void) | null
   postMessage(message: IbkrParserWorkerResponse): void
 }
 
@@ -15,19 +16,30 @@ const workerScope = globalThis as unknown as ParserWorkerScope
 
 function safeFailure(): ParseResult {
   return {
-    errors: ['The statement could not be parsed safely in the background.'],
+    errors: [{ code: 'worker_failure' }],
     warnings: [],
   }
 }
 
+function postValidatedResult(result: ParseResult, referenceTimeMs: number): void {
+  let response: IbkrParserWorkerResponse = {
+    protocolVersion: IBKR_PARSER_WORKER_PROTOCOL_VERSION,
+    type: 'result',
+    result,
+  }
+  if (!isIbkrParserWorkerResponse(response, referenceTimeMs)) {
+    response = {
+      protocolVersion: IBKR_PARSER_WORKER_PROTOCOL_VERSION,
+      type: 'result',
+      result: safeFailure(),
+    }
+  }
+  workerScope.postMessage(response)
+}
+
 workerScope.onmessage = async (event) => {
-  if (
-    event.data.type !== 'parse' ||
-    typeof event.data.accountComparisonSalt !== 'string' ||
-    event.data.accountComparisonSalt.length < 16 ||
-    !(event.data.statement instanceof Blob)
-  ) {
-    workerScope.postMessage({ type: 'result', result: safeFailure() })
+  if (!isIbkrParserWorkerRequest(event.data)) {
+    postValidatedResult(safeFailure(), Date.now())
     return
   }
 
@@ -36,13 +48,11 @@ workerScope.onmessage = async (event) => {
     const text = await event.data.statement.text()
     result = parseIbkrActivityStatement(text, {
       accountComparisonSalt: event.data.accountComparisonSalt,
+      currentDate: new Date(event.data.referenceTimeMs),
     })
-    if (result.report && !isWorkerReportWithinLimits(result.report)) {
-      result = safeFailure()
-    }
   } catch {
     result = safeFailure()
   }
 
-  workerScope.postMessage({ type: 'result', result })
+  postValidatedResult(result, event.data.referenceTimeMs)
 }

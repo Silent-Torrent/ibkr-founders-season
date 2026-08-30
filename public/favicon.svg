@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="P&amp;L Arena">
+  <rect width="64" height="64" rx="14" fill="#080b10"/>
+  <path d="M14 46V34h8v12zm14 0V25h8v21zm14 0V15h8v31z" fill="#43e6a8"/>
+  <path d="M12 50h40" stroke="#d8ff4f" stroke-linecap="round" stroke-width="4"/>
+</svg>

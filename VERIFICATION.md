@@ -1,4 +1,4 @@
-# Verification record — coding checkpoint 0.6
+# Verification record — coding checkpoint 0.7
 
 Last updated: 2026-08-30
 
@@ -31,6 +31,7 @@ Last updated: 2026-08-30
 - Combined assignment code (`A;P`) recognized.
 - Explicit Forex performance classified as Other, not Stock.
 - Current `Mark-to-Market Performance Summary` aliases covered by a synthetic compatibility test.
+- Financial Instrument Information aliases now use order-independent candidate sets. Repeated Symbol/Description aliases that agree retain every mapping source row; a normalized alias pointing to different underlyings returns `instrument_alias_conflict` and no report. Explicit Underlying values in Trades, YTD, and realized/unrealized rows must agree with FII, and simultaneous `Underlying`/`Underlying Symbol` columns must agree regardless of column order. Tests cover all of these paths plus merged provenance for agreeing synonyms.
 - Repository-safe `tests/fixtures/ibkr-current-schema-synthetic.csv` added. Every value, identifier and instrument in it is fictional; it is not copied, anonymized or transformed from a private statement.
 - The current-schema fixture covers repeated and multiple header shapes, `Data`/`SubTotal`/`Total` rows, and the tested empty-record-type Total P/L row.
 - Canonical fields are `reportedAllAssetsYtdMtm`, `parsedAllAssetsYtdMtm`, and `mtmReconciliationDifference`; signed difference tests confirm the direction is `reported - parsed`.
@@ -44,10 +45,14 @@ Last updated: 2026-08-30
 - Source cards display only source type, section, one-based row, record type, field and technical header signature; they do not display raw rows, financial values, filenames, account identifiers or instrument values.
 - CSV file reading and parsing run in a dedicated module Web Worker. The main thread passes a filename-free `Blob`, not a `File` or filename.
 - The Worker has a 12,000 ms total timeout, explicit cancellation and single-settlement termination handling for success, parser failure, worker error, `messageerror`, malformed response, `postMessage` failure, abort and timeout.
+- Worker protocol version 1 requires an exact request envelope, a validated current-time reference, a 16–128 character comparison salt, and a filename-free `Blob` no larger than 5 MiB. The same time reference is used for current-season validation and must exactly match the returned report's `importedAt` timestamp.
 - A replacement that passes the filename, non-empty and size preflight, explicit cancel, Demo switching and page unmount cancel the active worker. Files that fail that preflight do not cancel active work; a content-invalid CSV can pass preflight, replace the active task and then fail parsing.
-- Worker output is rejected before main-thread transfer above 5,000 underlyings, 25,000 events or 100,000 source-reference occurrences.
+- Worker output is validated before posting and again on the main thread. Validation covers the complete `ParseResult`/`PortfolioReport`, exact plain-object keys, dense arrays, finite numbers, dates, hashes, account masks, currencies, enums, diagnostic severity/parameters, CSV-only source references, reconciliation evidence/status semantics, fixed parser facts, and total item/string budgets. The TWR-conflict fact must also match the independently inferable combination of an absent return value and retained return source references; both fixed facts must match their deterministic warnings in both directions. Unknown keys, accessors, sparse arrays, `NaN`/Infinity, unsupported PDF provenance, evidence-free PASS states, substantive warnings paired with green quality, or malformed nested objects are rejected with a fixed `worker_failure` diagnostic.
+- This protocol is a same-origin structure and consistency boundary, not cryptographic broker attestation. It cannot turn a user-supplied CSV into a Verified or Broker-Sourced result.
+- To match the current unpaginated UI, hard output caps are 500 underlyings, 1,000 events, 20,000 total source-reference occurrences, and 501 references in one collection (500 detail references plus one broker-total reference). Additional caps cover diagnostics, sections, 25,000 total array items, and 1,000,000 total string characters.
 - The 100,000-row CSV limit is enforced while rows are being read, rather than only after a full row table has been created.
 - A dedicated Worker contract suite is included in `npm run check` and passed.
+- All 38 parser/import diagnostic codes have English, Simplified Chinese, and Traditional Chinese messages. Runtime validation permits dynamic values only for the fixed current year and signed MTM difference/currency fields; invalid diagnostics fall back to a fixed message without echoing untrusted input. Ledger warnings retranslate when the interface locale changes.
 - Calendar dates are parsed strictly. Nonexistent dates, reversed statement periods, future period ends, and prior-season reports are rejected instead of being normalized or accepted silently.
 - A same-account, same-season report with the same ending date but different content is rejected; duplicate, older, newer, and different-account snapshot decisions have dedicated regression cases.
 - Base currency must resolve to one consistent three-letter code. Missing, malformed, and conflicting currency declarations are rejected, and display formatting falls back to an em dash instead of crashing on an invalid code.
@@ -88,6 +93,10 @@ Last updated: 2026-08-30
 
 ## Local browser smoke check
 
+- `npm run check` now builds the production bundle and drives a fresh isolated system Chrome profile through the DevTools protocol; it does not substitute the Vite development server for the browser regression.
+- The automated test selected `tests/fixtures/ibkr-current-schema-synthetic.csv` through the actual file input, observed the dedicated module Worker target/chunk, and fixed both page and Worker time to 2026-08-30 for a stable current-season test.
+- The automated run rendered three underlyings, rounded Season P&L `+$740`, all three reconciliation checks as exact, no synthetic local ranking, no unlocked synthetic achievement, and returned to Demo after refresh.
+- Runtime instrumentation observed no external page request, no POST, no HTTP error, and no console/runtime/log error. This is a local production-bundle check, not the still-deferred deployed Network/Storage gate.
 - Desktop browser keyboard and focus checks passed for both the privacy dialog and symbol drawer: opening moves focus inside, Tab and Shift+Tab wrap at the boundaries, Escape closes, the background remains inert, and focus returns to the opening control.
 - Both the sidebar and footer privacy controls opened the dialog. Backdrop close and the visible close controls worked.
 - The privacy notice was visually checked in English, Simplified Chinese, and Traditional Chinese.

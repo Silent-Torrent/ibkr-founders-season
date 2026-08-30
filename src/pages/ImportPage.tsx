@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import type { Locale, PortfolioReport } from '../types'
+import type { Locale, ParserDiagnostic, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { parseIbkrActivityStatementInWorker } from '../lib/parseInWorker'
+import {
+  diagnosticKey,
+  formatParserDiagnostic,
+} from '../lib/parserDiagnostics'
+import { MAX_IBKR_WORKER_STATEMENT_BYTES } from '../lib/workerOutputLimits'
 
 interface ImportPageProps {
   accountComparisonSalt: string
@@ -9,8 +14,6 @@ interface ImportPageProps {
   onImport: (report: PortfolioReport) => void
   onUseDemo: () => void
 }
-
-const MAX_CSV_BYTES = 5 * 1024 * 1024
 
 export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo }: ImportPageProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -22,9 +25,9 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
   const mountedRef = useRef(true)
   const [dragging, setDragging] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [errors, setErrors] = useState<string[]>([])
-  const [warnings, setWarnings] = useState<string[]>([])
-  const [statusMessage, setStatusMessage] = useState('')
+  const [errors, setErrors] = useState<ParserDiagnostic[]>([])
+  const [warnings, setWarnings] = useState<ParserDiagnostic[]>([])
+  const [importCancelled, setImportCancelled] = useState(false)
 
   useEffect(() => {
     mountedRef.current = true
@@ -37,21 +40,21 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
 
   async function processFile(file: File) {
     if (!file.name.toLowerCase().endsWith('.csv')) {
-      setErrors([t(locale, 'invalidCsvFile')])
+      setErrors([{ code: 'file_not_csv' }])
       setWarnings([])
-      setStatusMessage('')
+      setImportCancelled(false)
       return
     }
     if (file.size === 0) {
-      setErrors([t(locale, 'emptyCsvFile')])
+      setErrors([{ code: 'file_empty' }])
       setWarnings([])
-      setStatusMessage('')
+      setImportCancelled(false)
       return
     }
-    if (file.size > MAX_CSV_BYTES) {
-      setErrors([t(locale, 'oversizedCsvFile')])
+    if (file.size > MAX_IBKR_WORKER_STATEMENT_BYTES) {
+      setErrors([{ code: 'file_too_large' }])
       setWarnings([])
-      setStatusMessage('')
+      setImportCancelled(false)
       return
     }
 
@@ -60,7 +63,7 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
     const taskId = ++taskSequenceRef.current
     setErrors([])
     setWarnings([])
-    setStatusMessage('')
+    setImportCancelled(false)
 
     const controller = new AbortController()
     activeTaskRef.current = { controller, id: taskId }
@@ -92,7 +95,7 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
         activeTaskRef.current?.id === taskId &&
         mountedRef.current
       ) {
-        setErrors([t(locale, 'statementUnreadable')])
+        setErrors([{ code: 'statement_unreadable' }])
       }
     } finally {
       if (activeTaskRef.current?.id === taskId) {
@@ -109,7 +112,7 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
     setBusy(false)
     setErrors([])
     setWarnings([])
-    setStatusMessage(announce ? t(locale, 'importCancelled') : '')
+    setImportCancelled(announce)
   }
 
   function useDemo() {
@@ -166,19 +169,27 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
         </div>
 
         <span aria-atomic="true" aria-live="polite" className="sr-only import-live-status" role="status">
-          {busy ? t(locale, 'importing') : statusMessage}
+          {busy ? t(locale, 'importing') : importCancelled ? t(locale, 'importCancelled') : ''}
         </span>
 
         {(errors.length > 0 || warnings.length > 0) && (
           <div className="import-messages">
             {errors.length > 0 && (
               <div role="alert">
-                {errors.map((message) => <p className="error-message" key={message}>× {message}</p>)}
+                {errors.map((diagnostic, index) => (
+                  <p className="error-message" key={diagnosticKey(diagnostic, index)}>
+                    × {formatParserDiagnostic(diagnostic, locale)}
+                  </p>
+                ))}
               </div>
             )}
             {warnings.length > 0 && (
               <div aria-live="polite" role="status">
-                {warnings.map((message) => <p className="warning-message" key={message}>! {message}</p>)}
+                {warnings.map((diagnostic, index) => (
+                  <p className="warning-message" key={diagnosticKey(diagnostic, index)}>
+                    ! {formatParserDiagnostic(diagnostic, locale)}
+                  </p>
+                ))}
               </div>
             )}
           </div>

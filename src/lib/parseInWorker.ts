@@ -1,28 +1,36 @@
 import type { ParseResult } from '../types'
 import {
+  IBKR_PARSER_WORKER_PROTOCOL_VERSION,
+  isIbkrParserWorkerRequest,
   isIbkrParserWorkerResponse,
+  isValidAccountComparisonSalt,
   type IbkrParserWorkerRequest,
 } from './ibkrParserWorkerProtocol'
+import {
+  isValidWorkerReferenceTime,
+  MAX_IBKR_WORKER_STATEMENT_BYTES,
+} from './workerOutputLimits'
 
 export const IBKR_PARSER_TIMEOUT_MS = 12_000
 
-const WORKER_UNAVAILABLE_ERROR =
-  'Secure background parsing is unavailable in this browser.'
-const WORKER_TIMEOUT_ERROR =
-  'The statement took too long to parse and was stopped safely.'
-const WORKER_FAILURE_ERROR =
-  'The statement could not be parsed safely in the background.'
-const WORKER_CANCELLED_ERROR = 'The statement import was cancelled.'
-
-interface ParseInWorkerOptions {
+export interface ParseInWorkerOptions {
   accountComparisonSalt?: string
+  referenceTimeMs?: number
   signal?: AbortSignal
   timeoutMs?: number
   workerFactory?: () => Worker
 }
 
-function errorResult(message: string): ParseResult {
-  return { errors: [message], warnings: [] }
+type WorkerBoundaryDiagnosticCode =
+  | 'file_empty'
+  | 'file_too_large'
+  | 'worker_unavailable'
+  | 'worker_timeout'
+  | 'worker_failure'
+  | 'worker_cancelled'
+
+function errorResult(code: WorkerBoundaryDiagnosticCode): ParseResult {
+  return { errors: [{ code }], warnings: [] }
 }
 
 function createParserWorker(): Worker {
@@ -38,17 +46,37 @@ export function parseIbkrActivityStatementInWorker(
 ): Promise<ParseResult> {
   const {
     accountComparisonSalt = 'standalone-worker-v1',
+    referenceTimeMs = Date.now(),
     signal,
     timeoutMs = IBKR_PARSER_TIMEOUT_MS,
     workerFactory,
   } = options
 
   if (signal?.aborted) {
-    return Promise.resolve(errorResult(WORKER_CANCELLED_ERROR))
+    return Promise.resolve(errorResult('worker_cancelled'))
+  }
+
+  if (typeof Blob === 'undefined' || !(statement instanceof Blob)) {
+    return Promise.resolve(errorResult('worker_failure'))
+  }
+
+  if (statement.size === 0) {
+    return Promise.resolve(errorResult('file_empty'))
+  }
+
+  if (statement.size > MAX_IBKR_WORKER_STATEMENT_BYTES) {
+    return Promise.resolve(errorResult('file_too_large'))
+  }
+
+  if (
+    !isValidAccountComparisonSalt(accountComparisonSalt) ||
+    !isValidWorkerReferenceTime(referenceTimeMs)
+  ) {
+    return Promise.resolve(errorResult('worker_failure'))
   }
 
   if (!workerFactory && typeof Worker === 'undefined') {
-    return Promise.resolve(errorResult(WORKER_UNAVAILABLE_ERROR))
+    return Promise.resolve(errorResult('worker_unavailable'))
   }
 
   return new Promise((resolve) => {
@@ -56,7 +84,7 @@ export function parseIbkrActivityStatementInWorker(
     try {
       worker = workerFactory ? workerFactory() : createParserWorker()
     } catch {
-      resolve(errorResult(WORKER_UNAVAILABLE_ERROR))
+      resolve(errorResult('worker_unavailable'))
       return
     }
 
@@ -72,40 +100,46 @@ export function parseIbkrActivityStatementInWorker(
       resolve(result)
     }
 
-    const handleAbort = () => finish(errorResult(WORKER_CANCELLED_ERROR))
+    const handleAbort = () => finish(errorResult('worker_cancelled'))
 
     worker.addEventListener('message', (event: MessageEvent<unknown>) => {
-      if (!isIbkrParserWorkerResponse(event.data)) {
-        finish(errorResult(WORKER_FAILURE_ERROR))
+      if (!isIbkrParserWorkerResponse(event.data, referenceTimeMs)) {
+        finish(errorResult('worker_failure'))
         return
       }
       finish(event.data.result)
     })
 
     worker.addEventListener('messageerror', () => {
-      finish(errorResult(WORKER_FAILURE_ERROR))
+      finish(errorResult('worker_failure'))
     })
 
     worker.addEventListener('error', (event) => {
       event.preventDefault()
-      finish(errorResult(WORKER_FAILURE_ERROR))
+      finish(errorResult('worker_failure'))
     })
 
     signal?.addEventListener('abort', handleAbort, { once: true })
     timeoutId = globalThis.setTimeout(
-      () => finish(errorResult(WORKER_TIMEOUT_ERROR)),
+      () => finish(errorResult('worker_timeout')),
       timeoutMs,
     )
 
     const request: IbkrParserWorkerRequest = {
+      protocolVersion: IBKR_PARSER_WORKER_PROTOCOL_VERSION,
       type: 'parse',
       accountComparisonSalt,
+      referenceTimeMs,
       statement,
+    }
+    if (!isIbkrParserWorkerRequest(request)) {
+      finish(errorResult('worker_failure'))
+      return
     }
     try {
       worker.postMessage(request)
     } catch {
-      finish(errorResult(WORKER_FAILURE_ERROR))
+      finish(errorResult('worker_failure'))
     }
   })
 }

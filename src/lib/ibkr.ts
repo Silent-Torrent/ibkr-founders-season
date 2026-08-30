@@ -2,6 +2,7 @@ import type {
   AssetClass,
   OptionEvent,
   ParseResult,
+  ParserDiagnostic,
   PortfolioReport,
   ReconciliationCheck,
   SourceRef,
@@ -9,6 +10,7 @@ import type {
   SymbolPnl,
 } from '../types'
 import {
+  CsvParseFailure,
   fingerprintText,
   normalizeKey,
   parseCsvRows,
@@ -48,12 +50,51 @@ interface NumericMatch {
 
 interface InstrumentUnderlying {
   underlying: string
-  sourceRef: SourceRef
+  sourceRefs: SourceRef[]
 }
+
+interface InstrumentUnderlyingMapResult {
+  conflictingAliases: Set<string>
+  hasConflicts: boolean
+  mapping: Map<string, InstrumentUnderlying>
+}
+
+interface UnderlyingResolution {
+  sourceRefs: SourceRef[]
+  underlying: string
+}
+
+interface UnderlyingFieldResolution {
+  conflict: boolean
+  sourceRefs: SourceRef[]
+  underlying?: string
+}
+
+type InstrumentUnderlyingCandidates = Map<string, Map<string, SourceRef[]>>
 
 const MAX_CSV_CHARACTERS = 10_000_000
 const MAX_CSV_ROWS = 100_000
 const CSV_RECONCILIATION_EPSILON = 0.000001
+const YTD_PERFORMANCE_SECTION_ALIASES = [
+  'Mark-to-Market Performance Summary',
+  'Month & Year to Date Performance Summary',
+  'Month and Year to Date Performance Summary',
+  'Profit and Loss by Underlying Instruments',
+]
+const REALIZED_PERFORMANCE_SECTION_ALIASES = [
+  'Realized & Unrealized Performance Summary',
+  'Realized and Unrealized Performance Summary',
+]
+const OPTION_EVENT_SECTION_ALIASES = [
+  'Options Exercises, Assignments and Expirations',
+  'Option Exercises, Assignments and Expirations',
+  'Trades',
+]
+const OPTION_CONTRACT_INDEX_SECTION_ALIASES = [
+  ...YTD_PERFORMANCE_SECTION_ALIASES,
+  ...REALIZED_PERFORMANCE_SECTION_ALIASES,
+  ...OPTION_EVENT_SECTION_ALIASES,
+]
 const KNOWN_SYNTHETIC_STATEMENTS = new Set([
   'a81d783777ab4bd84bf8066764425489be96d60f67270cbbc2ffebac495a0d7f',
   '80831483527003e501aa63f1691a2f155a37b8279f68e2e3e31cb244a219d7ff',
@@ -355,39 +396,135 @@ function classifyAsset(value: string | undefined, symbol: string): AssetClass {
   return normalized ? 'OTHER' : 'STOCK'
 }
 
-function deriveUnderlying(
-  symbolValue: string | undefined,
-  underlyingValue: string | undefined,
-  assetClass: AssetClass,
-  instrumentUnderlyings?: Map<string, InstrumentUnderlying>,
-): string {
-  const explicit = underlyingValue?.trim()
-  if (explicit) return explicit.toUpperCase()
-
-  const symbol = (symbolValue ?? '').trim().toUpperCase()
-  if (assetClass !== 'OPTION') return symbol
-
-  const mapped = instrumentUnderlyings?.get(normalizeInstrumentKey(symbol))
-  if (mapped) return mapped.underlying
-
-  const spaced = symbol.match(/^([A-Z0-9.\-]+)\s+/)
-  if (spaced) return spaced[1]
-
-  const compact = symbol.replace(/\s/g, '')
-  const occ = compact.match(/^([A-Z.\-]{1,8})(?=\d{6}[CP]\d{8}$)/)
-  if (occ) return occ[1]
-
-  return symbol
-}
-
 function normalizeInstrumentKey(value: string): string {
   return value.trim().toUpperCase().replace(/\s+/g, ' ')
 }
 
+function inferOptionUnderlyingFromContract(value: string): string | undefined {
+  const symbol = normalizeInstrumentKey(value)
+  const spaced = symbol.match(
+    /^(.+?)\s+\d{1,2}[A-Z]{3}\d{2,4}\s+\d+(?:\.\d+)?\s+[CP]$/,
+  )
+  if (spaced) return spaced[1].trim()
+
+  const compact = symbol.replace(/\s/g, '')
+  const occ = compact.match(/^([A-Z.\-]{1,8})(?=\d{6}[CP]\d{8}$)/)
+  return occ?.[1]
+}
+
+function addInstrumentUnderlyingCandidate(
+  candidates: InstrumentUnderlyingCandidates,
+  aliasValue: string,
+  underlyingValue: string,
+  sourceRefs: SourceRef[],
+  retainAllSourceRefs: boolean,
+): void {
+  const alias = normalizeInstrumentKey(aliasValue)
+  const underlying = normalizeInstrumentKey(underlyingValue)
+  if (!alias || !underlying) return
+
+  const underlyingCandidates = candidates.get(alias) ?? new Map<string, SourceRef[]>()
+  const existingRefs = underlyingCandidates.get(underlying) ?? []
+  const nextRefs = retainAllSourceRefs
+    ? dedupeSourceRefs([...existingRefs, ...sourceRefs])
+    : existingRefs.length > 0
+      ? existingRefs
+      : dedupeSourceRefs(sourceRefs)
+  underlyingCandidates.set(underlying, nextRefs)
+  candidates.set(alias, underlyingCandidates)
+}
+
+function underlyingFieldsFor(record: SectionRecord): UnderlyingFieldResolution {
+  const aliases = new Set(['Underlying', 'Underlying Symbol'].map(normalizeKey))
+  const candidates = new Map<string, SourceRef[]>()
+
+  for (const [field, value] of Object.entries(record.fields)) {
+    const normalizedField = normalizeKey(field).replace(/\d+$/, '')
+    if (!aliases.has(normalizedField) || !value.trim()) continue
+
+    const underlying = normalizeInstrumentKey(value)
+    const refs = candidates.get(underlying) ?? []
+    candidates.set(
+      underlying,
+      dedupeSourceRefs([...refs, sourceRefFor(record, field)]),
+    )
+  }
+
+  if (candidates.size === 0) {
+    return { conflict: false, sourceRefs: [] }
+  }
+  if (candidates.size > 1) {
+    return { conflict: true, sourceRefs: [] }
+  }
+
+  const [[underlying, sourceRefs]] = candidates
+  return { conflict: false, sourceRefs, underlying }
+}
+
+function markInstrumentAliasConflict(
+  instrumentIndex: InstrumentUnderlyingMapResult,
+  aliasKey: string,
+): void {
+  if (aliasKey) instrumentIndex.conflictingAliases.add(aliasKey)
+  instrumentIndex.hasConflicts = true
+}
+
+function resolveUnderlying(
+  record: SectionRecord,
+  symbolValue: string | undefined,
+  assetClass: AssetClass,
+  instrumentIndex: InstrumentUnderlyingMapResult,
+): UnderlyingResolution {
+  const symbol = (symbolValue ?? '').trim().toUpperCase()
+  const aliasKey = normalizeInstrumentKey(symbol)
+  const explicit = underlyingFieldsFor(record)
+
+  if (assetClass !== 'OPTION') {
+    if (explicit.conflict) {
+      markInstrumentAliasConflict(instrumentIndex, aliasKey)
+      return { sourceRefs: [], underlying: '' }
+    }
+    return explicit.underlying
+      ? { sourceRefs: explicit.sourceRefs, underlying: explicit.underlying }
+      : { sourceRefs: [], underlying: symbol }
+  }
+
+  if (explicit.conflict || instrumentIndex.conflictingAliases.has(aliasKey)) {
+    markInstrumentAliasConflict(instrumentIndex, aliasKey)
+    return { sourceRefs: [], underlying: '' }
+  }
+
+  const mapped = instrumentIndex.mapping.get(aliasKey)
+  if (explicit.underlying) {
+    if (mapped && mapped.underlying !== explicit.underlying) {
+      markInstrumentAliasConflict(instrumentIndex, aliasKey)
+      return { sourceRefs: [], underlying: '' }
+    }
+    return {
+      sourceRefs: dedupeSourceRefs([
+        ...explicit.sourceRefs,
+        ...(mapped?.sourceRefs ?? []),
+      ]),
+      underlying: explicit.underlying,
+    }
+  }
+
+  if (mapped) return { sourceRefs: mapped.sourceRefs, underlying: mapped.underlying }
+
+  const inferred = inferOptionUnderlyingFromContract(symbol)
+  if (inferred) return { sourceRefs: [], underlying: inferred }
+
+  return { sourceRefs: [], underlying: symbol }
+}
+
 function buildInstrumentUnderlyingMap(
   store: Map<string, SectionRecord[]>,
-): Map<string, InstrumentUnderlying> {
+): InstrumentUnderlyingMapResult {
+  const authoritativeCandidates: InstrumentUnderlyingCandidates = new Map()
+  const inferredCandidates: InstrumentUnderlyingCandidates = new Map()
+  const conflictingAliases = new Set<string>()
   const mapping = new Map<string, InstrumentUnderlying>()
+  let hasConflicts = false
 
   for (const record of recordsFor(store, ['Financial Instrument Information'])) {
     const symbol = valueFor(record, ['Symbol'])
@@ -396,34 +533,96 @@ function buildInstrumentUnderlyingMap(
       valueFor(record, ['Asset Class', 'Asset Category']),
       symbol ?? description ?? '',
     )
-    const underlyingMatch = fieldFor(record, ['Underlying', 'Underlying Symbol'])
-    const underlying = underlyingMatch?.value.trim().toUpperCase()
+    const explicit = underlyingFieldsFor(record)
+    const underlying = explicit.underlying
 
-    if (assetClass !== 'OPTION' || !underlying || !underlyingMatch) continue
+    if (assetClass !== 'OPTION') continue
+    if (explicit.conflict) {
+      hasConflicts = true
+      for (const alias of [symbol, description]) {
+        if (alias?.trim()) conflictingAliases.add(normalizeInstrumentKey(alias))
+      }
+      continue
+    }
+    if (!underlying) continue
     for (const alias of [symbol, description]) {
       if (alias?.trim()) {
-        mapping.set(normalizeInstrumentKey(alias), {
+        addInstrumentUnderlyingCandidate(
+          authoritativeCandidates,
+          alias,
           underlying,
-          sourceRef: sourceRefFor(record, underlyingMatch.field),
-        })
+          explicit.sourceRefs,
+          true,
+        )
       }
     }
   }
 
-  return mapping
-}
+  for (const record of recordsFor(store, OPTION_CONTRACT_INDEX_SECTION_ALIASES)) {
+    const contractMatch = fieldFor(record, ['Symbol', 'Contract'])
+    const contract = contractMatch?.value.trim()
+    if (!contract) continue
 
-function underlyingSourceRefs(
-  record: SectionRecord,
-  symbolValue: string | undefined,
-  assetClass: AssetClass,
-  instrumentUnderlyings: Map<string, InstrumentUnderlying>,
-): SourceRef[] {
-  if (assetClass !== 'OPTION') return []
-  const explicit = fieldFor(record, ['Underlying', 'Underlying Symbol'])
-  if (explicit?.value.trim()) return [sourceRefFor(record, explicit.field)]
-  const mapped = instrumentUnderlyings.get(normalizeInstrumentKey(symbolValue ?? ''))
-  return mapped ? [mapped.sourceRef] : []
+    const assetClass = classifyAsset(
+      valueFor(record, ['Asset Class', 'Asset Category']),
+      contract,
+    )
+    if (assetClass !== 'OPTION') continue
+
+    const inferred = inferOptionUnderlyingFromContract(contract)
+    if (isTotalRow(inferred ?? contract)) continue
+
+    const aliasKey = normalizeInstrumentKey(contract)
+    const explicit = underlyingFieldsFor(record)
+    if (explicit.conflict) {
+      conflictingAliases.add(aliasKey)
+      hasConflicts = true
+      continue
+    }
+
+    if (explicit.underlying) {
+      addInstrumentUnderlyingCandidate(
+        authoritativeCandidates,
+        contract,
+        explicit.underlying,
+        explicit.sourceRefs,
+        false,
+      )
+    }
+    if (inferred) {
+      addInstrumentUnderlyingCandidate(
+        inferredCandidates,
+        contract,
+        inferred,
+        [],
+        false,
+      )
+    }
+  }
+
+  const aliases = new Set([
+    ...authoritativeCandidates.keys(),
+    ...inferredCandidates.keys(),
+  ])
+  for (const alias of aliases) {
+    const underlyingCandidates =
+      authoritativeCandidates.get(alias) ?? inferredCandidates.get(alias)
+    if (!underlyingCandidates) continue
+
+    if (conflictingAliases.has(alias) || underlyingCandidates.size !== 1) {
+      conflictingAliases.add(alias)
+      hasConflicts = true
+      continue
+    }
+    const [[underlying, sourceRefs]] = underlyingCandidates
+    mapping.set(alias, { underlying, sourceRefs })
+  }
+
+  return {
+    conflictingAliases,
+    hasConflicts,
+    mapping,
+  }
 }
 
 function isTotalRow(symbol: string): boolean {
@@ -548,13 +747,9 @@ function inferEventType(value: string | undefined): OptionEvent['type'] | undefi
 function parseOptionEvents(
   store: Map<string, SectionRecord[]>,
   symbols: Map<string, SymbolAccumulator>,
-  instrumentUnderlyings: Map<string, InstrumentUnderlying>,
+  instrumentIndex: InstrumentUnderlyingMapResult,
 ): OptionEvent[] {
-  const eventRecords = recordsFor(store, [
-    'Options Exercises, Assignments and Expirations',
-    'Option Exercises, Assignments and Expirations',
-    'Trades',
-  ])
+  const eventRecords = recordsFor(store, OPTION_EVENT_SECTION_ALIASES)
   const events: OptionEvent[] = []
   const seen = new Set<string>()
 
@@ -568,12 +763,8 @@ function parseOptionEvents(
     const asset = classifyAsset(valueFor(record, ['Asset Class', 'Asset Category']), contract ?? '')
     if (asset !== 'OPTION' && !contract?.match(/[CP]\d{8}$/)) continue
 
-    const underlying = deriveUnderlying(
-      contract,
-      valueFor(record, ['Underlying Symbol']),
-      'OPTION',
-      instrumentUnderlyings,
-    )
+    const resolution = resolveUnderlying(record, contract, 'OPTION', instrumentIndex)
+    const underlying = resolution.underlying
     if (isTotalRow(underlying)) continue
 
     const dateMatch = fieldFor(record, ['Date', 'Date/Time', 'Trade Date', 'Report Date'])
@@ -591,7 +782,7 @@ function parseOptionEvents(
         ...(codeMatch ? [sourceRefFor(record, codeMatch.field)] : []),
         ...(contractMatch ? [sourceRefFor(record, contractMatch.field)] : []),
         ...(dateMatch ? [sourceRefFor(record, dateMatch.field)] : []),
-        ...underlyingSourceRefs(record, contract, 'OPTION', instrumentUnderlyings),
+        ...resolution.sourceRefs,
       ]),
     }
     events.push(event)
@@ -1091,29 +1282,33 @@ export function parseIbkrActivityStatement(
 ): ParseResult {
   if (text.length > MAX_CSV_CHARACTERS) {
     return {
-      errors: ['The CSV file exceeds the parser safety limit.'],
+      errors: [{ code: 'csv_too_large' }],
       warnings: [],
     }
   }
 
-  const errors: string[] = []
-  const warnings: string[] = []
+  const errors: ParserDiagnostic[] = []
+  const warnings: ParserDiagnostic[] = []
   let rows: string[][]
   try {
     rows = parseCsvRows(text, MAX_CSV_ROWS)
   } catch (error) {
     return {
-      errors: [error instanceof Error ? error.message : 'The CSV structure is malformed.'],
+      errors: [
+        {
+          code: error instanceof CsvParseFailure ? error.code : 'csv_malformed',
+        },
+      ],
       warnings,
     }
   }
 
   if (rows.length < 3) {
-    return { errors: ['The file does not contain enough CSV rows.'], warnings }
+    return { errors: [{ code: 'csv_not_enough_rows' }], warnings }
   }
   if (rows.length > MAX_CSV_ROWS) {
     return {
-      errors: ['The CSV file contains too many rows for safe local processing.'],
+      errors: [{ code: 'csv_too_many_rows' }],
       warnings,
     }
   }
@@ -1125,11 +1320,11 @@ export function parseIbkrActivityStatement(
   const statementRecords = recordsFor(store, ['Statement'])
   const statementTitle = findNamedValue(statementRecords, ['Title', 'Report'])
   if (statementTitle && !normalizeKey(statementTitle).includes('activitystatement')) {
-    errors.push('Only an IBKR Activity Statement is accepted in this MVP.')
+    errors.push({ code: 'not_activity_statement' })
   }
 
   if (!start || !end) {
-    errors.push('The statement period could not be detected. Export an English Activity Statement CSV.')
+    errors.push({ code: 'statement_period_missing' })
   }
 
   const currentDate =
@@ -1150,16 +1345,16 @@ export function parseIbkrActivityStatement(
   )
 
   if (start && end && !isYtd) {
-    errors.push('Only a Year-to-Date statement beginning on January 1 is accepted in this MVP.')
+    errors.push({ code: 'not_ytd' })
   }
   if (startIso && endIso && startIso > endIso) {
-    errors.push('The statement period start date is later than its end date.')
+    errors.push({ code: 'period_reversed' })
   }
   if (endIso && endIso > currentDateIso) {
-    errors.push('A statement with a future end date is not accepted.')
+    errors.push({ code: 'future_end_date' })
   }
   if (end && seasonYear !== currentYear) {
-    errors.push(`This MVP accepts the current ${currentYear} season only.`)
+    errors.push({ code: 'wrong_season', params: { currentYear } })
   }
 
   const accountRecords = recordsFor(store, ['Account Information'])
@@ -1186,9 +1381,9 @@ export function parseIbkrActivityStatement(
   }
 
   if (accountIds.size === 0) {
-    errors.push('The statement account identifier could not be detected.')
+    errors.push({ code: 'account_missing' })
   } else if (accountIds.size > 1) {
-    errors.push('This MVP accepts one IBKR account per statement. Consolidated or concatenated multi-account reports are not supported.')
+    errors.push({ code: 'multi_account' })
   }
 
   const accountId = [...accountIds][0]
@@ -1214,31 +1409,26 @@ export function parseIbkrActivityStatement(
   }
 
   if (baseCurrencyCandidates.size === 0) {
-    errors.push('The statement base currency could not be detected.')
+    errors.push({ code: 'currency_missing' })
   } else if (baseCurrencyCandidates.size > 1) {
-    errors.push('Conflicting statement base currencies were found.')
+    errors.push({ code: 'currency_conflict' })
   }
 
   const baseCurrency = normalizeCurrencyCode([...baseCurrencyCandidates][0])
   if (baseCurrencyCandidates.size === 1 && !baseCurrency) {
-    errors.push('The statement base currency is not a valid three-letter currency code.')
+    errors.push({ code: 'currency_invalid' })
   }
 
   const symbols = new Map<string, SymbolAccumulator>()
-  const instrumentUnderlyings = buildInstrumentUnderlyingMap(store)
-  const ytdRecords = recordsFor(store, [
-    'Mark-to-Market Performance Summary',
-    'Month & Year to Date Performance Summary',
-    'Month and Year to Date Performance Summary',
-    'Profit and Loss by Underlying Instruments',
-  ])
+  const instrumentMappingResult = buildInstrumentUnderlyingMap(store)
+  const ytdRecords = recordsFor(store, YTD_PERFORMANCE_SECTION_ALIASES)
 
   let ytdValueCount = 0
   let reportedAllAssetsYtdMtm: number | undefined
   let reportedAllAssetsSourceRefs: SourceRef[] = []
-  const stockSourceRefs: SourceRef[] = []
-  const optionSourceRefs: SourceRef[] = []
-  const otherSourceRefs: SourceRef[] = []
+  const stockNumericSourceRefs: SourceRef[] = []
+  const optionNumericSourceRefs: SourceRef[] = []
+  const otherNumericSourceRefs: SourceRef[] = []
   for (const record of ytdRecords) {
     const rawSymbol = valueFor(record, ['Symbol'])
     const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
@@ -1267,7 +1457,7 @@ export function parseIbkrActivityStatement(
           reportedAllAssetsYtdMtm != null &&
           normalizedDifference(reportedAllAssetsYtdMtm, ytdMtmMatch.value) !== 0
         ) {
-          errors.push('Conflicting all-assets YTD MTM totals were found in the performance section.')
+          errors.push({ code: 'mtm_total_conflict' })
         } else {
           reportedAllAssetsYtdMtm = ytdMtmMatch.value
           reportedAllAssetsSourceRefs = dedupeSourceRefs([
@@ -1280,12 +1470,13 @@ export function parseIbkrActivityStatement(
     }
 
     const assetClass = classifyAsset(rawAsset, rawSymbol ?? '')
-    const underlying = deriveUnderlying(
+    const resolution = resolveUnderlying(
+      record,
       rawSymbol,
-      valueFor(record, ['Underlying Symbol']),
       assetClass,
-      instrumentUnderlyings,
+      instrumentMappingResult,
     )
+    const underlying = resolution.underlying
     if (isTotalRow(underlying)) continue
 
     const realizedShortMatch = numericMatchFor(record, [
@@ -1311,12 +1502,7 @@ export function parseIbkrActivityStatement(
       valueFor(record, ['Description']),
     )
     const realized = (realizedShort ?? 0) + (realizedLong ?? 0)
-    const mappingRefs = underlyingSourceRefs(
-      record,
-      rawSymbol,
-      assetClass,
-      instrumentUnderlyings,
-    )
+    const mappingRefs = resolution.sourceRefs
     const metricRefs = ytdMtmMatch
       ? dedupeSourceRefs([ytdMtmMatch.sourceRef, ...mappingRefs])
       : mappingRefs
@@ -1330,20 +1516,20 @@ export function parseIbkrActivityStatement(
       accumulator.optionYtdMtm += ytdMtm ?? 0
       accumulator.optionRealizedYtd += realized
       if (ytdMtmMatch) {
-        optionSourceRefs.push(...metricRefs)
+        optionNumericSourceRefs.push(ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'optionYtdMtm', metricRefs)
       }
     } else if (assetClass === 'STOCK') {
       accumulator.stockYtdMtm += ytdMtm ?? 0
       accumulator.stockRealizedYtd += realized
       if (ytdMtmMatch) {
-        stockSourceRefs.push(...metricRefs)
+        stockNumericSourceRefs.push(ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'stockYtdMtm', metricRefs)
       }
     } else {
       accumulator.otherYtdMtm += ytdMtm ?? 0
       if (ytdMtmMatch) {
-        otherSourceRefs.push(...metricRefs)
+        otherNumericSourceRefs.push(ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'otherYtdMtm', metricRefs)
       }
     }
@@ -1355,18 +1541,14 @@ export function parseIbkrActivityStatement(
   }
 
   if (ytdRecords.length === 0 || ytdValueCount === 0) {
-    errors.push(
-      'The Mark-to-Market performance section is missing or contains no YTD MTM values.',
-    )
+    errors.push({ code: 'mtm_section_missing' })
   }
 
-  const realizedRecords = recordsFor(store, [
-    'Realized & Unrealized Performance Summary',
-    'Realized and Unrealized Performance Summary',
-  ])
+  const realizedRecords = recordsFor(store, REALIZED_PERFORMANCE_SECTION_ALIASES)
 
-  if (realizedRecords.length === 0) {
-    warnings.push('Current unrealized P&L could not be read because the realized/unrealized section is missing.')
+  const realizedSectionMissing = realizedRecords.length === 0
+  if (realizedSectionMissing) {
+    warnings.push({ code: 'realized_section_missing' })
   }
 
   for (const record of realizedRecords) {
@@ -1375,12 +1557,13 @@ export function parseIbkrActivityStatement(
       valueFor(record, ['Asset Class', 'Asset Category']),
       rawSymbol ?? '',
     )
-    const underlying = deriveUnderlying(
+    const resolution = resolveUnderlying(
+      record,
       rawSymbol,
-      valueFor(record, ['Underlying Symbol']),
       assetClass,
-      instrumentUnderlyings,
+      instrumentMappingResult,
     )
+    const underlying = resolution.underlying
     if (isTotalRow(underlying)) continue
 
     const realizedMatch = numericMatchFor(record, [
@@ -1402,12 +1585,7 @@ export function parseIbkrActivityStatement(
       underlying,
       valueFor(record, ['Description']),
     )
-    const mappingRefs = underlyingSourceRefs(
-      record,
-      rawSymbol,
-      assetClass,
-      instrumentUnderlyings,
-    )
+    const mappingRefs = resolution.sourceRefs
 
     if (!accumulator.hasYtdRealized && realized != null) {
       if (assetClass === 'OPTION') accumulator.optionRealizedYtd += realized
@@ -1432,7 +1610,10 @@ export function parseIbkrActivityStatement(
     }
   }
 
-  const events = parseOptionEvents(store, symbols, instrumentUnderlyings)
+  const events = parseOptionEvents(store, symbols, instrumentMappingResult)
+  if (instrumentMappingResult.hasConflicts) {
+    errors.push({ code: 'instrument_alias_conflict' })
+  }
 
   const normalizedSymbols: SymbolPnl[] = [...symbols.values()]
     .map((item) => {
@@ -1475,7 +1656,7 @@ export function parseIbkrActivityStatement(
     .sort((a, b) => b.totalYtdMtm - a.totalYtdMtm)
 
   if (normalizedSymbols.length === 0) {
-    errors.push('No stock or option underlying rows could be parsed from the YTD statement.')
+    errors.push({ code: 'underlyings_missing' })
   }
 
   const stockPnl = normalizedSymbols.reduce((sum, item) => sum + item.stockYtdMtm, 0)
@@ -1483,7 +1664,7 @@ export function parseIbkrActivityStatement(
   const otherPnl = normalizedSymbols.reduce((sum, item) => sum + item.otherYtdMtm, 0)
   const parsedAllAssetsYtdMtm = stockPnl + optionPnl + otherPnl
   if (reportedAllAssetsYtdMtm == null) {
-    errors.push('The IBKR all-assets YTD MTM total is missing from the performance section.')
+    errors.push({ code: 'mtm_total_missing' })
   }
   const seasonPnl = reportedAllAssetsYtdMtm ?? parsedAllAssetsYtdMtm
   const mtmReconciliationDifference =
@@ -1491,9 +1672,9 @@ export function parseIbkrActivityStatement(
       ? undefined
       : normalizedDifference(reportedAllAssetsYtdMtm, parsedAllAssetsYtdMtm)
   const parsedAllAssetsSourceRefs = dedupeSourceRefs([
-    ...stockSourceRefs,
-    ...optionSourceRefs,
-    ...otherSourceRefs,
+    ...stockNumericSourceRefs,
+    ...optionNumericSourceRefs,
+    ...otherNumericSourceRefs,
   ])
   const mtmCheck: ReconciliationCheck = {
     id: 'mtm_all_assets',
@@ -1520,27 +1701,31 @@ export function parseIbkrActivityStatement(
   }
 
   if (mtmReconciliationDifference != null && mtmReconciliationDifference !== 0) {
-    warnings.push(
-      `IBKR reported all-assets YTD MTM minus the parsed detail sum is ${mtmReconciliationDifference.toFixed(6)} ${baseCurrency ?? 'BASE'}.`,
-    )
+    warnings.push({
+      code: 'mtm_difference',
+      params: {
+        currency: baseCurrency ?? 'BASE',
+        difference: mtmReconciliationDifference,
+      },
+    })
   }
 
   if (otherPnl !== 0) {
-    warnings.push('Non-stock and non-option performance is included in total season P&L as “Other”.')
+    warnings.push({ code: 'other_pnl_included' })
   }
   if (events.length === 0) {
-    warnings.push('No option assignment, exercise or expiration events were found.')
+    warnings.push({ code: 'no_option_events' })
   }
 
   const netAssetValues = findNetAssetValues(store)
   const { netLiquidationValue, cashValue } = netAssetValues
   if (netLiquidationValue == null) {
-    warnings.push('Net liquidation value was not found in the statement.')
+    warnings.push({ code: 'nav_missing' })
   }
 
   const seasonReturnDiagnostic = findSeasonReturn(store)
   if (seasonReturnDiagnostic.conflict) {
-    warnings.push('Conflicting IBKR TWR values were found; Season Return is unavailable.')
+    warnings.push({ code: 'twr_conflict' })
   }
 
   const statementDiagnostic = statementPnlDiagnostic(
@@ -1550,7 +1735,7 @@ export function parseIbkrActivityStatement(
     reportedAllAssetsSourceRefs,
   )
   if (statementDiagnostic.check.status === 'WARNING') {
-    warnings.push('Statement-period P&L does not reconcile to its supported named components.')
+    warnings.push({ code: 'statement_pnl_mismatch' })
   }
 
   const nav = navDiagnostic(
@@ -1563,7 +1748,7 @@ export function parseIbkrActivityStatement(
     netAssetValues.endingNavSourceRefs,
   )
   if (nav.check.status === 'WARNING') {
-    warnings.push('The NAV bridge is incomplete, conflicting, or outside the CSV precision tolerance.')
+    warnings.push({ code: 'nav_bridge_review' })
   }
 
   if (
@@ -1577,8 +1762,8 @@ export function parseIbkrActivityStatement(
   }
 
   const informationalWarnings = new Set([
-    'Non-stock and non-option performance is included in total season P&L as “Other”.',
-    'No option assignment, exercise or expiration events were found.',
+    'other_pnl_included',
+    'no_option_events',
   ])
   const reconciliations = [mtmCheck, statementDiagnostic.check, nav.check]
   const hasIncompleteReconciliation = reconciliations.some(
@@ -1586,7 +1771,7 @@ export function parseIbkrActivityStatement(
   )
   const hasQualityWarning =
     hasIncompleteReconciliation ||
-    warnings.some((warning) => !informationalWarnings.has(warning))
+    warnings.some((warning) => !informationalWarnings.has(warning.code))
 
   const fingerprint = fingerprintText(text)
   const isKnownSyntheticStatement =
@@ -1605,7 +1790,7 @@ export function parseIbkrActivityStatement(
     seasonYear,
     startDate: startIso,
     endDate: endIso,
-    importedAt: new Date().toISOString(),
+    importedAt: currentDate.toISOString(),
     isYtd,
     netLiquidationValue,
     cashValue,
@@ -1627,15 +1812,19 @@ export function parseIbkrActivityStatement(
       seasonPnl: reportedAllAssetsSourceRefs,
       reportedAllAssetsYtdMtm: reportedAllAssetsSourceRefs,
       parsedAllAssetsYtdMtm: parsedAllAssetsSourceRefs,
-      stockPnl: dedupeSourceRefs(stockSourceRefs),
-      optionPnl: dedupeSourceRefs(optionSourceRefs),
-      otherPnl: dedupeSourceRefs(otherSourceRefs),
+      stockPnl: dedupeSourceRefs(stockNumericSourceRefs),
+      optionPnl: dedupeSourceRefs(optionNumericSourceRefs),
+      otherPnl: dedupeSourceRefs(otherNumericSourceRefs),
       seasonReturn: seasonReturnDiagnostic.sourceRefs,
       netLiquidationValue: netAssetValues.netLiquidationSourceRefs,
       cashValue: netAssetValues.cashSourceRefs,
       statementPeriodTotalPnl: statementDiagnostic.sourceRefs,
       beginningNav: nav.beginningSourceRefs,
       endingNav: nav.endingSourceRefs,
+    },
+    parserFacts: {
+      realizedSectionMissing,
+      seasonReturnConflict: seasonReturnDiagnostic.conflict,
     },
     reconciliations,
     sections: sectionNames.sort(),

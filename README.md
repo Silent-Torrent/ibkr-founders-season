@@ -2,7 +2,7 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current coded checkpoint 0.6
+## Current coded checkpoint 0.7
 
 The repository already contains:
 
@@ -12,11 +12,12 @@ The repository already contains:
 - Accessible dialog behavior for the Privacy & Data notice: initial focus, contained Tab/Shift+Tab navigation, Escape and backdrop close, focus return, and background interaction lock.
 - Local-only CSV reading; no server or database. File reading and parsing run in a dedicated Web Worker rather than on the UI thread.
 - A 12-second total import timeout covers worker-side file reading, parsing and result return. A replacement that passes the filename, non-empty and size preflight, an explicit cancel, a Demo switch or page unmount terminates the old worker before the replacement is parsed.
-- Worker result caps stop reports with more than 5,000 underlyings, 25,000 lifecycle events or 100,000 source-reference occurrences from being copied back to the UI.
+- A versioned Worker protocol validates both requests and complete returned reports on both sides. It rejects malformed objects, unknown fields, sparse arrays, invalid dates/currencies/hashes/numbers, unsafe diagnostics, or parser facts that disagree with the returned TWR evidence and deterministic warnings. It also rejects files above 5 MiB, salts outside 16–128 characters, and reports above the unpaginated-UI budgets. Hard caps are 500 underlyings, 1,000 lifecycle events, 20,000 total source-reference occurrences, and 501 references in one rendered collection (500 detail references plus one broker-total reference).
 - Strict current-year YTD validation that rejects nonexistent dates, reversed periods, future period ends, and non-current seasons.
 - Consistent three-letter base-currency validation with a crash-safe display fallback.
 - IBKR multi-section CSV parser.
 - YTD mark-to-market aggregation by underlying.
+- Deterministic option-underlying alias handling: repeated rows and synonym columns that agree retain all source references; conflicting `Underlying`/`Underlying Symbol` columns or disagreement between Trades/YTD/realized rows and FII reject the whole report instead of silently using row or column order.
 - Canonical accounting fields `reportedAllAssetsYtdMtm`, `parsedAllAssetsYtdMtm`, and `mtmReconciliationDifference`, with the signed difference defined as `reported - parsed`.
 - Three diagnostics for all-assets MTM, statement-period P/L, and the NAV bridge, using a fixed CSV epsilon of `0.000001`.
 - Local `SourceRef` provenance for portfolio metrics, reconciliation checks, underlying metrics, and lifecycle events. References retain section/record type/row/header/field metadata, not the raw row.
@@ -32,13 +33,14 @@ The repository already contains:
 - Responsive desktop and mobile layouts.
 - Frozen browser support baseline: iOS 16.4+ and Safari 16.4+. The production build target is explicit and covered by a compatibility contract check; the development server is not used as proof of that floor.
 - Desktop browser keyboard/focus checks have passed for page changes, both dialogs, controls, status messages, and focus return. A 320 px simulated narrow-screen check also covered bottom navigation, the Ledger table and share card, the Arena scroll region, the privacy dialog, and the symbol drawer. This is not a real-iPhone or VoiceOver result.
-- Synthetic sample statement, a fully fictional current-schema regression fixture, parser smoke tests, and a product-policy/privacy regression suite.
+- All parser/import diagnostics are fixed structured codes rendered in English, Simplified Chinese, or Traditional Chinese at display time. No unvalidated free-form statement text, filename, account identifier, or holding value is interpolated; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
+- Synthetic sample statement, a fully fictional current-schema regression fixture, parser/Worker/product-policy suites, and an automated production-build import test in a real local headless Chrome. That browser test confirms the real module Worker path, three exact reconciliations, no synthetic ranking/achievement, refresh-to-Demo behavior, and no external page request or POST.
 
 ## Run on macOS
 
 ### Easiest route
 
-Double-click `START_MAC.command`. It checks Node.js, installs the pinned dependencies, runs the parser/type checks, and opens the local app. Keep the Terminal window open while using it.
+Install Google Chrome (or Chrome Canary) in the standard macOS Applications folder, then double-click `START_MAC.command`. It checks Node.js, installs the pinned dependencies, runs the full checks—including the isolated production-Chrome import regression—and opens the local app. Keep the Terminal window open while using it.
 
 ### Terminal route
 
@@ -51,7 +53,7 @@ npm run check
 npm run dev
 ```
 
-`node --version` must show Node 22.12 or newer within the Node 22 line; this Mac currently uses v22.23.2. Repeat the `export PATH=...` line in each new Terminal window. Open the local URL printed by Vite, normally `http://localhost:5173`.
+`node --version` must show Node 22.12 or newer within the Node 22 line; this Mac currently uses v22.23.2. Repeat the `export PATH=...` line in each new Terminal window. The full check also requires Google Chrome or Chrome Canary. If its executable is not in a standard macOS Applications location, run `export CHROME_PATH="/absolute/path/to/Chrome"` before `npm run check`. Open the local URL printed by Vite, normally `http://localhost:5173`.
 
 ## Frozen source-control and deployment boundary
 
@@ -70,7 +72,7 @@ npm run dev
 npm run check
 ```
 
-This runs TypeScript checking, the parser smoke suite, the Worker lifecycle contract suite, the accessibility structure/keyboard contract suite, the frozen browser-compatibility contract, and the product-policy/privacy suite. Then run `npm run build`; only the production bundle is eligible for Safari/iOS 16.4 testing. The expected bundled sample result is:
+This runs TypeScript checking, the parser smoke suite, the strict Worker protocol suite, the accessibility structure/keyboard contract suite, the frozen browser-compatibility contract, the product-policy/privacy suite, and a real local Chrome regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install, vulnerability audit, and a final production build. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
 
 ```text
 Season P&L:  $20,040
@@ -129,7 +131,9 @@ src/
   lib/
     csv.ts          RFC-style CSV reader and primitive parsing
     ibkr.ts         IBKR section parser and season aggregation
+    parserDiagnostics.ts fixed diagnostic schema and three-locale presentation
     parseInWorker.ts  worker lifecycle, cancellation and timeout boundary
+    workerOutputLimits.ts strict Worker report schema and capacity budgets
     reportSource.ts source/trust labels and synthetic/local boundaries
     season.ts       divisions and badge rules
     sessionIdentity.ts current-tab random comparison salt
@@ -146,6 +150,7 @@ src/
   workers/
     ibkrParser.worker.ts  worker-side file reading and parsing
 public/
+  favicon.svg
   sample-ibkr-ytd.csv
 tests/
   fixtures/
@@ -153,6 +158,7 @@ tests/
     README.md       fixture privacy statement, schema coverage, and expected equations
 scripts/
   smoke-parser.mjs
+  test-browser-import.mjs
   test-product-policy.mjs
   test-worker-boundary.mjs
 docs/
@@ -165,7 +171,9 @@ docs/
 - The parser has been locally calibrated against one private English single-account 2026 YTD Activity Statement. The private source remains outside the repository; the committed current-schema fixture is fully synthetic, not a transformed or anonymized copy.
 - The matching PDF has been manually cross-reconciled, but the Web App does not yet automate PDF checks.
 - Other IBKR report variants, locales, account structures and future template changes still require fixtures and aliases.
-- The Worker boundary prevents parsing from blocking the UI thread and enforces a total timeout, but near-limit performance still needs confirmation on the supported iOS/Safari 16.4+ baseline and on a protected Preview.
+- The Worker boundary prevents parsing from blocking the UI thread, enforces a total timeout, and validates its serialized protocol, but near-limit performance still needs confirmation on the supported iOS/Safari 16.4+ baseline. Protected-host testing remains deferred with all deployment work.
+- The Worker protocol checks the structure and internal consistency of the trusted same-origin parser result. It is not cryptographic proof that an uploaded statement came from IBKR, so local imports remain Self-Reported.
+- A structurally valid report above the current UI capacity caps fails closed with a generic background-parser message. A future larger-account workflow needs pagination/virtualization and a dedicated fixed capacity diagnostic before raising those limits.
 - Desktop keyboard/focus behavior and the principal narrow-screen surfaces have been checked, including at a simulated 320 px width. VoiceOver and real iPhone Safari have not been tested.
 - Assignment and expiration are covered by the private calibration and synthetic fixture; exercise detection still lacks a qualified real or independently proven fixture.
 - The arena is intentionally a synthetic interface demo; it is not a real public leaderboard.
@@ -179,7 +187,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Continue the local product-integrity and security gates: surface conflicting underlying aliases, strengthen the Worker serialized-response boundary, localize parser errors, and automate the synthetic browser-import check.
+1. Obtain a qualified exercise-event fixture, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
 2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only.
 3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later to verify real iPhone Safari 16.4+ import, cancellation, timeout and share-card export with fictional data only.
-4. Run VoiceOver checks on the supported real iPhone; do not treat the desktop keyboard or simulated-width result as a substitute. A public or Production release remains outside the approved current scope.
+4. Run VoiceOver and near-limit responsiveness checks on the supported real iPhone; do not treat desktop Chrome, keyboard testing, or a simulated width as substitutes. A public or Production release remains outside the approved current scope.

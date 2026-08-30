@@ -8,6 +8,7 @@ import type {
 } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
+import { diagnosticKey, formatParserDiagnostic } from '../lib/parserDiagnostics'
 import { getDivision } from '../lib/season'
 import { reportTrustLabelKey } from '../lib/reportSource'
 import { MetricCard } from '../components/MetricCard'
@@ -324,7 +325,11 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
             {report.warnings.length > 0 && (
               <div className="warning-list">
                 <strong>{t(locale, 'warnings')}</strong>
-                {report.warnings.map((warning) => <p key={warning}>{warning}</p>)}
+                {report.warnings.map((warning, index) => (
+                  <p key={diagnosticKey(warning, index)}>
+                    {formatParserDiagnostic(warning, locale)}
+                  </p>
+                ))}
               </div>
             )}
           </article>

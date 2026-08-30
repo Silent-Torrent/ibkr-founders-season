@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.6
+## Completed through coding checkpoint 0.7
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -36,6 +36,10 @@
 - [x] Twelve-second total Worker timeout, explicit cancellation and stale-result protection.
 - [x] Incremental CSV row-limit enforcement and Worker report-output caps.
 - [x] Worker lifecycle contract tests included in `npm run check`.
+- [x] Versioned Worker request/response protocol with strict runtime, reconciliation-semantics, fixed parser-fact, and deterministic-warning validation; capacity caps are aligned to the current unpaginated UI (500 underlyings, 1,000 events, 20,000 total references, 501 per rendered reference collection: 500 detail references plus one broker-total reference).
+- [x] Structured parser/import diagnostics rendered in English, Simplified Chinese, and Traditional Chinese without interpolating unvalidated free-form statement text; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
+- [x] Deterministic option-underlying alias candidates: retain agreeing duplicate provenance and reject the whole report on any conflicting Symbol/Description alias, independent of row order.
+- [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
 - [x] Three-locale Privacy & Data dialog with the approved local-processing, storage, authenticity, PDF, disclaimer, and clearing boundaries.
 - [x] Accessible privacy-dialog focus behavior: initial focus, Tab/Shift+Tab containment, Escape/backdrop close, background lock, and focus return.
 - [x] Matching modal focus behavior for the symbol drawer, including native source-row summaries.
@@ -82,10 +86,10 @@
 - [x] Compare owner-only Netlify Private Draft, Tailscale Serve, Cloudflare Pages + Access, GitHub Pages and Render against the non-public-first-deployment gate.
 - [x] Record the user's L decision: defer every hosting route until the local product is ready and continue only local/private-GitHub development.
 - [ ] Revisit hosting only after the user explicitly reopens deployment; until then, create no alternate account, authorization, project, upload or paid plan.
-- [ ] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
-- [ ] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
-- [ ] Add an automated local-browser import regression for the synthetic fixture.
-- [ ] Localize remaining parser rejection messages in all three interface languages.
+- [x] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
+- [x] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
+- [x] Add an automated local-browser import regression for the synthetic fixture.
+- [x] Localize remaining parser rejection messages in all three interface languages.
 
 ## P1 — after first testers
 

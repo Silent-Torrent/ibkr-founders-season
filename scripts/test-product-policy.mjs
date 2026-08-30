@@ -21,6 +21,7 @@ try {
     { formatCurrency },
     { getDivision, getTrophies },
     { parseIbkrActivityStatement },
+    { formatParserDiagnostic },
     { buildSeasonSummary, downloadSeasonCard },
     { decideSnapshotImport },
     { sha256Hex },
@@ -34,6 +35,7 @@ try {
     vite.ssrLoadModule('/src/lib/format.ts'),
     vite.ssrLoadModule('/src/lib/season.ts'),
     vite.ssrLoadModule('/src/lib/ibkr.ts'),
+    vite.ssrLoadModule('/src/lib/parserDiagnostics.ts'),
     vite.ssrLoadModule('/src/lib/shareCard.ts'),
     vite.ssrLoadModule('/src/lib/snapshot.ts'),
     vite.ssrLoadModule('/src/lib/sha256.ts'),
@@ -107,6 +109,32 @@ try {
   assert.ok(demoLedgerMarkup.includes('Review internal checks'))
   assert.ok(!demoLedgerMarkup.includes('Internal checks passed'))
 
+  const localizedWarningReport = cloneReport()
+  localizedWarningReport.warnings = [{ code: 'nav_missing' }]
+  const englishWarning = formatParserDiagnostic({ code: 'nav_missing' }, 'en')
+  const simplifiedWarning = formatParserDiagnostic({ code: 'nav_missing' }, 'zh-CN')
+  const traditionalWarning = formatParserDiagnostic({ code: 'nav_missing' }, 'zh-TW')
+  assert.notEqual(englishWarning, simplifiedWarning)
+  assert.notEqual(simplifiedWarning, traditionalWarning)
+  assert.ok(
+    renderToStaticMarkup(
+      createElement(LedgerPage, { locale: 'en', report: localizedWarningReport }),
+    ).includes(englishWarning),
+    'The Ledger did not render a structured diagnostic in English.',
+  )
+  assert.ok(
+    renderToStaticMarkup(
+      createElement(LedgerPage, { locale: 'zh-CN', report: localizedWarningReport }),
+    ).includes(simplifiedWarning),
+    'The Ledger did not retranslate a stored diagnostic in Simplified Chinese.',
+  )
+  assert.ok(
+    renderToStaticMarkup(
+      createElement(LedgerPage, { locale: 'zh-TW', report: localizedWarningReport }),
+    ).includes(traditionalWarning),
+    'The Ledger did not retranslate a stored diagnostic in Traditional Chinese.',
+  )
+
   const fixture = readFileSync(
     new URL('../tests/fixtures/ibkr-current-schema-synthetic.csv', import.meta.url),
     'utf8',
@@ -115,14 +143,14 @@ try {
     accountComparisonSalt: 'policy-test-session',
     currentDate: new Date(2026, 7, 30),
   })
-  assert.equal(syntheticResult.errors.length, 0, syntheticResult.errors.join('; '))
+  assert.equal(syntheticResult.errors.length, 0, JSON.stringify(syntheticResult.errors))
   assert.equal(syntheticResult.report?.source, 'synthetic', 'The known fixture was not downgraded to synthetic test data.')
   const mutatedFixture = fixture.replace('Synthetic Regression Fixture', 'Synthetic Regression Fixture modified')
   const mutatedResult = parseIbkrActivityStatement(mutatedFixture, {
     accountComparisonSalt: 'policy-test-session',
     currentDate: new Date(2026, 7, 30),
   })
-  assert.equal(mutatedResult.errors.length, 0, mutatedResult.errors.join('; '))
+  assert.equal(mutatedResult.errors.length, 0, JSON.stringify(mutatedResult.errors))
   assert.equal(mutatedResult.report?.source, 'local', 'Unknown modified content was trusted as the known synthetic fixture.')
   const crlfResult = parseIbkrActivityStatement(fixture.replace(/\n/g, '\r\n'), {
     accountComparisonSalt: 'policy-test-session',
@@ -136,7 +164,7 @@ try {
       currentDate: new Date(2026, 7, 30),
     },
   )
-  assert.equal(collidingSuffixResult.errors.length, 0, collidingSuffixResult.errors.join('; '))
+  assert.equal(collidingSuffixResult.errors.length, 0, JSON.stringify(collidingSuffixResult.errors))
   assert.equal(collidingSuffixResult.report?.accountIdMasked, syntheticResult.report?.accountIdMasked)
   assert.notEqual(
     collidingSuffixResult.report?.accountComparisonKey,

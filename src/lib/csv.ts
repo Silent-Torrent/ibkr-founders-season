@@ -1,4 +1,21 @@
+import type { ParserDiagnosticCode } from '../types'
+
 const MAX_FIELD_CHARACTERS = 250_000
+
+type CsvParseFailureCode = Extract<
+  ParserDiagnosticCode,
+  'csv_too_many_rows' | 'csv_field_too_large' | 'csv_unterminated_quote'
+>
+
+export class CsvParseFailure extends Error {
+  readonly code: CsvParseFailureCode
+
+  constructor(code: CsvParseFailureCode) {
+    super(code)
+    this.name = 'CsvParseFailure'
+    this.code = code
+  }
+}
 
 export function parseCsvRows(input: string, maxRows?: number): string[][] {
   const text = input.replace(/^\uFEFF/, '')
@@ -11,7 +28,7 @@ export function parseCsvRows(input: string, maxRows?: number): string[][] {
     if (!row.some((value) => value !== '')) return
     rows.push(row)
     if (maxRows !== undefined && rows.length > maxRows) {
-      throw new Error('The CSV file contains too many rows for safe local processing.')
+      throw new CsvParseFailure('csv_too_many_rows')
     }
   }
 
@@ -23,7 +40,7 @@ export function parseCsvRows(input: string, maxRows?: number): string[][] {
         if (text[index + 1] === '"') {
           field += '"'
           if (field.length > MAX_FIELD_CHARACTERS) {
-            throw new Error('A CSV field exceeds the parser safety limit.')
+            throw new CsvParseFailure('csv_field_too_large')
           }
           index += 1
         } else {
@@ -32,7 +49,7 @@ export function parseCsvRows(input: string, maxRows?: number): string[][] {
       } else {
         field += char
         if (field.length > MAX_FIELD_CHARACTERS) {
-          throw new Error('A CSV field exceeds the parser safety limit.')
+          throw new CsvParseFailure('csv_field_too_large')
         }
       }
       continue
@@ -51,13 +68,13 @@ export function parseCsvRows(input: string, maxRows?: number): string[][] {
     } else if (char !== '\r') {
       field += char
       if (field.length > MAX_FIELD_CHARACTERS) {
-        throw new Error('A CSV field exceeds the parser safety limit.')
+        throw new CsvParseFailure('csv_field_too_large')
       }
     }
   }
 
   if (inQuotes) {
-    throw new Error('The CSV contains an unterminated quoted field.')
+    throw new CsvParseFailure('csv_unterminated_quote')
   }
 
   if (field !== '' || row.length > 0) {

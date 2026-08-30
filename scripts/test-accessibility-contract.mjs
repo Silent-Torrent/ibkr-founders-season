@@ -133,7 +133,8 @@ try {
     [
       'aria-busy={busy}',
       'className="sr-only import-live-status"',
-      "setStatusMessage(announce ? t(locale, 'importCancelled') : '')",
+      'setImportCancelled(announce)',
+      "importCancelled ? t(locale, 'importCancelled') : ''",
       'role="alert"',
       'role="status"',
     ],

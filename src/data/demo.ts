@@ -138,6 +138,10 @@ export const demoReport: PortfolioReport = {
     { symbol: 'GOOGL', contract: 'GOOGL 260814C00210000', date: '2026-08-14', type: 'expiration', sourceRefs: [] },
   ],
   metricSourceRefs: {},
+  parserFacts: {
+    realizedSectionMissing: false,
+    seasonReturnConflict: false,
+  },
   reconciliations: [
     {
       id: 'mtm_all_assets',
