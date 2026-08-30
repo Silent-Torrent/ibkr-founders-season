@@ -98,18 +98,123 @@ export function parseNumber(value: string | undefined): number | undefined {
   const trimmed = value.trim()
   if (!trimmed || trimmed === '-' || trimmed === '--') return undefined
 
-  const negativeByParentheses = /^\(.*\)$/.test(trimmed)
-  const normalized = trimmed
-    .replace(/[()%$€£¥HKDUSDCNY\s]/gi, '')
-    .replace(/,/g, '')
+  const startsWithParenthesis = trimmed.startsWith('(')
+  const endsWithParenthesis = trimmed.endsWith(')')
+  if (startsWithParenthesis !== endsWithParenthesis) return undefined
 
-  const parsed = Number(normalized)
-  if (!Number.isFinite(parsed)) return undefined
-  return negativeByParentheses ? -Math.abs(parsed) : parsed
+  const negativeByParentheses = startsWithParenthesis && endsWithParenthesis
+  const parenthesizedText = negativeByParentheses ? trimmed.slice(1, -1) : trimmed
+  if (parenthesizedText !== parenthesizedText.trim()) return undefined
+  const numericText = parenthesizedText
+  if (!numericText || (negativeByParentheses && /^[+-]/.test(numericText))) {
+    return undefined
+  }
+
+  // IBKR English CSV numeric cells use a decimal point and optional grouped
+  // thousands; currency is carried by separate fields. Reject unit wrappers,
+  // percent signs, embedded text, exponent notation, loose whitespace, and
+  // malformed grouping instead of deleting characters that could change value.
+  if (!/^[+-]?(?:(?:\d{1,3}(?:,\d{3})+)|\d+)(?:\.\d+)?$/.test(numericText)) {
+    return undefined
+  }
+
+  const normalizedText = numericText.replace(/,/g, '')
+  const parsed = Number(normalizedText)
+  if (!Number.isFinite(parsed) || Math.abs(parsed) > Number.MAX_SAFE_INTEGER) {
+    return undefined
+  }
+  if (parsed === 0 && /[1-9]/.test(numericText)) return undefined
+
+  const signedParsed =
+    parsed === 0 ? 0 : negativeByParentheses ? -Math.abs(parsed) : parsed
+  const unsignedText = normalizedText.replace(/^[+-]/, '')
+  const [rawInteger, fraction = ''] = unsignedText.split('.')
+  if (fraction.length > 100) return undefined
+  const canonicalInteger = rawInteger.replace(/^0+(?=\d)/, '')
+  const canonicalSign = signedParsed < 0 ? '-' : ''
+  const canonicalText = `${canonicalSign}${canonicalInteger}${
+    fraction ? `.${fraction}` : ''
+  }`
+  if (signedParsed.toFixed(fraction.length) !== canonicalText) return undefined
+  return signedParsed
+}
+
+interface DecimalParts {
+  coefficient: bigint
+  scale: number
+}
+
+function decimalPartsForNumber(value: number): DecimalParts | undefined {
+  if (!Number.isFinite(value)) return undefined
+  if (Object.is(value, -0) || value === 0) return { coefficient: 0n, scale: 0 }
+
+  const match = value
+    .toString()
+    .match(/^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i)
+  if (!match) return undefined
+
+  const negative = match[1] === '-'
+  const integer = match[2]
+  const fraction = match[3] ?? ''
+  const exponent = Number(match[4] ?? '0')
+  if (!Number.isSafeInteger(exponent)) return undefined
+
+  let coefficient = BigInt(`${integer}${fraction}`)
+  let scale = fraction.length - exponent
+  if (scale < 0) {
+    coefficient *= 10n ** BigInt(-scale)
+    scale = 0
+  }
+  if (negative) coefficient = -coefficient
+  return { coefficient, scale }
+}
+
+function fixedDecimalText(coefficient: bigint, scale: number): string {
+  const negative = coefficient < 0n
+  const digits = (negative ? -coefficient : coefficient).toString()
+  if (scale === 0) return `${negative ? '-' : ''}${digits}`
+
+  const padded = digits.padStart(scale + 1, '0')
+  const split = padded.length - scale
+  return `${negative ? '-' : ''}${padded.slice(0, split)}.${padded.slice(split)}`
+}
+
+/**
+ * Adds already-validated decimal values without binary floating-point
+ * cancellation. Returns undefined when the exact decimal result cannot be
+ * represented by the report's Number-based output contract at the same scale.
+ */
+export function sumExactNumbers(values: number[]): number | undefined {
+  const parts = values.map(decimalPartsForNumber)
+  if (parts.some((part) => part == null)) return undefined
+
+  const resolved = parts as DecimalParts[]
+  const scale = resolved.reduce((maximum, part) => Math.max(maximum, part.scale), 0)
+  if (scale > 100) return undefined
+
+  const coefficient = resolved.reduce(
+    (sum, part) =>
+      sum + part.coefficient * 10n ** BigInt(scale - part.scale),
+    0n,
+  )
+  const exactText = fixedDecimalText(coefficient, scale)
+  const result = Number(exactText)
+  if (!Number.isFinite(result) || Math.abs(result) > Number.MAX_SAFE_INTEGER) {
+    return undefined
+  }
+  if (result.toFixed(scale) !== exactText) return undefined
+  return result === 0 ? 0 : result
 }
 
 export function parsePercent(value: string | undefined): number | undefined {
-  const parsed = parseNumber(value)
+  if (value == null) return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  const numericText = trimmed.endsWith('%') ? trimmed.slice(0, -1).trim() : trimmed
+  if (!numericText || numericText.includes('%') || /[()]/.test(numericText)) {
+    return undefined
+  }
+  const parsed = parseNumber(numericText)
   if (parsed == null) return undefined
   return parsed / 100
 }

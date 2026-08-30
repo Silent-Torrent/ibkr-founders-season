@@ -97,9 +97,11 @@ function symbolPnl(symbol = 'ZZFICTA', overrides = {}) {
     totalYtdMtm: 6,
     stockRealizedYtd: 0,
     optionRealizedYtd: 0,
+    otherRealizedYtd: 0,
     totalRealizedYtd: 0,
     stockCurrentUnrealized: 0,
     optionCurrentUnrealized: 0,
+    otherCurrentUnrealized: 0,
     totalCurrentUnrealized: 0,
     assignmentCount: 0,
     exerciseCount: 0,
@@ -258,6 +260,40 @@ function navWarningReport() {
   })
 }
 
+function exactDecimalDifferenceReport() {
+  return mutateReport((report) => {
+    const calculated = 999999999999999.9
+    const reported = 1000000000000000
+    report.symbols = [
+      symbolPnl('DECIMAL', {
+        stockYtdMtm: calculated,
+        optionYtdMtm: 0,
+        otherYtdMtm: 0,
+        totalYtdMtm: calculated,
+      }),
+    ]
+    report.stockPnl = calculated
+    report.optionPnl = 0
+    report.otherPnl = 0
+    report.parsedAllAssetsYtdMtm = calculated
+    report.reportedAllAssetsYtdMtm = reported
+    report.seasonPnl = reported
+    report.mtmReconciliationDifference = 0.1
+    report.reconciliations[0] = reconciliation('mtm_all_assets', {
+      status: 'WARNING',
+      reportedValue: reported,
+      calculatedValue: calculated,
+      difference: 0.1,
+      reasonCode: 'difference_exceeds_tolerance',
+    })
+    report.warnings = [
+      { code: 'mtm_difference', params: { currency: 'USD', difference: 0.1 } },
+      { code: 'no_option_events' },
+    ]
+    report.dataQuality = 'warning'
+  })
+}
+
 function boundaryStatement(symbolCount) {
   const rows = [
     'Statement,Header,Field Name,Field Value',
@@ -403,6 +439,32 @@ try {
   assert.equal(isWorkerReportWithinLimits(mtmWarningReport(), referenceTimeMs), true)
   assert.equal(isWorkerReportWithinLimits(statementWarningReport(), referenceTimeMs), true)
   assert.equal(isWorkerReportWithinLimits(navWarningReport(), referenceTimeMs), true)
+  assert.equal(
+    isWorkerReportWithinLimits(exactDecimalDifferenceReport(), referenceTimeMs),
+    true,
+    'Exact decimal reconciliation evidence was rejected by binary subtraction.',
+  )
+  assert.equal(
+    isWorkerReportWithinLimits(
+      mutateReport((report) => {
+        report.symbols[0].otherRealizedYtd = 1
+        report.symbols[0].totalRealizedYtd = 1
+      }),
+      referenceTimeMs,
+    ),
+    true,
+    'A valid Other realized explanation total was rejected.',
+  )
+  assert.equal(
+    isWorkerReportWithinLimits(
+      mutateReport((report) => {
+        report.symbols[0].otherRealizedYtd = 1
+      }),
+      referenceTimeMs,
+    ),
+    false,
+    'A mismatching Other realized explanation total crossed the Worker boundary.',
+  )
   assert.equal(
     isWorkerReportWithinLimits(
       mutateReport((report) => {

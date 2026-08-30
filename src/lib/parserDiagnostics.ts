@@ -28,6 +28,8 @@ export const PARSER_DIAGNOSTIC_CODES = Object.freeze([
   'currency_invalid',
   'mtm_total_conflict',
   'mtm_section_missing',
+  'accounting_value_invalid',
+  'accounting_section_conflict',
   'underlyings_missing',
   'mtm_total_missing',
   'instrument_alias_conflict',
@@ -101,6 +103,10 @@ const messages: Record<
       'Conflicting all-assets YTD MTM totals were found in the performance section.',
     mtm_section_missing:
       'The Mark-to-Market performance section is missing or contains no YTD MTM values.',
+    accounting_value_invalid:
+      'An accounting value has an unsupported format or cannot be calculated safely. Export a fresh English Activity Statement CSV.',
+    accounting_section_conflict:
+      'The statement contains ambiguous or conflicting source sections, columns, or accounting totals. Export a fresh English Activity Statement CSV.',
     underlyings_missing:
       'No stock or option underlying rows could be parsed from the YTD statement.',
     mtm_total_missing:
@@ -158,6 +164,10 @@ const messages: Record<
     mtm_total_conflict: '业绩部分中存在相互冲突的全部资产 YTD MTM 合计值。',
     mtm_section_missing:
       '缺少盯市业绩部分，或该部分没有 YTD MTM 数值。',
+    accounting_value_invalid:
+      '报表会计数值格式不受支持，或无法安全计算。请重新导出英文版 Activity Statement CSV。',
+    accounting_section_conflict:
+      '报表的来源区块、字段列或会计合计存在歧义或冲突。请重新导出英文版 Activity Statement CSV。',
     underlyings_missing: '无法从年初至今报表中解析出股票或期权标的行。',
     mtm_total_missing: '业绩部分中缺少 IBKR 全部资产 YTD MTM 合计值。',
     instrument_alias_conflict:
@@ -204,6 +214,10 @@ const messages: Record<
     mtm_total_conflict: '績效部分中存在相互衝突的全部資產 YTD MTM 合計值。',
     mtm_section_missing:
       '缺少盯市績效部分，或該部分沒有 YTD MTM 數值。',
+    accounting_value_invalid:
+      '報表會計數值格式不受支援，或無法安全計算。請重新匯出英文版 Activity Statement CSV。',
+    accounting_section_conflict:
+      '報表的來源區塊、欄位或會計合計存在歧義或衝突。請重新匯出英文版 Activity Statement CSV。',
     underlyings_missing: '無法從年初至今報表中剖析出股票或選擇權標的列。',
     mtm_total_missing: '績效部分中缺少 IBKR 全部資產 YTD MTM 合計值。',
     instrument_alias_conflict:

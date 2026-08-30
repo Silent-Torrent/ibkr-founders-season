@@ -2,7 +2,7 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current coded checkpoint 0.8
+## Current coded checkpoint 0.9
 
 The repository already contains:
 
@@ -15,15 +15,19 @@ The repository already contains:
 - A versioned Worker protocol validates both requests and complete returned reports on both sides. It rejects malformed objects, unknown fields, sparse arrays, invalid dates/currencies/hashes/numbers, unsafe diagnostics, or parser facts that disagree with the returned TWR evidence and deterministic warnings. It also rejects files above 5 MiB, salts outside 16–128 characters, and reports above the unpaginated-UI budgets. Hard caps are 500 underlyings, 1,000 lifecycle events, 20,000 total source-reference occurrences, and 501 references in one rendered collection (500 detail references plus one broker-total reference).
 - Strict current-year YTD validation that rejects nonexistent dates, reversed periods, future period ends, and non-current seasons.
 - Consistent three-letter base-currency validation with a crash-safe display fallback.
-- IBKR multi-section CSV parser.
+- Heterogeneous IBKR CSV parser with section-scoped repeated headers and explicit source-selection rules.
+- Exact normalized section allowlists: registered full section names and known IBKR section codes are accepted. BOS descriptions are treated as non-authoritative metadata; generic partial names such as `Summary` cannot impersonate an accounting section or leak `Statement` metadata into the Total P/L check.
+- Strict field-specific English-CSV grammar: unitless accounting amounts accept ordinary decimals, correctly grouped commas, signs, and accounting parentheses; TWR fields separately accept percentages. Currency comes from its own validated field. Currency wrappers, embedded letters, exponent notation, loose whitespace (including inside accounting parentheses), malformed grouping/parentheses, and empty currency markers are rejected rather than rewritten.
+- Decimal-safe aggregation and signed-difference checks reject values whose exact result cannot cross the Number-based Worker contract without precision loss. Required accounting placeholders cannot become zero silently. Duplicate or partially drifted accounting schemas, repeated detail rows, conflicting broker totals/section sources, mandatory metadata, and critical headers with no following data fail closed. MTM row components must equal their row total when IBKR exposes the complete component set; current Flex layouts without the retired `Other` field still require Position, Transaction, Commissions, row totals, and section-level reconciliation. Realized/unrealized component and combined totals are checked. Row-oriented NAV must close Current Long + Current Short to Current Total, Prior + Change to Current, and detail rows to the broker Total; current wide Flex NAV requires the complete registered asset field set, closes it to `Total`, requires any embedded Account ID/Report Date to agree with the statement, and rejects non-empty Model slices. Ordinary `Cash` is matched exactly rather than confused with `SLB Cash Collateral`. A present horizontal or vertical Cash Report must expose exactly one base-currency ending balance, and NAV cash must agree with it when both exist.
 - YTD mark-to-market aggregation by underlying.
+- Explicit CFD categories remain in the `Other` bucket and cannot be counted as stock merely because their label contains `Equity` or `Stock`.
 - Deterministic option-underlying alias handling: repeated rows and synonym columns that agree retain all source references; conflicting `Underlying`/`Underlying Symbol` columns or disagreement between Trades/YTD/realized rows and FII reject the whole report instead of silently using row or column order.
 - Canonical accounting fields `reportedAllAssetsYtdMtm`, `parsedAllAssetsYtdMtm`, and `mtmReconciliationDifference`, with the signed difference defined as `reported - parsed`.
-- Three diagnostics for all-assets MTM, statement-period P/L, and the NAV bridge, using a fixed CSV epsilon of `0.000001`.
-- Local `SourceRef` provenance for portfolio metrics, reconciliation checks, underlying metrics, and lifecycle events. References retain section/record type/row/header/field metadata, not the raw row.
+- Three reconciliation checks for all-assets MTM, statement-period P/L, and the NAV bridge, using a fixed CSV epsilon of `0.000001`.
+- Local `SourceRef` provenance for portfolio metrics, reconciliation checks, underlying metrics, and lifecycle events. References retain normalized technical section/field aliases plus record type/row/header metadata, not original section codes, BOS descriptions, raw headers, raw values, or raw rows.
 - Expandable source references in the Ledger for major portfolio metrics and the three reconciliation checks.
 - Per-underlying source drawers for total, stock, option, other, realized and current-unrealized metrics, plus each detected lifecycle event.
-- Stock, option, realized, and current-unrealized breakdowns.
+- Stock, option, and Other MTM plus realized/current-unrealized explanation fields; realized-only instruments are retained even when their YTD MTM is zero.
 - Assignment, exercise, and expiration event detection.
 - Ledger, Arena Demo, Trophies, and Import pages.
 - Current-session memory for the latest accepted YTD snapshot; the complete report is not persisted by default.
@@ -120,7 +124,7 @@ The current unrealized P&L is displayed separately. It is not added again to YTD
 
 ## Privacy boundary
 
-The selected CSV is converted to a filename-free browser `Blob`, then read and parsed inside a dedicated Web Worker. The current MVP does not have a backend. The raw account identifier is discarded after parsing; a session-salted SHA-256 comparison key is retained only in the current tab so two snapshots can be compared without relying on a collision-prone four-character mask. The raw file and complete normalized report remain in current-session memory and are not written to browser persistent storage by default. `localStorage` is used only for non-sensitive preferences such as locale. Default share preview/copy/PNG output excludes holdings, account identifiers, the comparison key, and exact net liquidation value; a displayed capital division may still reveal a broad USD balance range. A PNG season card that the user deliberately downloads is a separate browser file and must be deleted from its download location if no longer wanted.
+The selected CSV is converted to a filename-free browser `Blob`, then read and parsed inside a dedicated Web Worker. The current MVP does not have a backend. The raw file/Blob is held only for the active parse task and is not retained after completion. The raw account identifier is discarded after parsing; a session-salted SHA-256 comparison key is retained only in the current tab so two snapshots can be compared without relying on a collision-prone four-character mask. Only the normalized report remains in current-session memory, and it is not written to browser persistent storage by default. `localStorage` is used only for non-sensitive preferences such as locale. Default share preview/copy/PNG output excludes holdings, account identifiers, the comparison key, and exact net liquidation value; a displayed capital division may still reveal a broad USD balance range. A PNG season card that the user deliberately downloads is a separate browser file and must be deleted from its download location if no longer wanted.
 
 CSV is the required calculation input. A matching PDF is optional reconciliation evidence and is not currently parsed by the Web App. PDF-only does not create a ranked result.
 
@@ -172,9 +176,11 @@ docs/
 
 ## Known MVP limitations
 
-- The parser has been locally calibrated against one private English single-account 2026 YTD Activity Statement. The private source remains outside the repository; the committed current-schema fixture is fully synthetic, not a transformed or anonymized copy.
+- The final checkpoint 0.9 parser has been read-only calibrated against one private English single-account 2026 YTD Activity Statement; all three reconciliation checks passed exactly and its source hash remained unchanged. The private source remains outside the repository; the committed current-schema fixture is fully synthetic, not a transformed or anonymized copy.
 - The matching PDF has been manually cross-reconciled, but the Web App does not yet automate PDF checks.
 - Other IBKR report variants, locales, account structures and future template changes still require fixtures and aliases.
+- Custom wide Flex NAV queries that omit any registered asset field, or contain a non-empty `Model`, deliberately fail closed; checkpoint 0.9 supports only the full-account, full-field wide NAV contract.
+- The current safe import contract accepts exactly one supported YTD performance source. Some IBKR default/legacy statements contain both MTM and Month/YTD summaries; those files currently fail closed with `accounting_section_conflict` instead of being guessed between or double-counted. A future compatibility checkpoint needs a representative mixed-schema fixture and underlying-aware equivalence comparison.
 - The Worker boundary prevents parsing from blocking the UI thread, enforces a total timeout, and validates its serialized protocol, but near-limit performance still needs confirmation on the supported iOS/Safari 16.4+ baseline. Protected-host testing remains deferred with all deployment work.
 - The Worker protocol checks the structure and internal consistency of the trusted same-origin parser result. It is not cryptographic proof that an uploaded statement came from IBKR, so local imports remain Self-Reported.
 - A structurally valid report above the current UI capacity caps fails closed with a generic background-parser message. A future larger-account workflow needs pagination/virtualization and a dedicated fixed capacity diagnostic before raising those limits.
@@ -191,7 +197,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Obtain a qualified exercise-event fixture, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
-2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only.
-3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later to verify real iPhone Safari 16.4+ import, cancellation, timeout and share-card export with fictional data only.
-4. Run VoiceOver and near-limit responsiveness checks on the supported real iPhone; do not treat desktop Chrome, keyboard testing, or a simulated width as substitutes. A public or Production release remains outside the approved current scope.
+1. Build a fully synthetic MTM + Month/YTD coexistence fixture and an underlying-aware equivalence gate; until then this legitimate mixed-section shape remains safely unsupported.
+2. Obtain a qualified exercise-event fixture, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
+3. Keep all hosting work deferred under the L decision. The researched routes remain reference material only.
+4. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later for real iPhone Safari/VoiceOver and near-limit checks with fictional data only; desktop Chrome and simulated widths are not substitutes. A public or Production release remains outside the approved current scope.

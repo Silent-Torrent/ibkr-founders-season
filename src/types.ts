@@ -28,6 +28,8 @@ export type ParserDiagnosticCode =
   | 'currency_invalid'
   | 'mtm_total_conflict'
   | 'mtm_section_missing'
+  | 'accounting_value_invalid'
+  | 'accounting_section_conflict'
   | 'underlyings_missing'
   | 'mtm_total_missing'
   | 'instrument_alias_conflict'
@@ -120,6 +122,8 @@ export type SymbolMetricKey =
   | 'optionYtdMtm'
   | 'otherYtdMtm'
   | 'totalYtdMtm'
+  | 'otherRealizedYtd'
+  | 'otherCurrentUnrealized'
   | 'totalRealizedYtd'
   | 'totalCurrentUnrealized'
 
@@ -140,9 +144,11 @@ export interface SymbolPnl {
   totalYtdMtm: number
   stockRealizedYtd: number
   optionRealizedYtd: number
+  otherRealizedYtd: number
   totalRealizedYtd: number
   stockCurrentUnrealized: number
   optionCurrentUnrealized: number
+  otherCurrentUnrealized: number
   totalCurrentUnrealized: number
   assignmentCount: number
   exerciseCount: number

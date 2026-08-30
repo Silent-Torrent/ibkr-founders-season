@@ -40,15 +40,15 @@ All amounts are in USD and retain six decimal places unless a source field uses 
 ### Season P&L and MTM buckets
 
 ```text
-parsedStockYtdMtm
+stockPnl
   = 208.863355 + (-41.240878)
   = 167.622477
 
-parsedOptionYtdMtm
+optionPnl
   = 354.777778 + 95.444445
   = 450.222223
 
-parsedOtherYtdMtm
+otherPnl
   = 122.278756
 
 parsedAllAssetsYtdMtm
@@ -62,7 +62,7 @@ mtmReconciliationDifference
   = reportedAllAssetsYtdMtm - parsedAllAssetsYtdMtm
   = 0.000000
 
-stockOptionsProductYtdMtm
+conceptual stockPnl + optionPnl view (not a stored report field)
   = 167.622477 + 450.222223
   = 617.844700
 ```

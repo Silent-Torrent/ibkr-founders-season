@@ -1,4 +1,4 @@
-# Verification record — coding checkpoint 0.8
+# Verification record — coding checkpoint 0.9
 
 Last updated: 2026-08-30
 
@@ -30,7 +30,11 @@ Last updated: 2026-08-30
 - Multi-account file rejected.
 - Combined assignment code (`A;P`) recognized.
 - Explicit Forex performance classified as Other, not Stock.
-- Current `Mark-to-Market Performance Summary` aliases covered by a synthetic compatibility test.
+- Explicit `Equity CFD` performance classified as Other, not Stock; the rule gives `CFD` precedence over the broader equity/stock keywords.
+- Unitless amount parsing accepts supported decimal, grouped-comma, sign, and accounting-parentheses forms. TWR uses a separate percentage parser; currency is read from its own validated field. Currency wrappers, embedded letters, exponent notation, loose whitespace (including inside accounting parentheses), malformed comma grouping/parentheses, and empty currency markers are rejected rather than stripped or coerced.
+- Exact decimal aggregation and signed-difference checks cover ordinary decimal drift, large-value cancellation, unsafe aggregate output, and the Worker boundary. Required placeholders, partially drifted repeated headers, dangling critical headers without data, duplicate recognized numeric/identity columns, raw trailing-digit fake aliases, repeated accounting rows, complete row-component/total mismatches, row-oriented and wide-Flex NAV equations/metadata, absent/data-less/drifted base-currency Cash Report fields, NAV-vs-Cash-Report cash, period sources, and alternative section sources all fail closed. Horizontal and standard vertical Cash Report layouts are covered, and exact NAV `Cash` is kept distinct from `SLB Cash Collateral`. The official current Flex MTMP layout without the retired `Other` field and full-field account-level wide `EQUT`/`EQUS` NAV layouts are accepted; partial component selection and non-empty Model slices fail closed.
+- Section lookup uses exact normalized aliases after hard-coded known-code canonicalization. BOS descriptions are ignored as non-authoritative metadata. Synthetic tests confirm that a generic `Summary` or unknown BOS code cannot impersonate YTD MTM/realized performance, and numeric `Statement` metadata cannot leak into the Total P/L reconciliation.
+- Registered MTM, Month/YTD, realized/unrealized, NAV, Cash Report, Trades, and lifecycle names/codes are tested individually. Multiple YTD performance sources are deliberately rejected in checkpoint 0.9; this safely prevents double counting but means a legitimate IBKR default/legacy statement containing both MTM and Month/YTD is not yet supported.
 - Financial Instrument Information aliases now use order-independent candidate sets. Repeated Symbol/Description aliases that agree retain every mapping source row; a normalized alias pointing to different underlyings returns `instrument_alias_conflict` and no report. Explicit Underlying values in Trades, YTD, and realized/unrealized rows must agree with FII, and simultaneous `Underlying`/`Underlying Symbol` columns must agree regardless of column order. Tests cover all of these paths plus merged provenance for agreeing synonyms.
 - Repository-safe `tests/fixtures/ibkr-current-schema-synthetic.csv` added. Every value, identifier and instrument in it is fictional; it is not copied, anonymized or transformed from a private statement.
 - The current-schema fixture covers repeated and multiple header shapes, `Data`/`SubTotal`/`Total` rows, and the tested empty-record-type Total P/L row.
@@ -52,7 +56,7 @@ Last updated: 2026-08-30
 - To match the current unpaginated UI, hard output caps are 500 underlyings, 1,000 events, 20,000 total source-reference occurrences, and 501 references in one collection (500 detail references plus one broker-total reference). Additional caps cover diagnostics, sections, 25,000 total array items, and 1,000,000 total string characters.
 - The 100,000-row CSV limit is enforced while rows are being read, rather than only after a full row table has been created.
 - A dedicated Worker contract suite is included in `npm run check` and passed.
-- All 38 parser/import diagnostic codes have English, Simplified Chinese, and Traditional Chinese messages. Runtime validation permits dynamic values only for the fixed current year and signed MTM difference/currency fields; invalid diagnostics fall back to a fixed message without echoing untrusted input. Ledger warnings retranslate when the interface locale changes.
+- All 40 parser/import diagnostic codes have English, Simplified Chinese, and Traditional Chinese messages. Runtime validation permits dynamic values only for the fixed current year and signed MTM difference/currency fields; invalid diagnostics fall back to a fixed message without echoing untrusted input. Ledger warnings retranslate when the interface locale changes.
 - Calendar dates are parsed strictly. Nonexistent dates, reversed statement periods, future period ends, and prior-season reports are rejected instead of being normalized or accepted silently.
 - A same-account, same-season report with the same ending date but different content is rejected; duplicate, older, newer, and different-account snapshot decisions have dedicated regression cases.
 - Base currency must resolve to one consistent three-letter code. Missing, malformed, and conflicting currency declarations are rejected, and display formatting falls back to an em dash instead of crashing on an invalid code.
@@ -67,7 +71,7 @@ Last updated: 2026-08-30
 - Real TypeScript checking passed with installed dependencies.
 - Production Vite build passed locally.
 - Dependency lockfile created; installed dependency audit reported zero known vulnerabilities.
-- The current clean install, dependency audit, full check suite, and production build were run with Node 22.23.2 and npm 10.9.8.
+- After the final checkpoint 0.9 accounting/schema hardening, the clean install, zero-vulnerability dependency audit, full check suite, real local production-Chrome import/PNG regression, and production build all passed with Node 22.23.2 and npm 10.9.8.
 - Both beginner-facing macOS scripts select a working Node 22.12+ runtime without exposing errors from this Mac's broken default Node 25 loader. `VERIFY_MAC.command` retains the clean install, audit, full checks and build; `START_MAC.command` conditionally repairs only missing/changed locked dependencies and otherwise starts the local site without repeating the full gate. Their shell syntax and separate roles have an automated contract test.
 - A dedicated Privacy & Data dialog is available from both the desktop privacy card and the page footer.
 - English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, locale-only persistence, no statement upload, the Self-Reported authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
@@ -81,14 +85,15 @@ Last updated: 2026-08-30
 
 ## Private real-statement calibration
 
-- One private English single-account 2026 YTD CSV parsed successfully from outside the repository.
-- The MTM, statement-period P/L, and NAV-bridge diagnostics all returned `PASS_EXACT` in a read-only local verification.
+- One private English single-account 2026 YTD CSV parsed successfully from outside the repository after the final checkpoint 0.9 changes.
+- The MTM, statement-period P/L, and NAV-bridge reconciliation checks all returned `PASS_EXACT` in that final read-only local verification.
 - All-assets YTD MTM matched the parsed Stocks + Options + Other detail sum at the fixed CSV epsilon.
 - Stock, option, Forex/Other, TWR, statement period and account scope matched the independent CSV/PDF audit.
 - Financial Instrument Information was used for option-underlying aliases.
 - Assignment and expiration were observed; exercise remains unverified.
 - The matching PDF key totals were manually reconciled; the app does not yet parse PDF.
 - No private source file, identity, account number, position, trade or exact private total was copied into this repository.
+- A SHA-256 comparison before and after the final parser run confirmed that the private source file was unchanged.
 - The full normalized report is no longer written to persistent browser storage by default.
 
 ## Local browser smoke check
@@ -104,7 +109,7 @@ Last updated: 2026-08-30
 - A content-invalid `.csv` produced a visible alert in desktop Chrome at a simulated 320 px viewport. Its computed text size was at least 14 px with at least 21 px line height, and neither the message nor the document overflowed the viewport.
 - The fully synthetic current-schema CSV imported successfully through the visible file chooser.
 - The import completed through the Worker-backed path and changed the UI from Demo to Fully Synthetic Test.
-- The known fictional fixture was labelled Fully Synthetic Test, not Self-Reported. It created no local ranking snapshot and unlocked no local achievements; its parser source rows remained inspectable.
+- The known fictional fixture was labelled Fully Synthetic Test, not Self-Reported. It created no local ranking snapshot and unlocked no local achievements; its normalized source-reference cards remained inspectable without exposing raw rows or values.
 - The share-card preview showed Source instead of an underlying and explicitly stated that holdings, account identifiers, and exact net liquidation value were excluded.
 - The real Download PNG button created exactly one `pnl-arena-2026-season.png` file in an isolated download directory. In this recorded run it was 1,268,971 bytes; it had valid PNG signature/IHDR/IEND structure, decoded in Chrome, and measured 1200×1500 pixels. Captured production-canvas text contained the required season metrics, synthetic-source and privacy labels but no fixture holdings, account identifier, or exact NAV canaries. The temporary file was deleted with the isolated browser profile after the test.
 - All three reconciliation checks displayed `PASS_EXACT`, and expandable source cards exposed only CSV section, one-based row, record type, field, and a technical header signature.
@@ -119,6 +124,8 @@ Last updated: 2026-08-30
 ## Not yet verified
 
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
+- A legitimate statement containing both MTM and Month/YTD performance summaries is not yet supported. Checkpoint 0.9 fails closed on multiple YTD sources; it does not yet perform underlying-aware equivalence across the two different schemas.
+- Custom wide Flex NAV queries with omitted registered asset fields or a non-empty Model are not supported; only the tested full-field account-level layout is accepted.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
 - Exercise remains uncovered by a qualified real or independently proven CSV fixture. Official IBKR documentation confirms `Ex` and the lifecycle-field semantics, but the public samples are HTML and do not prove the completed-exercise CSV serialization; see `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
 - Protected private-host header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari import and real-iPhone PNG export remain unverified.

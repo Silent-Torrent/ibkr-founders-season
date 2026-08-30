@@ -1,7 +1,7 @@
 # P&L Arena 数据字典与数据边界
 
-> 状态：2026 Founders Season 冻结基线
-> 适用范围：当前本地 MVP、静态 Beta，以及未来账号/排行榜的设计约束
+> 状态：2026 Founders Season checkpoint 0.9 已实现字段 + 未来边界基线
+> 适用范围：当前本地 MVP；标明“未来”的字段只是设计约束，不得当作已实现 schema
 > 目的：规定「读取什么、如何计算、可以保存什么、可以公开什么」。本文档不是对任何一份用户报表的真实性背书。
 
 ## 1. 不可默认改变的导入合同
@@ -55,44 +55,11 @@
 | 公开展示 | `PUBLIC_OPT_IN` | 昵称和成绩等必须由用户明确选择公开；默认私密 |
 | 禁止存储 | `PROHIBITED` | 密码、2FA、交易权限、IBKR 登录凭据和未经批准的原始财务数据 |
 
-## 3. 真实样本覆盖范围
+## 3. 样本证据边界
 
-当前样本仅证明**英文、单账户、当年 YTD Activity Statement**的结构覆盖，不能外推到其他语言、多账户、历史年、月度报表、Flex 自定义模板或未知格式。样本中观察到 26 个逻辑区块：
+仓库只保留完全虚构的 CSV fixture 作为可复跑证据。历史上曾对一份英文、单账户、当年 YTD 私密 CSV/PDF 做过只读校准，但原文件和精确行数、页数、区块/交易/标的数量或清单等私密派生指纹都不应写入仓库。
 
-| # | 区块（归一化名） | 关键字段/作用 | 优先级 | 产品处理 |
-|---:|---|---|---|---|
-| 1 | Statement | 报表类型、期间、生成时间 | P0 | 验收输入合同 |
-| 2 | Account Information | 账户数、基础币种、账户类型；完整账号仅用于本地校验 | P0 | 不上传、不记日志 |
-| 3 | Net Asset Value | 期初/期末 NAV、资产分类、TWR | P0 | 精确 NAV 默认不公开 |
-| 4 | Change in NAV | 期初至期末变化的报表分量 | P0 | 用于对账，不自行猜测缺失分量 |
-| 5 | Mark-to-Market Performance Summary | 资产类别、标的、YTD MTM | P0 | 赛季盈亏的主数据源 |
-| 6 | Total P/L for Statement Period | 报表期总盈亏 | P0 | 对账项，不替代 YTD MTM 主口径 |
-| 7 | Realized & Unrealized Performance Summary | 已实现、当前未实现 | P0 | 仅解释；不重复加入 YTD MTM |
-| 8 | Cash Report | 期初/期末现金、币种汇总 | P1 | 对账用，不当作利润 |
-| 9 | Open Positions | 当前持仓、数量、成本、未实现 | P0 | 本地解释；默认不公开 |
-| 10 | Forex Balances | 币种余额 | P1 | 对账/解释；不并入股票 |
-| 11 | Net Stock Position Summary | 净股票仓位及变动 | P1 | 持仓辅助对账 |
-| 12 | Trades | 资产类别、合约、日期、数量、价格、代码 | P0 | 期权生命周期与异常对账；原始交易不上传 |
-| 13 | Deposits & Withdrawals | 入金、出金、转账 | P1 | 仅对账；明确排除于利润 |
-| 14 | Fees | 账户费用 | P1 | 按 IBKR 汇总关系对账，不二次加减 |
-| 15 | Dividends | 股息收入 | P1 | 解释/对账，不二次加入主口径 |
-| 16 | Withholding Tax | 预扣税 | P1 | 解释/对账；敏感财务数据 |
-| 17 | Interest | 利息收支 | P1 | 解释/对账，不二次加减 |
-| 18 | Interest Accruals | 利息应计 | P1 | 期间对账 |
-| 19 | Change in Dividend Accruals | 股息应计变化 | P1 | 期间对账 |
-| 20 | Stock Yield Enhancement Program Securities Lent | 出借证券及数量 | P1 | 本地解释；默认不公开 |
-| 21 | Collateral | 证券出借抵押品 | P1 | 对账；精确数值不公开 |
-| 22 | Lent Activity | 出借/归还活动 | P1 | 生命周期辅助解释 |
-| 23 | Fee Earned Details | 证券出借费用明细 | P1 | 解释/对账；不二次加入 |
-| 24 | Financial Instrument Information | 标的、合约描述、乘数、到期日、行权价、期权类型、内部标识 | P0 | 期权必须先映射 underlying；内部标识不公开 |
-| 25 | Codes | 交易/事件代码定义 | P0 | 先按报表定义解码；未知代码必须告警 |
-| 26 | Notes / Legal Notes | 格式、口径、法律说明 | P1 | 保留为解析诊断；不向公共 UI 复制整段原文 |
-
-生命周期样本边界：
-
-- Assignment：真实样本已覆盖，允许增加回归测试。
-- Expiration：真实样本已覆盖，允许增加回归测试。
-- Exercise：真实样本**未覆盖**；在取得脱敏真实样本或可证实合成 fixture 前，不得声称已完成真实 Exercise 验证。
+当前可确认的范围只是：异构/重复表头、主要会计与辅助类别、期权 underlying 映射、Assignment/Expiration 曾被观察；Exercise 仍未获得有资格的 CSV 样本。这些经验不能外推到其他语言、多账户、历史年、月度报表、自定义 Flex 或未知模板。
 
 ## 4. P0 规范化字段字典
 
@@ -100,7 +67,7 @@
 
 - `date`：ISO `YYYY-MM-DD`。
 - `datetime`：保留报表时区或明确标记时区未知，不默认猜测 UTC。
-- `decimal`：解析时保留源精度，只在显示层四舍五入。
+- `decimal`：实现中是通过严格语法和可表示性检查的 JavaScript `number`；采用十进制安全求和，但不保留原 token 或尾随小数位。
 - `currency`：大写 ISO 4217 代码；未知币种拒绝金额聚合。
 - 任何缺失/空值均为 `null`，不得自动补 `0`。
 
@@ -108,89 +75,89 @@
 
 | 字段 | 类型 | 来源/推导 | 必需 | 敏感度 | 存储/公开 | 校验与失败处理 |
 |---|---|---|---|---|---|---|
-| `sourceKind` | enum | 导入流程 | 是 | S0 | LOCAL_SESSION；可公开 | 只允许第 2.1 节枚举 |
-| `statementType` | string | Statement | 是 | S0 | LOCAL_SESSION | 非 Activity Statement 则拒绝 |
-| `statementLocale` | enum | 标题/表头 | 是 | S0 | LOCAL_SESSION | MVP 只允许 `en` |
-| `periodStart` | date | Statement/BOF | 是 | S1 | LOCAL_SESSION | 必须为赛季年 1 月 1 日 |
-| `periodEnd` | date | Statement/BOF | 是 | S1 | LOCAL_SESSION | 必须与起始日同年，且不晚于当前日 |
-| `seasonYear` | integer | `periodEnd.year` | 是 | S0 | LOCAL_SESSION；可公开 | MVP 必须为当前自然年 |
-| `generatedAt` | datetime/null | Statement | 否 | S1 | LOCAL_SESSION | 缺失时告警，不猜测 |
-| `baseCurrency` | currency | Account Information | 是 | S1 | LOCAL_SESSION | 所有账户级汇总必须与它一致 |
-| `accountCount` | integer | 去重后账户标识数 | 是 | S1 | LOCAL_SESSION | 必须等于 1，否则拒绝 |
-| `accountIdRaw` | string | Account Information/BOF | 临时必需 | S3 | LOCAL_EPHEMERAL | 只用于单账户检查和生成会话比较键；解析后丢弃 |
-| `accountComparisonKey` | string | `SHA-256(sessionSalt + accountIdRaw)` | 是 | S2 | LOCAL_SESSION | 只用于当前标签页跨文件比较；不显示、不记录、不分享，关闭标签页后失效 |
-| `accountIdMasked` | string | `accountIdRaw` 掩码 | 否 | S2 | LOCAL_SESSION | 只显示最少必需后缀；不记日志、不公开 |
-| `verificationTier` | enum | 文件来源与对账状态 | 是 | S1 | LOCAL_SESSION；未来可公开 | 上传文件不得越过 `reconciled_self_reported` |
-| `calculationVersion` | string | 应用内部常量 | 是 | S0 | LOCAL_SESSION；未来可公开 | 每次会计规则变更必须升版 |
-| `importedAt` | datetime | 本地导入时间 | 是 | S1 | LOCAL_SESSION | 不作为报表生成时间 |
+| `source` | `demo` / `synthetic` / `local` | 导入流程 | 是 | S0/S1 | LOCAL_SESSION | 只表示当前实现来源，不等于未来验证等级 |
+| `fingerprint` | SHA-256/null | 规范化 CSV 内容 | 否 | S1 | LOCAL_SESSION | 用于重复快照，不证明签发方 |
+| `startDate` / `endDate` | date | Statement/BOF | 是 | S1 | LOCAL_SESSION | 必须为当年 1 月 1 日起的非未来 YTD |
+| `seasonYear` | integer | `endDate.year` | 是 | S0 | LOCAL_SESSION；可公开 | 必须为当前自然年 |
+| `isYtd` | boolean | 期间验证 | 是 | S0 | LOCAL_SESSION | 当前接受的报告必须为 `true` |
+| `baseCurrency` | currency | Account Information | 是 | S1 | LOCAL_SESSION | 三位受支持币种代码，多源必须一致 |
+| `accountComparisonKey` | string | `SHA-256(sessionSalt + accountIdRaw)` | 是 | S2 | LOCAL_SESSION | 仅当前标签页跨文件比较；不显示/分享 |
+| `accountIdMasked` | string | `accountIdRaw` 掩码 | 是 | S2 | LOCAL_SESSION | 只用于本地显示；完整账号解析后丢弃 |
+| `importedAt` | datetime | 本地导入时间 | 是 | S1 | LOCAL_SESSION | 不当作报表生成时间 |
+| `dataQuality` | enum | 对账与警告 | 是 | S1 | LOCAL_SESSION | `good` / `warning` / `error` |
+| `parserFacts` | object | 解析器固定事实 | 是 | S1 | LOCAL_SESSION | 当前为 realized 区块缺失与 TWR 冲突 |
+| `sections` | string[] | 已见技术区块名 | 是 | S1 | LOCAL_SESSION | 规范化名称，不是原始 BOS 描述 |
+
+`statementType`、英文 schema、单账户和原始账号会在解析阶段验证，但不作为 `PortfolioReport` 字段保留。`verificationTier`、`calculationVersion`、报表生成时间等仍是未来设计字段。
 
 ### 4.2 成绩与对账级
 
 | 字段 | 类型 | 来源/公式 | 必需 | 敏感度 | 存储/公开 | 校验与失败处理 |
 |---|---|---|---|---|---|---|
-| `reportedAllAssetsYtdMtm` | decimal | MTM Summary 的 All Assets YTD MTM | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 赛季盈亏主数据源；无此字段则拒绝正式导入 |
-| `parsedStockYtdMtm` | decimal | 股票 YTD MTM 明细汇总 | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 仅聚合明确分类为股票的行 |
-| `parsedOptionYtdMtm` | decimal | 期权 YTD MTM 明细汇总 | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 期权先映射 underlying，再聚合 |
-| `parsedOtherYtdMtm` | decimal | 非股票/期权 YTD MTM 明细汇总 | 是 | S2 | LOCAL_SESSION；公开须 opt-in | Forex 等不得默认归为股票 |
-| `parsedAllAssetsYtdMtm` | decimal | `parsedStockYtdMtm + parsedOptionYtdMtm + parsedOtherYtdMtm` | 是 | S2 | LOCAL_SESSION | 只作明细对账，不覆盖已存在的券商汇总 |
+| `reportedAllAssetsYtdMtm` | decimal | 当前唯一受支持 YTD 业绩区块的 All Assets YTD MTM | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 无此字段则拒绝；多个 YTD 源当前失败关闭 |
+| `seasonPnl` | decimal | 已验收的 All Assets YTD MTM | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 当前与 `reportedAllAssetsYtdMtm` 同源 |
+| `stockPnl` / `optionPnl` / `otherPnl` | decimal | 三个资产桶的 YTD MTM 明细汇总 | 是 | S2 | LOCAL_SESSION | 分类和 underlying 映射后十进制安全聚合 |
+| `parsedAllAssetsYtdMtm` | decimal | `stockPnl + optionPnl + otherPnl` | 是 | S2 | LOCAL_SESSION | 只作明细对账，不覆盖已存在的券商汇总 |
 | `mtmReconciliationDifference` | decimal | `reportedAllAssetsYtdMtm - parsedAllAssetsYtdMtm` | 是 | S1 | LOCAL_SESSION | 方向固定为 reported - parsed；超过 CSV 容差则可见告警 |
-| `seasonReturnTwr` | decimal/null | Net Asset Value 中的 TWR/YTD return | 否 | S2 | LOCAL_SESSION；公开须 opt-in | 保存为比例值；缺失时不自行计算 |
-| `totalRealizedYtd` | decimal/null | Realized & Unrealized Summary | 否 | S2 | LOCAL_SESSION | 仅解释；不加入 `reportedAllAssetsYtdMtm` |
-| `currentUnrealized` | decimal/null | Realized & Unrealized Summary | 否 | S2 | LOCAL_SESSION | 仅解释；不加入 `reportedAllAssetsYtdMtm` |
+| `seasonReturn` | decimal/null | 显式 TWR/YTD return | 否 | S2 | LOCAL_SESSION；公开须 opt-in | 缺失时不自行计算 |
 | `statementPeriodTotalPnl` | decimal/null | Total P/L for Statement Period | 否 | S2 | LOCAL_SESSION | 对账用；不替换 `reportedAllAssetsYtdMtm` |
-| `navStart` | decimal/null | Net Asset Value/Change in NAV | 否 | S2 | LOCAL_SESSION | 精确值不公开 |
-| `navEnd` | decimal/null | Net Asset Value | 否 | S2 | LOCAL_SESSION | 可派生资本分组，然后丢弃服务端不需要的精确值 |
-| `capitalDivision` | enum/null | `navEnd` 按冻结分组边界派生 | 否 | S1 | LOCAL_SESSION；未来可 opt-in 公开 | 不是技能分，不泄露精确 NAV |
+| `beginningNav` / `endingNav` / `calculatedEndingNav` | decimal/null | NAV/Change in NAV 与桥接计算 | 否 | S2 | LOCAL_SESSION | 精确值默认不分享 |
+| `netLiquidationValue` / `cashValue` | decimal/null | 行式 NAV 或当前 wide Flex NAV，及 Cash Report 交叉检查 | 否 | S2 | LOCAL_SESSION | NAV 分项与 Total 先闭合；两源同时存在时必须一致；`cashValue` 仅取精确 `Cash`，不取 `SLB Cash Collateral` |
 | `reconciliations[]` | object[] | MTM、statement-period P/L、NAV bridge | 是 | S1/S2 | LOCAL_SESSION | 每项含 `status`、差额、容差、reason code 和 `sourceRefs` |
-| `metricSourceRefs` | object | 派生指标的本地来源元数据 | 是 | S1 | LOCAL_SESSION | 只保留 section/record type/row/header/field；不保留 raw 整行、raw value、文件名或账号 |
-| `warnings` | code[] | 解析和对账引擎 | 是 | S1 | LOCAL_SESSION | 只保存标准化代码；不包含原始行 |
+| `metricSourceRefs` | object | 派生指标的本地来源元数据 | 是 | S1 | LOCAL_SESSION | section/field 是规范化技术别名；不保留原始 code/header/row/value、文件名或账号 |
+| `warnings` | `ParserDiagnostic[]` | 解析和对账引擎 | 是 | S1 | LOCAL_SESSION | 固定代码；只有明确定义的受控参数，不包含原始行 |
 
 最小对账规则：
 
-1. `parsedStockYtdMtm + parsedOptionYtdMtm + parsedOtherYtdMtm` 必须与 `reportedAllAssetsYtdMtm` 对上；当前 CSV epsilon 固定为 `0.000001` 基础货币单位，不在 UI 中临时硬编码。
+1. `stockPnl + optionPnl + otherPnl` 必须与 `reportedAllAssetsYtdMtm` 对上；当前 CSV epsilon 固定为 `0.000001` 基础货币单位，不在 UI 中临时硬编码。
 2. NAV 桥、佣金、分红、预扣税、利息、费用等必须按报表实际出现的分量对账；不得用缺失值补零强行闭合。
-3. `totalRealizedYtd + currentUnrealized` 不必等于 `reportedAllAssetsYtdMtm`；它们与 YTD MTM 存在差额不能单独判定为错误。
+3. 标的级 `totalRealizedYtd + totalCurrentUnrealized` 不必等于 YTD MTM；它们只是解释字段。
 4. 重复快照必须拒绝；旧快照不得覆盖新快照；同年快照不得求和。
 5. 任何不支持的区块、资产类别、代码、币种或对账差异必须产生可见警告，不能默认丢弃。
+6. 当前版本每份文件只允许一个受支持的 YTD 业绩来源；MTM 与 Month/YTD 同时出现时阻断，不能相加或按先后顺序猜选。
+7. 金额必须使用十进制安全聚合；重复识别列、重复明细、冲突的券商总计或无法精确进入 Worker 数值协议的结果必须阻断。
 
-Checkpoint 0.3 已在完全虚构的 current-schema fixture 上验证 MTM、statement-period P/L 和 NAV bridge 三项 `PASS_EXACT`，并在私密样本上只读复验三项 `PASS_EXACT`。这只证明已覆盖 schema 的数字关系闭合，不证明文件真伪，也不扩展为其他 IBKR 模板。
+Checkpoint 0.9 的仓库证据是完全虚构的 current-schema fixture 上三项 `PASS_EXACT` 与失败关闭回归。最终私密样本只读复验也是三项 `PASS_EXACT`，且前后源文件哈希一致；这不能证明文件真伪，也不扩展为其他 IBKR 模板。
 
 ### 4.3 Underlying 级
 
 | 字段 | 类型 | 来源/公式 | 必需 | 敏感度 | 边界 | 规则 |
 |---|---|---|---|---|---|---|
-| `underlying` | string | Financial Instrument Information 的 Underlying，其次为可验证规则派生 | 是 | S2 | LOCAL_SESSION | 期权不得直接以合约字符串代替 underlying |
+| `symbol` | string | 规范化 underlying/instrument key | 是 | S2 | LOCAL_SESSION | `SymbolPnl` 的键；期权先做 underlying 映射 |
 | `description` | string/null | Financial Instrument Information | 否 | S2 | LOCAL_SESSION | 仅当地显示；对原始文字做输出编码 |
 | `stockYtdMtm` | decimal | 该 underlying 的股票 MTM 汇总 | 是 | S2 | LOCAL_SESSION | 与期权、Other 分开 |
 | `optionYtdMtm` | decimal | 该 underlying 的期权 MTM 汇总 | 是 | S2 | LOCAL_SESSION | 所有合约先完成 underlying 映射 |
 | `otherYtdMtm` | decimal | 该 underlying/类别的 Other MTM | 是 | S2 | LOCAL_SESSION | 不得暗中归入股票 |
 | `totalYtdMtm` | decimal | 上述三项之和 | 是 | S2 | LOCAL_SESSION | 必须与源汇总对账 |
-| `realizedYtd` | decimal/null | Realized & Unrealized Summary | 否 | S2 | LOCAL_SESSION | 解释字段 |
-| `currentUnrealized` | decimal/null | Realized & Unrealized Summary/Open Positions | 否 | S2 | LOCAL_SESSION | 解释字段，不加入 MTM |
+| `stockRealizedYtd` | decimal | Realized & Unrealized Summary/YTD summary | 是 | S2 | LOCAL_SESSION | 股票已实现解释字段 |
+| `optionRealizedYtd` | decimal | Realized & Unrealized Summary/YTD summary | 是 | S2 | LOCAL_SESSION | 期权已实现解释字段 |
+| `otherRealizedYtd` | decimal | Realized & Unrealized Summary/YTD summary | 是 | S2 | LOCAL_SESSION | CFD、Forex 等 Other 已实现解释字段；不能丢弃 |
+| `totalRealizedYtd` | decimal | 上述三项十进制安全求和 | 是 | S2 | LOCAL_SESSION | 仅解释；即使 YTD MTM 为零也保留该标的 |
+| `stockCurrentUnrealized` | decimal | Realized & Unrealized Summary | 是 | S2 | LOCAL_SESSION | 股票当前未实现解释字段 |
+| `optionCurrentUnrealized` | decimal | Realized & Unrealized Summary | 是 | S2 | LOCAL_SESSION | 期权当前未实现解释字段 |
+| `otherCurrentUnrealized` | decimal | Realized & Unrealized Summary | 是 | S2 | LOCAL_SESSION | CFD、Forex 等 Other 当前未实现解释字段 |
+| `totalCurrentUnrealized` | decimal | 上述三项十进制安全求和 | 是 | S2 | LOCAL_SESSION | 解释字段，不加入 MTM |
 | `assignmentCount` | integer | 规范化生命周期事件 | 是 | S1 | LOCAL_SESSION | 事件计数不创造利润 |
 | `exerciseCount` | integer | 规范化生命周期事件 | 是 | S1 | LOCAL_SESSION | 当前真实样本未验证 |
 | `expirationCount` | integer | 规范化生命周期事件 | 是 | S1 | LOCAL_SESSION | 事件计数不创造利润 |
 
 Underlying、持仓和交易明细均不得出现在默认分享卡、URL、错误上报或产品分析事件中。
 
-### 4.4 期权合约与生命周期
+### 4.4 当前 `OptionEvent` 生命周期字段
 
 | 字段 | 类型 | 来源 | 敏感度 | 边界 | 规则 |
 |---|---|---|---|---|---|
-| `contractDisplay` | string | Financial Instrument Information 的 Description | S2 | LOCAL_SESSION | 用于显示；不应默认使用 Trades/Open Positions 的 Symbol 作展示名 |
-| `underlying` | string | Financial Instrument Information 的 Underlying | S2 | LOCAL_SESSION | 作为聚合键 |
-| `expiry` | date/null | Expiry | S2 | LOCAL_SESSION | 缺失时告警 |
-| `strike` | decimal/null | Strike | S2 | LOCAL_SESSION | 不从不受支持的字符串猜测 |
-| `right` | `call` / `put` / null | Type/Right | S2 | LOCAL_SESSION | 未知值告警 |
-| `multiplier` | decimal/null | Multiplier | S1 | LOCAL_SESSION | 期权计算前必须存在或显示不支持 |
-| `brokerInstrumentId` | string/null | Conid/Security ID | S3 | LOCAL_EPHEMERAL | 可临时用于表内映射；不公开、不记日志 |
-| `eventType` | enum | Codes + Trades | S1 | LOCAL_SESSION | 只允许 `assignment` / `exercise` / `expiration` |
-| `eventDate` | date/null | Trades/Event section | S2 | LOCAL_SESSION | 只保留对产品有用的日粒度；不默认收集精确时间 |
-| `sourceCode` | string | Codes/Trades | S1 | LOCAL_SESSION | 保留标准化代码以便诊断；未知代码不猜测 |
+| `symbol` | string | 规范化 underlying | S2 | LOCAL_SESSION | 作为标的键 |
+| `contract` | string/null | 事件行合约 | S2 | LOCAL_SESSION | 只本地显示；不进入默认分享 |
+| `date` | date/null | Trades/专用 event section | S2 | LOCAL_SESSION | 日粒度 |
+| `type` | enum | 事件文本/受支持 code | S1 | LOCAL_SESSION | `assignment` / `exercise` / `expiration` |
+| `sourceRefs` | object[] | 事件行与 mapping | S1 | LOCAL_SESSION | 不保留 raw row/value |
+
+Expiry、strike、right、multiplier、broker instrument ID 和规范化 `sourceCode` 均不是当前 `OptionEvent` 字段；如未来需要，必须独立设计和审批。
 
 ## 5. P1 解释与对账字段
 
-P1 字段不是公开榜必需数据，只在本地为用户解释数字或定位差异。
+P1 表中大多数是未来目标字段，不是 checkpoint 0.9 `PortfolioReport` schema。实现前必须逐项确认会计口径、必要性和存储边界。
 
 | 类别 | 规范化字段 | 类型 | 敏感度 | 保存边界 | 会计规则 |
 |---|---|---|---|---|---|
@@ -232,7 +199,7 @@ P1 字段不是公开榜必需数据，只在本地为用户解释数字或定�
 | 季度、验证层级、计算版本 | 允许 | 可保留 | 未来可保留 | 可公开 |
 | 标准化错误代码 | 允许 | 默认不保留 | 未来经同意可保留 | 不公开 |
 
-2026-08-29 已从代码中移除完整规范化报表的默认 `localStorage` 持久化路径。仍需通过真实浏览器的 Storage 与 Network 检查确认不存在其他持久化或外发路径；文档状态不能替代运行时验证。
+2026-08-29 已从代码中移除完整规范化报表的默认 `localStorage` 持久化路径。本地生产包 Chrome 回归已确认刷新后回到 Demo，且没有外部页面请求或 POST；这不替代以后的真 iPhone/Safari 或部署环境 Network/Storage 检查。
 
 ## 8. 保留、删除与替换规则
 
@@ -270,12 +237,12 @@ PDF 解析器不得代替 CSV 解析器。当前只允许提取下列最小字�
 |---|---|---|---|
 | 报表类型 | `statementType` | 归一化后精确匹配 | 不得升级为 reconciled |
 | 账户标识 | `accountIdRaw` | 只在本地内存精确比较 | 失败；不记录原值 |
-| 期间 | `periodStart`, `periodEnd` | 日期精确匹配 | 失败 |
+| 期间 | `startDate`, `endDate` | 日期精确匹配 | 失败 |
 | 基础币种 | `baseCurrency` | 精确匹配 | 失败 |
 | All Assets YTD MTM | `reportedAllAssetsYtdMtm` | 按 PDF 显示精度比较 | 超容差则失败 |
 | Total P/L | `statementPeriodTotalPnl` | 按 PDF 显示精度比较 | 超容差则 warning/fail |
 | Realized + Unrealized | 对应解释汇总 | 按 PDF 显示精度比较 | 超容差则 warning/fail |
-| TWR | `seasonReturnTwr` | 按 PDF 百分比显示精度比较 | 超容差则 warning |
+| TWR | `seasonReturn` | 按 PDF 百分比显示精度比较 | 超容差则 warning |
 
 PDF 仅保留对账结果、字段级差异代码和解析器版本；不保留 PDF 原文、页面图像、文本片段或用户身份值。PDF 没有可验证数字签名时，不能因「版式看起来真」而提高到 `broker_sourced`。
 
@@ -284,10 +251,10 @@ PDF 仅保留对账结果、字段级差异代码和解析器版本；不保留 
 下列条件未全部满足时，不得把真实数据功能标记为完成：
 
 - [ ] 只接受冻结的英文单账户当年 YTD CSV 合同。
-- [ ] 真实样本的 26 个区块能被盘点；未支持区块能显式告警。
+- [ ] 仓库虚构 fixture 中的受支持区块能重复验证；未支持/歧义 schema 不会静默丢值。
 - [ ] 报表级 YTD MTM、股票、期权、Other 及对账差额通过回归测试。
 - [ ] 期权 Trades/Open Positions 能通过 Financial Instrument Information 映射到正确 underlying 和展示描述。
-- [ ] Assignment 与 Expiration 有真实脱敏 fixture 回归测试。
+- [ ] Assignment 与 Expiration 有完全虚构 fixture 回归；私密校准只记录通过/失败，不沉淀派生内容。
 - [ ] Exercise 保持「真实样本未验证」标记，直到有合格 fixture。
 - [ ] 原始 CSV/PDF 和 S3 字段不会进入长期存储、日志、URL、错误上报或第三方请求。
 - [ ] 规范化快照默认只在会话内存，本地持久化有明确 opt-in 和一键清除。

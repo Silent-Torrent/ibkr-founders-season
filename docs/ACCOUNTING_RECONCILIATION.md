@@ -1,12 +1,12 @@
 # Accounting and reconciliation specification
 
-Status: **locked implementation contract for the 2026 Founders Season MVP**
+Status: **locked accounting contract aligned to coded checkpoint 0.9**
 Scope: one English IBKR Activity Statement CSV, one account, current calendar-year YTD
 Priority: when UI copy, legacy code, or a synthetic fixture conflicts with this document, stop and resolve the conflict before publishing a result.
 
-This document defines what the product may calculate, what it may only explain, how every value must be traced to source rows, and when a result is safe to display or rank. It does not turn a user-uploaded file into broker-verified data.
+This document defines what the product may calculate, what it may only explain, how displayed values are traced through local normalized source references, and when a result is safe to display or rank. It does not turn a user-uploaded file into broker-verified data.
 
-Implementation checkpoint 0.3 uses the canonical MTM field names and difference direction in this document, fixes the CSV epsilon at `0.000001`, and implements the MTM, statement-period P/L, and NAV-bridge checks with local `SourceRef` provenance. The Ledger exposes expandable references for major portfolio metrics and these three checks. A complete per-value source drawer for every underlying-level UI number remains a separate UI task.
+Implementation checkpoint 0.9 uses the field names and difference direction below, fixes the CSV epsilon at `0.000001`, and implements the MTM, statement-period P/L, and NAV-bridge checks with local `SourceRef` provenance. The Ledger exposes references for major portfolio metrics and these three checks; the underlying drawer exposes references for every displayed implemented metric and lifecycle event.
 
 ## 1. Canonical terms and fields
 
@@ -15,21 +15,21 @@ Use distinct field names. Do not reuse `pnl`, `total`, or `difference` for metri
 | Canonical field | Meaning | Primary source |
 | --- | --- | --- |
 | `reportedAllAssetsYtdMtm` | IBKR-reported all-assets YTD mark-to-market P&L; the Season P&L source of truth | `Mark-to-Market Performance Summary`, all-assets total row |
-| `parsedStockYtdMtm` | Sum of supported stock YTD MTM detail rows | `Mark-to-Market Performance Summary` |
-| `parsedOptionYtdMtm` | Sum of supported equity/index-option YTD MTM detail rows after underlying mapping | same |
-| `parsedOtherYtdMtm` | Sum of every supported, explicitly non-stock/non-option YTD MTM detail row | same |
+| `stockPnl` | Sum of supported stock YTD MTM detail rows | selected YTD performance section |
+| `optionPnl` | Sum of supported equity/index-option YTD MTM detail rows after underlying mapping | same |
+| `otherPnl` | Sum of every supported, explicitly non-stock/non-option YTD MTM detail row | same |
 | `parsedAllAssetsYtdMtm` | `stock + options + other` from parsed detail rows | derived |
-| `stockOptionsProductYtdMtm` | Product-only stock-and-options metric; never the all-assets Season P&L | derived |
+| `stockPnl + optionPnl` | Conceptual product-only stock-and-options view; not a separately stored `PortfolioReport` field | derived |
 | `statementPeriodTotalPnl` | IBKR's total P/L for the statement period; a NAV diagnostic, not the Season P&L | `Total P/L for Statement Period` |
-| `seasonTwr` | IBKR-reported YTD time-weighted rate of return | explicit TWR field in `Net Asset Value` or `Change in NAV` |
-| `currentUnrealizedPnl` | Unrealized P&L at report end | `Realized & Unrealized Performance Summary` |
-| `reportedRealizedPnl` | Realized P&L reported for the statement period | same |
+| `seasonReturn` | IBKR-reported YTD time-weighted rate of return | explicit TWR field in selected YTD, NAV, or Change-in-NAV records |
+| `SymbolPnl.totalCurrentUnrealized` | Per-underlying unrealized P&L at report end | `Realized & Unrealized Performance Summary` |
+| `SymbolPnl.totalRealizedYtd` | Per-underlying realized explanatory P&L | selected YTD and/or realized/unrealized summary |
 
 Required public labels:
 
 - `reportedAllAssetsYtdMtm`: **Season P&L — IBKR YTD MTM**.
-- `stockOptionsProductYtdMtm`: **Stock & Options YTD MTM — excludes Other and non-MTM statement items**.
-- `currentUnrealizedPnl`: **Current unrealized — explanatory only**.
+- `stockPnl + optionPnl` conceptual view: **Stock & Options YTD MTM — excludes Other and non-MTM statement items**.
+- `SymbolPnl.totalCurrentUnrealized`: **Current unrealized — explanatory only**.
 - Self-uploaded results: **Self-Reported** or **Reconciled Self-Reported**, never **Verified**.
 
 ## 2. Season P&L and asset buckets
@@ -44,30 +44,30 @@ The parsed-detail reconciliation is:
 
 ```text
 parsedAllAssetsYtdMtm
-  = parsedStockYtdMtm
-  + parsedOptionYtdMtm
-  + parsedOtherYtdMtm
+  = stockPnl
+  + optionPnl
+  + otherPnl
 ```
 
 The broker total remains the displayed Season P&L after reconciliation. The parsed sum is a check and an explanatory breakdown; it must not silently replace a present broker total.
 
 ### 2.1 Stocks
 
-- Only rows explicitly classified as stocks, or rows with a missing category whose stock interpretation is proven by a tested IBKR schema, enter `parsedStockYtdMtm`.
+- Only rows explicitly classified as stocks, or rows with a missing category whose stock interpretation is proven by a tested IBKR schema, enter `stockPnl`.
 - An unrecognized explicit category must never default to stock.
 - Stock commissions already reflected in IBKR YTD MTM must not be added again.
 
 ### 2.2 Options
 
-- Equity and index options enter `parsedOptionYtdMtm`.
+- Equity and index options enter `optionPnl`.
 - Map an option contract to its underlying before aggregation.
-- Prefer a tested relationship from `Financial Instrument Information` (including its `Underlying` field). In the current private audit sample, option descriptions used by `Trades` and `Open Positions` mapped to that section's `Description`; they were not guaranteed to equal its `Symbol`.
+- Prefer a tested relationship from `Financial Instrument Information` (including its `Underlying` field). Do not assume a description, contract symbol, and broker instrument symbol are interchangeable.
 - Contract-text parsing is a fallback only. Ambiguous or conflicting mappings produce a warning and must not be guessed.
 - `Assignment`, `Exercise`, and `Expiration` are lifecycle events. They do not create an extra P&L entry.
 
 ### 2.3 Other
 
-- `parsedOtherYtdMtm` includes every supported explicit YTD MTM category that is not stock or option, such as Forex. Future categories such as futures, bonds, funds, or CFDs remain `Other` until a separately tested rule exists.
+- `otherPnl` includes every supported explicit YTD MTM category that is not stock or option, such as Forex. Explicit labels containing `CFD` are separately regression-tested to remain `Other`, including labels that also contain `Equity` or `Stock`. Futures, bonds, funds, CFD-specific product semantics, and other unsupported categories remain `Other` until separately tested rules exist.
 - Do not force an `Other` row into an equity underlying when no valid relationship exists. A currency pair or other instrument may remain its own canonical instrument key.
 - Unsupported rows and unmapped amounts must be counted and surfaced. They must never be dropped silently.
 
@@ -76,9 +76,9 @@ The broker total remains the displayed Season P&L after reconciliation. The pars
 If the product wants the narrower thesis metric, calculate:
 
 ```text
-stockOptionsProductYtdMtm
-  = parsedStockYtdMtm
-  + parsedOptionYtdMtm
+conceptual stock-and-options view
+  = stockPnl
+  + optionPnl
 ```
 
 This is a **product-defined metric**, not the IBKR all-assets Season P&L. It excludes Forex and every other non-stock/non-option MTM category. It also does not add standalone statement-period items such as interest or fees. Those items may be relevant to `statementPeriodTotalPnl`, but are not to be appended to this metric.
@@ -88,7 +88,7 @@ The UI and any future ranking must keep this metric separate from the all-assets
 ## 3. TWR
 
 - Use only an explicit IBKR YTD `Time Weighted Rate of Return`/`TWR` field.
-- Store it as a decimal fraction at source precision: for example, `16.46%` becomes `0.1646`.
+- Store it as a finite decimal fraction that can cross the Number-based Worker contract without silent precision loss: for example, `16.46%` becomes `0.1646`.
 - Do not derive TWR from P&L, beginning NAV, ending NAV, deposits, or withdrawals.
 - If multiple candidate TWR fields exist, require them to agree after normalization. Otherwise set TWR to unavailable and raise a conflict warning.
 - If the explicit field is absent, display “Unavailable”; do not invent a fallback return.
@@ -99,7 +99,7 @@ The UI and any future ranking must keep this metric separate from the all-assets
 The following is not a valid Season P&L formula:
 
 ```text
-reportedRealizedPnl + currentUnrealizedPnl
+SymbolPnl.totalRealizedYtd + SymbolPnl.totalCurrentUnrealized
 ```
 
 It may differ from YTD MTM because current unrealized values can contain gains or losses formed before January 1, and because the statement's performance, cash-flow, income, fee, and currency treatments are not interchangeable.
@@ -113,7 +113,7 @@ Rules:
 - Never infer a missing realized value from trades unless a separately approved accounting model and fixture set exists.
 - If the realized/unrealized section is absent, Season P&L may still be available, but the explanation layer must say it is unavailable.
 
-The current private sample confirms this rule: its all-assets YTD MTM and its realized-plus-current-unrealized total were both internally valid but different. No private amount, account identifier, instrument, or transaction is retained in this repository.
+The historical private calibration confirmed this rule without retaining private amounts, account identifiers, instruments, transactions, or exact private-derived structure fingerprints in this repository.
 
 ## 5. NAV and statement-period bridge
 
@@ -164,14 +164,16 @@ IBKR CSV sections are heterogeneous. The parser must support:
 - `Data`, `SubTotal`, and `Total` rows as distinct record types;
 - a tested section-specific record whose record-type cell is empty;
 - row widths that differ between sections;
-- commas, parentheses, signs, percentages, blanks, and dash placeholders;
-- exact duplicate headers without treating them as duplicate transactions.
+- commas, parentheses, signs, field-specific percentages, blanks, and dash placeholders;
+- repeated `Header` records without treating them as transactions.
 
-Header state is scoped to the current section and header signature. A later header in the same section replaces the active schema only for subsequent rows of that shape. Do not keep one global “last header per section” when multiple shapes occur.
+Header state is scoped to the raw source-section identity. A later header in the same section replaces the active schema only for subsequent rows, and each stored record retains that header's technical signature.
+
+Recognized amount columns are unitless. TWR/return fields use a separate percentage parser, and currency comes from a separate validated three-letter field. A row containing duplicate recognized amount or identity columns is ambiguous and must be blocked even when the values appear to agree. A raw name such as `YTD MTM2` is not a generated duplicate suffix and must not impersonate `YTD MTM`.
 
 ### 6.2 Source reference contract
 
-Every derived metric and every warning must carry one or more local `SourceRef` objects:
+Displayed portfolio metrics, reconciliation checks, underlying metrics, and lifecycle events carry local `SourceRef` objects. `ParserDiagnostic` warnings are fixed codes (with only tightly controlled parameters where defined) and do not themselves contain `SourceRef` arrays.
 
 ```text
 SourceRef {
@@ -185,27 +187,29 @@ SourceRef {
 }
 ```
 
-The raw source token may remain in ephemeral parser memory for diagnostics, but must not be sent to telemetry or persisted in a public record. Account identifiers, names, filenames, transaction IDs, and full financial rows must never appear in logs.
+`section` and `field` are normalized technical aliases, not original CSV codes, BOS descriptions, or raw header text. The raw source token may remain only in ephemeral parser memory; it must not be sent to telemetry or persisted in a public record. Account identifiers, names, filenames, transaction IDs, and full financial rows must never appear in logs.
 
 For a sum, retain the contributing row references or a deterministic local range/set reference. A source drawer must be able to answer “which local rows produced this number?” without exposing those rows outside the user's device.
 
 ### 6.3 Source priority
 
-1. `Mark-to-Market Performance Summary`: Season P&L, asset-class totals, instrument/underlying detail.
+1. Exactly one supported YTD performance source (`Mark-to-Market`, Month/YTD, or an explicitly registered equivalent/code): Season P&L, asset-class totals, instrument/underlying detail.
 2. Explicit TWR field: Season Return.
 3. `Realized & Unrealized Performance Summary`: explanation only.
 4. `Net Asset Value`, `Change in NAV`, `Total P/L for Statement Period`, cash-flow, income, tax, interest, and fee sections: bridge diagnostics.
 5. `Trades`, `Open Positions`, and `Financial Instrument Information`: lifecycle, mapping, and supporting diagnostics; not a substitute MTM calculation.
 
-Do not fall back from a missing all-assets YTD MTM total to trade cash flows, current unrealized, ending-minus-beginning NAV, or statement-period total P/L.
+Known section codes are mapped only by the hard-coded allowlist. BOS descriptions are non-authoritative metadata and are ignored; an unknown code cannot inherit meaning from a plausible BOS description. Do not fall back from a missing all-assets YTD MTM total to trade cash flows, current unrealized, ending-minus-beginning NAV, or statement-period total P/L.
+
+Checkpoint 0.9 accepts one supported YTD performance source per file. If MTM and Month/YTD summaries coexist, reject the file with an ambiguity diagnostic rather than adding them or selecting by row order. This is a temporary compatibility boundary: supporting both requires a representative mixed-schema fixture, canonical underlying-level aggregation, and an equivalence check across their different row granularities.
 
 ## 7. Precision and rounding
 
-- Preserve every original numeric token and its decimal scale locally.
+- Parse only grammar-valid numeric tokens into finite JavaScript numbers that retain their value across the Worker boundary; the normalized report does not retain the original token or its trailing decimal scale.
 - Sum unrounded values. Never round each row before aggregation.
 - Use decimal-safe arithmetic for accounting checks. Binary floating-point noise must not change a status.
-- Store money at the maximum precision supplied by the CSV. Round only for display.
-- Store TWR as a decimal fraction at source precision; round only its displayed percentage.
+- Reject an input or aggregate that cannot be represented at its parsed decimal scale without silent value change. Round accepted values only for display.
+- Store TWR as an accepted decimal fraction; the original token/scale is not retained. Round only its displayed percentage.
 - Use the statement's base currency for portfolio totals. Do not add raw amounts from different currencies without an IBKR-provided base-currency value.
 - For currencies supported by the MVP, use their correct display minor unit; the current USD fixture displays two decimals.
 
@@ -213,7 +217,7 @@ Tolerance classes:
 
 | Check | Pass rule |
 | --- | --- |
-| CSV full-precision equation | `abs(diff) <= 0.000001` base-currency unit, unless the source precision implies a smaller exact quantum |
+| CSV accounting equation | fixed `abs(diff) <= 0.000001` base-currency unit |
 | Direct PDF aggregate vs CSV | compare PDF value with CSV rounded to the PDF field's visible scale; values must match at that scale |
 | Sum of multiple PDF-displayed rows | tolerance may be at most `rowCount * 0.5 * 10^-displayScale`; record that tolerance explicitly |
 | Metadata/account/period/currency | exact normalized match; no numeric tolerance |
@@ -233,8 +237,6 @@ navBridgeDifference
 
 csvPdfFieldDifference
   = pdfDisplayedValue - round(csvExactValue, pdfDisplayScale)
-```
-
 The sign therefore means “reported/observed source minus calculated/expected value.” Tests must assert both magnitude and sign.
 
 Canonical statuses:
@@ -247,7 +249,7 @@ Canonical statuses:
 | `BLOCKED` | Wrong period, multiple accounts, account/period mismatch, missing Season P&L source, ambiguous schema, or incomplete mandatory data | not eligible and no canonical result published |
 | `NOT_AVAILABLE` | The source does not provide an optional check | never describe as passed |
 
-Every check result contains `status`, exact `difference`, exact `tolerance`, `reasonCode`, and `sourceRefs`.
+Every check result contains `status`, `reasonCode`, and `sourceRefs`; numeric values, difference, and tolerance are present only when the check has the corresponding evidence.
 
 Checkpoint 0.3 has removed the legacy opposite-direction field from the parser contract. The implemented field is `mtmReconciliationDifference`, and both implementation and signed regression tests now use `reportedAllAssetsYtdMtm - parsedAllAssetsYtdMtm`.
 
@@ -294,11 +296,28 @@ All accounting changes require a redacted or synthetic fixture. Tests must asser
 | S02 | Three trade header variants | no row shifted; totals are not treated as trades |
 | S03 | Empty record-type cell in the known total-P/L section | parsed only by the tested section rule |
 | S04 | Duplicate header rows | ignored as headers, not flagged as duplicate transactions |
-| S05 | Parentheses, commas, negative sign, percent, blank, dash | parsed without sign or scale loss |
+| S05 | Parentheses, commas, negative sign, blank, dash; percent only in a return field | parsed without sign or scale loss |
+| S06 | Generic/partial section name such as `Summary` | cannot impersonate a registered accounting section |
+| S07 | Currency wrapper, embedded letters, exponent notation, loose spaces, malformed grouping/parentheses, or empty currency marker in an amount field | rejected as non-numeric; never rewritten into another amount |
+| S08 | Duplicate recognized amount or Symbol/asset columns, in either order | `BLOCKED`; never first-column wins |
+| S09 | Raw unregistered header ending in a digit | cannot impersonate a known field |
+| S10 | Exact/synonym duplicate accounting section or conflicting section-code pair | `BLOCKED`; never merged or double-counted |
+| S11 | MTM and Month/YTD sources coexist | checkpoint 0.9 `BLOCKED`; cross-schema equivalence remains future work |
+| S12 | Statement, Account Information, or BOF periods disagree | `BLOCKED`; never source-order wins |
+| S13 | Decimal cancellation or aggregate cannot cross the Number-based output contract exactly | decimal-safe result or `BLOCKED`; never binary-drift pass |
+| S14 | Malformed/mismatching realized, unrealized, NAV, or base-cash broker total | `BLOCKED`; never ignored as an unused subtotal |
+| S15 | Required accounting token is blank, `-`, or `--`, while surrounding totals are coherently altered | `BLOCKED`; missing is never zero |
+| S16 | A repeated-header block loses a required total/identity/component alias, or a complete MTM/realized/unrealized component set does not equal its row total | `BLOCKED`; never drop the affected asset block. A section-wide current Flex MTMP schema without retired `Other` remains valid and is tested separately |
+| S17 | A present horizontal/vertical Cash Report lacks exactly one readable base-currency Ending Cash, has no data, or NAV cash and that ending cash disagree | `BLOCKED`; never let missing/drifted fields or source priority bypass the comparison |
+| S18 | NAV long + short differs from current total, prior + change differs from current, or detail rows do not sum to the broker Total | `BLOCKED`; never publish a self-inconsistent NAV/cash value |
+| S19 | NAV contains both `Cash` and `SLB Cash Collateral`, or only the collateral field | Match ordinary `Cash` exactly; collateral participates in NAV totals but is never published as available cash |
+| S20 | Current Flex NAV arrives as one wide `EQUT`/`EQUS`/NAV Summary record | Require one unambiguous full-field account-level record, the complete registered asset column set, numeric `Cash` and `Total`, exact component closure to `Total`, agreement of any Account ID/Report Date with statement metadata, and an absent/empty Model; partial field selection and model slices fail closed |
+| S21 | A critical section ends with a Header that has no following Data/SubTotal/Total row | `BLOCKED` as a truncated/incomplete block; never let an earlier valid block hide the dangling header |
 | A01 | Stocks + options + Forex | Forex remains `Other`; all three buckets reconcile |
 | A02 | Explicit unknown asset category | never defaults to stock; `WARNING` or `BLOCKED` by materiality |
 | A03 | Option mapped by Financial Instrument Information | joins to the correct underlying with source refs |
 | A04 | Conflicting/missing option mapping | no guess; amount and contract surfaced as unresolved |
+| A05 | Explicit `Equity CFD` or `Stock CFD` category | remains `Other`; never enters stock MTM |
 | P01 | Detail rows exactly equal all-assets total | `PASS_EXACT`, zero signed difference |
 | P02 | Broker total exceeds parsed sum | positive `mtmReconciliationDifference` |
 | P03 | Parsed sum exceeds broker total | negative `mtmReconciliationDifference` |
@@ -306,6 +325,7 @@ All accounting changes require a redacted or synthetic fixture. Tests must asser
 | P05 | Large deposit/withdrawal with unchanged performance | cash flow never enters Season P&L |
 | P06 | Interest/fees reconcile statement P/L but not all-assets MTM | NAV bridge passes; Season P&L unchanged |
 | P07 | Non-zero `Other` | included in all-assets parsed reconciliation; stock-and-options metric visibly excludes it |
+| P08 | Closed CFD/Other has realized P&L but zero YTD MTM/current unrealized/events | instrument and realized explanation retained |
 | N01 | Beginning NAV + flows + P/L + named adjustments = ending NAV | `PASS_EXACT` |
 | N02 | Required bridge component missing | `NOT_AVAILABLE` or `WARNING`, never assumed zero |
 | E01 | `A` and combined `A;P` | assignment event, no extra P&L |
@@ -319,28 +339,16 @@ All accounting changes require a redacted or synthetic fixture. Tests must asser
 | Q01 | Source drawer requested for a displayed metric | contributing local rows/pages are traceable |
 | Q02 | Logs/telemetry inspected | no filename, account ID, name, symbol list, raw row, amount, or transaction ID |
 
-## 11. Current private-sample coverage and gaps
+## 11. Private-calibration boundary and gaps
 
-The 2026 private audit sample was inspected read-only. The original files must remain outside fixtures, source control, logs, and documentation.
+One private 2026 English single-account YTD CSV/PDF pair was historically inspected read-only. The original files and exact private-derived structure fingerprints (row/page/section/transaction/instrument counts or lists) must remain outside fixtures, source control, logs, and documentation. Repository evidence comes from fully fictional fixtures. The final checkpoint 0.9 private rerun recorded only that all three reconciliation checks passed exactly and the source hash was unchanged, never private content.
 
-Coverage confirmed without retaining private financial content:
-
-- CSV: 965 rows, 26 sections, heterogeneous row widths.
-- PDF: 27 pages, text-based and visually inspected across all pages.
-- Repeated and multiple header shapes occurred in NAV, open-position, trade, and financial-instrument sections.
-- The trade section had three header variants and 195 data records spanning stocks, options, and Forex.
-- Financial Instrument Information had 52 records, including 24 option records with an `Underlying` value.
-- The sample covered multiple currencies, dividends, withholding tax, interest/accruals, fees, deposits/withdrawals, stock lending, open positions, and cash reporting.
-- Assignment (`A`) and expiration (`Ep`) lifecycle codes occurred. No exercise (`Ex`) event occurred.
-- CSV/PDF account, period, generation batch, TWR, all-assets YTD MTM, statement-period P/L, realized/unrealized totals, and NAV bridge reconciled at their applicable precision.
-- The current read-only parser verification returned `PASS_EXACT` for the MTM, statement-period P/L, and NAV-bridge diagnostics without writing private source content into the repository.
-- Two exact duplicate rows were repeated headers, not duplicate transactions.
-- The PDF had no digital signature; successful reconciliation therefore established consistency, not authenticity.
+The historical calibration covered heterogeneous headers, multiple accounting/supporting categories, option-underlying mapping, and assignment/expiration examples. Its key CSV/PDF relationships reconciled at the applicable precision, but consistency is not authenticity and exercise was not observed.
 
 Known gaps that require additional synthetic or separately redacted fixtures:
 
 - exercise events;
-- futures, bonds, funds, CFDs, and other unsupported asset classes;
+- futures, bonds, funds, CFD-specific product semantics beyond the tested `Other` routing, and other unsupported asset classes;
 - conflicting/missing option-underlying relationships;
 - multi-account and consolidated statements from actual IBKR exports;
 - non-USD base currencies and currencies with non-two-decimal display rules;

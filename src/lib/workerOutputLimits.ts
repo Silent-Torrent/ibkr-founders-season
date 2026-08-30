@@ -12,6 +12,7 @@ import {
   isParserDiagnostic,
   PARSER_DIAGNOSTIC_CODES,
 } from './parserDiagnostics'
+import { sumExactNumbers } from './csv'
 
 export const MAX_IBKR_WORKER_STATEMENT_BYTES = 5 * 1024 * 1024
 export const MAX_WORKER_REPORT_SYMBOLS = 500
@@ -45,6 +46,20 @@ const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 const FINGERPRINT_PATTERN = /^[0-9a-f]{8}$/
 const CURRENCY_PATTERN = /^[A-Z]{3}$/
+
+function reconciliationDifferenceMatches(
+  reportedValue: number,
+  calculatedValue: number,
+  difference: number,
+  tolerance: number,
+): boolean {
+  const residual = sumExactNumbers([
+    reportedValue,
+    -calculatedValue,
+    -difference,
+  ])
+  return residual != null && Math.abs(residual) <= tolerance
+}
 
 const REPORT_KEYS = [
   'source',
@@ -127,6 +142,8 @@ const SYMBOL_METRIC_KEYS = new Set([
   'optionYtdMtm',
   'otherYtdMtm',
   'totalYtdMtm',
+  'otherRealizedYtd',
+  'otherCurrentUnrealized',
   'totalRealizedYtd',
   'totalCurrentUnrealized',
 ])
@@ -413,9 +430,11 @@ function validateSymbol(value: unknown, budget: ValidationBudget): value is Symb
     'totalYtdMtm',
     'stockRealizedYtd',
     'optionRealizedYtd',
+    'otherRealizedYtd',
     'totalRealizedYtd',
     'stockCurrentUnrealized',
     'optionCurrentUnrealized',
+    'otherCurrentUnrealized',
     'totalCurrentUnrealized',
     'assignmentCount',
     'exerciseCount',
@@ -440,9 +459,11 @@ function validateSymbol(value: unknown, budget: ValidationBudget): value is Symb
     'totalYtdMtm',
     'stockRealizedYtd',
     'optionRealizedYtd',
+    'otherRealizedYtd',
     'totalRealizedYtd',
     'stockCurrentUnrealized',
     'optionCurrentUnrealized',
+    'otherCurrentUnrealized',
     'totalCurrentUnrealized',
   ]) {
     if (!isFiniteNumber(value[key])) return false
@@ -458,13 +479,28 @@ function validateSymbol(value: unknown, budget: ValidationBudget): value is Symb
   }
 
   const symbol = value as unknown as SymbolPnl
+  const totalYtdMtm = sumExactNumbers([
+    symbol.stockYtdMtm,
+    symbol.optionYtdMtm,
+    symbol.otherYtdMtm,
+  ])
+  const totalRealizedYtd = sumExactNumbers([
+    symbol.stockRealizedYtd,
+    symbol.optionRealizedYtd,
+    symbol.otherRealizedYtd,
+  ])
+  const totalCurrentUnrealized = sumExactNumbers([
+    symbol.stockCurrentUnrealized,
+    symbol.optionCurrentUnrealized,
+    symbol.otherCurrentUnrealized,
+  ])
   if (
-    symbol.totalYtdMtm !==
-      symbol.stockYtdMtm + symbol.optionYtdMtm + symbol.otherYtdMtm ||
-    symbol.totalRealizedYtd !==
-      symbol.stockRealizedYtd + symbol.optionRealizedYtd ||
-    symbol.totalCurrentUnrealized !==
-      symbol.stockCurrentUnrealized + symbol.optionCurrentUnrealized
+    totalYtdMtm == null ||
+    totalRealizedYtd == null ||
+    totalCurrentUnrealized == null ||
+    symbol.totalYtdMtm !== totalYtdMtm ||
+    symbol.totalRealizedYtd !== totalRealizedYtd ||
+    symbol.totalCurrentUnrealized !== totalCurrentUnrealized
   ) {
     return false
   }
@@ -553,7 +589,12 @@ function validateReconciliation(
     isFiniteNumber(tolerance)
   if (
     hasCompleteNumericEvidence &&
-    Math.abs(reportedValue - calculatedValue - difference) > tolerance
+    !reconciliationDifferenceMatches(
+      reportedValue,
+      calculatedValue,
+      difference,
+      tolerance,
+    )
   ) {
     return false
   }
@@ -566,9 +607,12 @@ function validateReconciliation(
       !isFiniteNumber(value.tolerance) ||
       value.sourceRefs.length === 0 ||
       Math.abs(value.difference) > value.tolerance ||
-      Math.abs(
-        value.reportedValue - value.calculatedValue - value.difference,
-      ) > value.tolerance ||
+      !reconciliationDifferenceMatches(
+        value.reportedValue,
+        value.calculatedValue,
+        value.difference,
+        value.tolerance,
+      ) ||
       (status === 'PASS_EXACT' && value.difference !== 0) ||
       (status === 'PASS_ROUNDED' && value.difference === 0)
     ) {
@@ -583,9 +627,12 @@ function validateReconciliation(
           !isFiniteNumber(value.calculatedValue) ||
           !isFiniteNumber(value.difference) ||
           !isFiniteNumber(value.tolerance) ||
-          Math.abs(
-            value.reportedValue - value.calculatedValue - value.difference,
-          ) > value.tolerance ||
+          !reconciliationDifferenceMatches(
+            value.reportedValue,
+            value.calculatedValue,
+            value.difference,
+            value.tolerance,
+          ) ||
           (value.id !== 'nav_bridge' &&
             Math.abs(value.difference) <= value.tolerance)))
     ) {
@@ -670,24 +717,36 @@ function validateReport(
   if (!isDenseArray(value.symbols, MAX_WORKER_REPORT_SYMBOLS, budget)) return false
   const symbols = new Set<string>()
   const symbolsByName = new Map<string, SymbolPnl>()
-  let summedStockPnl = 0
-  let summedOptionPnl = 0
-  let summedOtherPnl = 0
+  const stockPnlValues: number[] = []
+  const optionPnlValues: number[] = []
+  const otherPnlValues: number[] = []
   for (let index = 0; index < value.symbols.length; index += 1) {
     const symbol = value.symbols[index]
     if (!validateSymbol(symbol, budget) || symbols.has(symbol.symbol)) return false
     symbols.add(symbol.symbol)
     symbolsByName.set(symbol.symbol, symbol)
-    summedStockPnl += symbol.stockYtdMtm
-    summedOptionPnl += symbol.optionYtdMtm
-    summedOtherPnl += symbol.otherYtdMtm
+    stockPnlValues.push(symbol.stockYtdMtm)
+    optionPnlValues.push(symbol.optionYtdMtm)
+    otherPnlValues.push(symbol.otherYtdMtm)
   }
+  const summedStockPnl = sumExactNumbers(stockPnlValues)
+  const summedOptionPnl = sumExactNumbers(optionPnlValues)
+  const summedOtherPnl = sumExactNumbers(otherPnlValues)
+  const summedAllAssets =
+    summedStockPnl != null &&
+    summedOptionPnl != null &&
+    summedOtherPnl != null
+      ? sumExactNumbers([summedStockPnl, summedOptionPnl, summedOtherPnl])
+      : undefined
   if (
+    summedStockPnl == null ||
+    summedOptionPnl == null ||
+    summedOtherPnl == null ||
+    summedAllAssets == null ||
     value.stockPnl !== summedStockPnl ||
     value.optionPnl !== summedOptionPnl ||
     value.otherPnl !== summedOtherPnl ||
-    value.parsedAllAssetsYtdMtm !==
-      summedStockPnl + summedOptionPnl + summedOtherPnl
+    value.parsedAllAssetsYtdMtm !== summedAllAssets
   ) {
     return false
   }

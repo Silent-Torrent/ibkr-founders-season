@@ -49,7 +49,14 @@ try {
   writeFileSync(join(output, 'package.json'), '{"type":"commonjs"}\n')
   const require = createRequire(import.meta.url)
   const { parseIbkrActivityStatement: parseIbkrActivityStatementRaw } = require(join(output, 'lib/ibkr.js'))
-  const { parseDateFlexible, toIsoDate } = require(join(output, 'lib/csv.js'))
+  const {
+    parseCsvRows,
+    parseDateFlexible,
+    parseNumber,
+    parsePercent,
+    sumExactNumbers,
+    toIsoDate,
+  } = require(join(output, 'lib/csv.js'))
   const {
     PARSER_DIAGNOSTIC_CODES,
     formatParserDiagnostic,
@@ -64,10 +71,154 @@ try {
     'utf8',
   )
 
+  const encodeCsvCell = (value) =>
+    /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
+  const dropSectionColumn = (fixture, section, columnName) => {
+    let columnIndex
+    return parseCsvRows(fixture)
+      .map((row) => {
+        if (row[0] !== section) return row
+        if (row[1]?.toUpperCase() === 'HEADER') {
+          columnIndex = row.indexOf(columnName)
+        }
+        if (columnIndex == null || columnIndex < 0) return row
+        const next = [...row]
+        next.splice(columnIndex, 1)
+        return next
+      })
+      .map((row) => row.map(encodeCsvCell).join(','))
+      .join('\n')
+  }
+  const addColumnToFirstSectionBlock = (
+    fixture,
+    section,
+    columnName,
+    value,
+  ) => {
+    let insideFirstBlock = false
+    let firstHeaderSeen = false
+    return parseCsvRows(fixture)
+      .map((row) => {
+        if (row[0] !== section) return row
+        if (row[1]?.toUpperCase() === 'HEADER') {
+          if (firstHeaderSeen) {
+            insideFirstBlock = false
+            return row
+          }
+          firstHeaderSeen = true
+          insideFirstBlock = true
+          return [...row, columnName]
+        }
+        return insideFirstBlock ? [...row, value] : row
+      })
+      .map((row) => row.map(encodeCsvCell).join(','))
+      .join('\n')
+  }
+  const buildWideNavFixture = (
+    sectionName,
+    {
+      cash = '17113.340479',
+      slbCashCollateral = '0.000000',
+      stock = '16500.250000',
+      options = '135.666865',
+      interestAccruals = '1.111111',
+      total = '33750.368455',
+    } = {},
+  ) => {
+    const wideRows = [
+      `${sectionName},Header,Cash,SLB Cash Collateral,Stock,SLB Direct Securities Borrowed,SLB Direct Securities Lent,Options,Commodities,Bonds,Notes,Interest Accruals,Soft Dollars,Dividend Accruals,Total`,
+      `${sectionName},Data,${cash},${slbCashCollateral},${stock},0.000000,0.000000,${options},0.000000,0.000000,0.000000,${interestAccruals},0.000000,0.000000,${total}`,
+      `${sectionName},Header,Time Weighted Rate of Return`,
+      `${sectionName},Data,7.654321%`,
+    ]
+    let inserted = false
+    const rows = []
+    for (const line of currentSchemaFixture.split('\n')) {
+      if (line.startsWith('Net Asset Value,')) {
+        if (!inserted) {
+          rows.push(...wideRows)
+          inserted = true
+        }
+        continue
+      }
+      rows.push(line)
+    }
+    return rows.join('\n')
+  }
+
   assert(toIsoDate(parseDateFlexible('2024-02-29')) === '2024-02-29', 'A valid leap date was rejected.')
   assert(parseDateFlexible('2026-02-29') === undefined, 'A nonexistent numeric date was normalized instead of rejected.')
   assert(toIsoDate(parseDateFlexible('February 29, 2024')) === '2024-02-29', 'A valid English leap date was rejected.')
   assert(parseDateFlexible('February 30, 2026') === undefined, 'A nonexistent English date was normalized instead of rejected.')
+
+  const supportedNumericForms = [
+    ['1,234.567890', 1234.56789],
+    ['(1,234.50)', -1234.5],
+    ['-1,234.50', -1234.5],
+    ['+1,234.50', 1234.5],
+    ['0', 0],
+    ['(0)', 0],
+    ['-0', 0],
+    ['9007199254740991', Number.MAX_SAFE_INTEGER],
+  ]
+  for (const [raw, expected] of supportedNumericForms) {
+    assert(parseNumber(raw) === expected, `A supported numeric form was rejected: ${raw}`)
+  }
+  const rejectedNumericForms = [
+    '1USD2',
+    'C1N2Y',
+    '1e3',
+    '1 2',
+    '1,23',
+    '(1,234.50',
+    '1,234.50)',
+    '( 1,234.50 )',
+    '(1 )',
+    '$',
+    'USD',
+    '$1,234.50',
+    'USD 1,234.50',
+    '1,234.50 USD',
+    '7.654321%',
+    '($-1)',
+    '(USD -1)',
+    '$1%',
+    '9007199254740992',
+    '9007199254740990.5',
+    '999999999999999.123456',
+    `0.${'0'.repeat(400)}1`,
+  ]
+  for (const raw of rejectedNumericForms) {
+    assert(parseNumber(raw) === undefined, `Malformed numeric text was accepted: ${raw}`)
+  }
+  const supportedPercentForms = [
+    ['7.654321%', 0.07654321],
+    ['7.654321', 0.07654321],
+    ['-7.5%', -0.075],
+  ]
+  for (const [raw, expected] of supportedPercentForms) {
+    assert(parsePercent(raw) === expected, `A supported percent form was rejected: ${raw}`)
+  }
+  const rejectedPercentForms = ['7%%', '$1%', 'USD 1%', '1% USD', '(7.5)%', '(7.5%)']
+  for (const raw of rejectedPercentForms) {
+    assert(parsePercent(raw) === undefined, `Malformed percent text was accepted: ${raw}`)
+  }
+  assert(
+    sumExactNumbers([0.1, 0.2]) === 0.3,
+    'Ordinary decimal addition used binary floating-point drift.',
+  )
+  assert(
+    sumExactNumbers([Number.MAX_SAFE_INTEGER, 2, -Number.MAX_SAFE_INTEGER]) === 2,
+    'Large-value cancellation lost an exact unit.',
+  )
+  assert(
+    sumExactNumbers([Number.MAX_SAFE_INTEGER, 1]) === undefined,
+    'An unrepresentable aggregate crossed the safe output boundary.',
+  )
+  assert(
+    !Object.is(sumExactNumbers([-0, 0]), -0),
+    'Exact decimal aggregation retained negative zero.',
+  )
 
   for (const code of PARSER_DIAGNOSTIC_CODES) {
     const diagnostic =
@@ -157,6 +308,103 @@ try {
       currentReport.parserFacts.seasonReturnConflict === false,
     'The complete current-schema fixture has incorrect parser facts.',
   )
+  const currentOtherSymbol = currentReport.symbols.find(
+    (symbol) => symbol.symbol === 'XTS.USD',
+  )
+  assert(
+    currentOtherSymbol?.otherRealizedYtd === 10.10101 &&
+      currentOtherSymbol.otherCurrentUnrealized === -4.040404 &&
+      currentOtherSymbol.totalRealizedYtd === 10.10101 &&
+      currentOtherSymbol.totalCurrentUnrealized === -4.040404,
+    'Other realized/current-unrealized values were dropped or misclassified.',
+  )
+  assert(
+    sumExactNumbers(
+      currentReport.symbols.map((symbol) => symbol.totalRealizedYtd),
+    ) === 411.21212 &&
+      sumExactNumbers(
+        currentReport.symbols.map((symbol) => symbol.totalCurrentUnrealized),
+      ) === 95.515152,
+    'The all-underlying realized/current-unrealized explanation totals are incorrect.',
+  )
+
+  const stockDetailTemplate = currentSchemaFixture
+    .split('\n')
+    .find((line) =>
+      line.startsWith('Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,'),
+    )
+  const allAssetsYtdRow = currentSchemaFixture
+    .split('\n')
+    .find((line) =>
+      line.startsWith(
+        'Mark-to-Market Performance Summary,Data,Total (All Assets),',
+      ),
+    )
+  assert(
+    stockDetailTemplate && allAssetsYtdRow,
+    'The punctuation-identity fixture is incomplete.',
+  )
+  const punctuationIdentityResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      allAssetsYtdRow,
+      `${stockDetailTemplate.replace(',ZZFICTA,', ',BRK.B,')}\n${stockDetailTemplate.replace(',ZZFICTA,', ',BRK-B,')}\n${allAssetsYtdRow}`,
+    ),
+  )
+  assert(
+    punctuationIdentityResult.report &&
+      !hasDiagnostic(punctuationIdentityResult, 'accounting_section_conflict') &&
+      punctuationIdentityResult.report.symbols.some(
+        (symbol) => symbol.symbol === 'BRK.B',
+      ) &&
+      punctuationIdentityResult.report.symbols.some(
+        (symbol) => symbol.symbol === 'BRK-B',
+      ),
+    'Distinct punctuated symbols collapsed into one accounting identity.',
+  )
+
+  const realizedOtherTemplate = currentSchemaFixture
+    .split('\n')
+    .find((line) =>
+      line.startsWith(
+        'Realized & Unrealized Performance Summary,Data,Forex,XTS.USD,',
+      ),
+    )
+  const realizedAllAssetsRow = currentSchemaFixture
+    .split('\n')
+    .find((line) =>
+      line.startsWith(
+        'Realized & Unrealized Performance Summary,Total,Total (All Assets),',
+      ),
+    )
+  assert(
+    realizedOtherTemplate && realizedAllAssetsRow,
+    'The realized-only Other fixture is incomplete.',
+  )
+  const closedCfdRow = realizedOtherTemplate
+    .replace(',Forex,XTS.USD,', ',Equity CFDs,CLOSED.CFD,')
+    .replaceAll('10.101010', '5.000000')
+    .replaceAll('-4.040404', '0.000000')
+    .replace('6.060606', '5.000000')
+  const adjustedRealizedAllAssets = realizedAllAssetsRow
+    .replace('461.545453', '466.545453')
+    .replace('411.212120', '416.212120')
+    .replace('506.727272', '511.727272')
+  const realizedOnlyOtherResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      realizedAllAssetsRow,
+      `${closedCfdRow}\n${adjustedRealizedAllAssets}`,
+    ),
+  )
+  const closedCfd = realizedOnlyOtherResult.report?.symbols.find(
+    (symbol) => symbol.symbol === 'CLOSED.CFD',
+  )
+  assert(
+    realizedOnlyOtherResult.errors.length === 0 &&
+      closedCfd?.totalYtdMtm === 0 &&
+      closedCfd.otherRealizedYtd === 5 &&
+      closedCfd.totalRealizedYtd === 5,
+    'A realized-only CFD/Other instrument was dropped from the explanation ledger.',
+  )
 
   const withoutRealizedSection = currentSchemaFixture
     .split('\n')
@@ -169,6 +417,934 @@ try {
         (warning) => warning.code === 'realized_section_missing',
       ),
     'A missing realized/unrealized section was not preserved as a fixed parser fact and warning.',
+  )
+
+  const misleadingSummaryResult = parseIbkrActivityStatement(
+    `${withoutRealizedSection}\nSummary,Header,Field Name,Field Value\nSummary,Data,Not a realized section,0\n`,
+  )
+  assert(
+    misleadingSummaryResult.report?.parserFacts.realizedSectionMissing === true &&
+      misleadingSummaryResult.warnings.some(
+        (warning) => warning.code === 'realized_section_missing',
+      ),
+    'A generic Summary section impersonated the realized/unrealized section.',
+  )
+
+  const misleadingMtmSection = currentSchemaFixture.replaceAll(
+    'Mark-to-Market Performance Summary',
+    'Summary',
+  )
+  const misleadingMtmResult = parseIbkrActivityStatement(misleadingMtmSection)
+  assert(
+    hasDiagnostic(misleadingMtmResult, 'mtm_section_missing') && !misleadingMtmResult.report,
+    'A generic Summary section impersonated the YTD MTM section.',
+  )
+
+  const officialInBaseFixture = currentSchemaFixture
+    .replaceAll(
+      'Mark-to-Market Performance Summary',
+      'Mark-to-Market Performance Summary in Base',
+    )
+    .replaceAll(
+      'Realized & Unrealized Performance Summary',
+      'Realized & Unrealized Performance Summary in Base',
+    )
+  const officialInBaseResult = parseIbkrActivityStatement(officialInBaseFixture)
+  assert(
+    officialInBaseResult.errors.length === 0 &&
+      officialInBaseResult.report?.seasonPnl === 740.123456 &&
+      officialInBaseResult.report.parserFacts.realizedSectionMissing === false,
+    'Registered official in-Base accounting section titles were rejected.',
+  )
+
+  const officialNavTitleResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replaceAll(
+      'Net Asset Value',
+      'Net Asset Value (NAV) in Base Currency',
+    ),
+  )
+  assert(
+    officialNavTitleResult.report?.netLiquidationValue === 33750.368455 &&
+      officialNavTitleResult.report.reconciliations.find(
+        (check) => check.id === 'nav_bridge',
+      )?.status === 'PASS_EXACT',
+    'The registered official NAV in-Base title was rejected.',
+  )
+
+  const codedBosFixture = `MTMP,BOS,MTM Performance Summary in Base\nFIFO,BOS,FIFO Performance Summary in Base\n${currentSchemaFixture
+    .replaceAll('Mark-to-Market Performance Summary', 'MTMP')
+    .replaceAll('Realized & Unrealized Performance Summary', 'FIFO')}`
+  const codedBosResult = parseIbkrActivityStatement(codedBosFixture)
+  assert(
+    codedBosResult.errors.length === 0 &&
+      codedBosResult.report?.seasonPnl === 740.123456 &&
+      codedBosResult.report.parserFacts.realizedSectionMissing === false,
+    'Known IBKR section codes were overridden by variable BOS descriptions.',
+  )
+  const codedPluiResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replaceAll('Mark-to-Market Performance Summary', 'PLUI'),
+  )
+  assert(
+    codedPluiResult.errors.length === 0 &&
+      codedPluiResult.report?.seasonPnl === 740.123456,
+    'The registered PLUI YTD section code was rejected.',
+  )
+  for (const ytdSectionName of [
+    'Mark-to-Market Performance Summary in Base',
+    'Month & Year to Date Performance Summary',
+    'Month & Year to Date Performance Summary in Base',
+    'Month and Year to Date Performance Summary',
+    'Month and Year to Date Performance Summary in Base',
+    'Profit and Loss by Underlying Instruments',
+  ]) {
+    const namedYtdResult = parseIbkrActivityStatement(
+      currentSchemaFixture.replaceAll(
+        'Mark-to-Market Performance Summary',
+        ytdSectionName,
+      ),
+    )
+    assert(
+      namedYtdResult.errors.length === 0 &&
+        namedYtdResult.report?.seasonPnl === 740.123456,
+      `A registered YTD section name was rejected: ${ytdSectionName}`,
+    )
+  }
+  for (const realizedSectionName of [
+    'Realized & Unrealized Performance Summary in Base',
+    'Realized and Unrealized Performance Summary',
+    'Realized and Unrealized Performance Summary in Base',
+  ]) {
+    const namedRealizedResult = parseIbkrActivityStatement(
+      currentSchemaFixture.replaceAll(
+        'Realized & Unrealized Performance Summary',
+        realizedSectionName,
+      ),
+    )
+    assert(
+      namedRealizedResult.errors.length === 0 &&
+        namedRealizedResult.report?.parserFacts.realizedSectionMissing === false,
+      `A registered realized/unrealized section name was rejected: ${realizedSectionName}`,
+    )
+  }
+  for (const navCode of ['EQUT', 'EQUS']) {
+    const codedNavResult = parseIbkrActivityStatement(
+      currentSchemaFixture.replaceAll('Net Asset Value', navCode),
+    )
+    assert(
+      codedNavResult.errors.length === 0 &&
+        codedNavResult.report?.netLiquidationValue === 33750.368455,
+      `The registered ${navCode} NAV section code was rejected.`,
+    )
+  }
+  for (const wideNavSection of [
+    'EQUT',
+    'EQUS',
+    'Net Asset Value (NAV) Summary in Base',
+  ]) {
+    const wideNavResult = parseIbkrActivityStatement(
+      buildWideNavFixture(wideNavSection),
+    )
+    assert(
+      wideNavResult.errors.length === 0 &&
+        wideNavResult.report?.netLiquidationValue === 33750.368455 &&
+        wideNavResult.report.cashValue === 17113.340479,
+      `The official wide ${wideNavSection} NAV layout was rejected: ${diagnosticsText(wideNavResult)}`,
+    )
+  }
+  const wideNavWithSlbResult = parseIbkrActivityStatement(
+    buildWideNavFixture('EQUS', {
+      slbCashCollateral: '10.000000',
+      stock: '16490.250000',
+    }),
+  )
+  assert(
+    wideNavWithSlbResult.report?.cashValue === 17113.340479,
+    'Wide NAV SLB Cash Collateral was published as ordinary Cash.',
+  )
+  const wideNavMismatchResult = parseIbkrActivityStatement(
+    buildWideNavFixture('EQUS', { stock: '16501.250000' }),
+  )
+  assert(
+    hasDiagnostic(wideNavMismatchResult, 'accounting_section_conflict') &&
+      !wideNavMismatchResult.report,
+    'A wide NAV component sum that differed from Total was accepted.',
+  )
+  const wideNavUnknownFieldResult = parseIbkrActivityStatement(
+    buildWideNavFixture('EQUS')
+      .replace('Dividend Accruals,Total', 'Dividend Accruals,Mystery Asset,Total')
+      .replace('1.111111,33750.368455', '1.111111,0.000000,33750.368455'),
+  )
+  assert(
+    hasDiagnostic(wideNavUnknownFieldResult, 'accounting_section_conflict') &&
+      !wideNavUnknownFieldResult.report,
+    'An unregistered wide NAV field was silently ignored.',
+  )
+  const wideNavMissingComponentResult = parseIbkrActivityStatement(
+    dropSectionColumn(
+      buildWideNavFixture('EQUS', { stock: '16635.916865' }),
+      'EQUS',
+      'Options',
+    ),
+  )
+  assert(
+    hasDiagnostic(wideNavMissingComponentResult, 'accounting_section_conflict') &&
+      !wideNavMissingComponentResult.report,
+    'A missing wide NAV component was treated as absent zero and compensated in another asset.',
+  )
+  const withWideNavMetadata = (fixture, field, value) =>
+    fixture
+      .replace('EQUS,Header,Cash,', `EQUS,Header,${field},Cash,`)
+      .replace('EQUS,Data,17113.340479,', `EQUS,Data,${value},17113.340479,`)
+  for (const [field, value] of [
+    ['Account ID', 'SYNTHETIC_ACCOUNT_2026_A'],
+    ['Report Date', '2026-08-15'],
+    ['Model', ''],
+  ]) {
+    const matchingWideMetadataResult = parseIbkrActivityStatement(
+      withWideNavMetadata(buildWideNavFixture('EQUS'), field, value),
+    )
+    assert(
+      matchingWideMetadataResult.errors.length === 0 &&
+        matchingWideMetadataResult.report,
+      `Matching wide NAV ${field} metadata was rejected: ${diagnosticsText(matchingWideMetadataResult)}`,
+    )
+  }
+  const mismatchingWideAccountResult = parseIbkrActivityStatement(
+    withWideNavMetadata(
+      buildWideNavFixture('EQUS'),
+      'Account ID',
+      'SYNTHETIC_DIFFERENT_ACCOUNT',
+    ),
+  )
+  assert(
+    hasDiagnostic(mismatchingWideAccountResult, 'multi_account') &&
+      !mismatchingWideAccountResult.report,
+    'A wide NAV Account ID that disagreed with Account Information was ignored.',
+  )
+  const mismatchingWideDateResult = parseIbkrActivityStatement(
+    withWideNavMetadata(
+      buildWideNavFixture('EQUS'),
+      'Report Date',
+      '2025-12-31',
+    ),
+  )
+  assert(
+    hasDiagnostic(mismatchingWideDateResult, 'accounting_section_conflict') &&
+      !mismatchingWideDateResult.report,
+    'A wide NAV Report Date that disagreed with the statement end was ignored.',
+  )
+  const slicedWideModelResult = parseIbkrActivityStatement(
+    withWideNavMetadata(
+      buildWideNavFixture('EQUS'),
+      'Model',
+      'GROWTH_MODEL',
+    ),
+  )
+  assert(
+    hasDiagnostic(slicedWideModelResult, 'accounting_section_conflict') &&
+      !slicedWideModelResult.report,
+    'A model-sliced wide NAV was treated as the full account identity.',
+  )
+  for (const navSectionName of [
+    'NAV Summary',
+    'Net Asset Value (NAV) in Base Currency',
+    'Net Asset Value (NAV) Summary in Base',
+  ]) {
+    const namedNavResult = parseIbkrActivityStatement(
+      currentSchemaFixture.replaceAll('Net Asset Value', navSectionName),
+    )
+    assert(
+      namedNavResult.errors.length === 0 &&
+        namedNavResult.report?.netLiquidationValue === 33750.368455,
+      `A registered NAV section name was rejected: ${navSectionName}`,
+    )
+  }
+  for (const [sectionName, code] of [
+    ['Account Information', 'ACCT'],
+    ['Cash Report', 'CRTT'],
+    ['Cash Report', 'CRTS'],
+    ['Trades', 'TRNT'],
+    ['Trades', 'TRNS'],
+    ['Open Positions', 'POST'],
+    ['Open Positions', 'POSS'],
+  ]) {
+    const codedSectionResult = parseIbkrActivityStatement(
+      currentSchemaFixture.replaceAll(sectionName, code),
+    )
+    assert(
+      codedSectionResult.errors.length === 0 && codedSectionResult.report,
+      `A registered IBKR section code was rejected: ${code}`,
+    )
+  }
+  const singularLifecycleResult = parseIbkrActivityStatement(
+    sample.replaceAll(
+      'Options Exercises, Assignments and Expirations',
+      'Option Exercises, Assignments and Expirations',
+    ),
+  )
+  assert(
+    singularLifecycleResult.errors.length === 0 &&
+      singularLifecycleResult.report?.events.length === 5,
+    'The registered singular option-lifecycle section name was rejected.',
+  )
+
+  const unknownBosImpersonation = `ZZZZ,BOS,Mark-to-Market Performance Summary\n${currentSchemaFixture.replaceAll(
+    'Mark-to-Market Performance Summary',
+    'ZZZZ',
+  )}`
+  assert(
+    hasDiagnostic(
+      parseIbkrActivityStatement(unknownBosImpersonation),
+      'mtm_section_missing',
+    ),
+    'An unknown BOS section code impersonated the registered MTM section.',
+  )
+
+  const secondaryYtdSection = currentSchemaFixture
+    .split('\n')
+    .filter((line) => line.startsWith('Mark-to-Market Performance Summary,'))
+    .join('\n')
+    .replaceAll(
+      'Mark-to-Market Performance Summary',
+      'Month & Year to Date Performance Summary',
+    )
+  const coexistingYtdResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${secondaryYtdSection}\n`,
+  )
+  assert(
+    hasDiagnostic(coexistingYtdResult, 'accounting_section_conflict') &&
+      !coexistingYtdResult.report,
+    'Multiple alternative YTD sections were guessed between instead of failing closed.',
+  )
+  const conflictingSecondaryYtd = secondaryYtdSection.replace(
+    ',740.123456,',
+    ',741.123456,',
+  )
+  const conflictingYtdSectionsResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${conflictingSecondaryYtd}\n`,
+  )
+  assert(
+    hasDiagnostic(conflictingYtdSectionsResult, 'accounting_section_conflict') &&
+      !conflictingYtdSectionsResult.report,
+    'Conflicting alternative YTD sections were accepted.',
+  )
+
+  const duplicatedRealizedSection = currentSchemaFixture
+    .split('\n')
+    .filter((line) => line.startsWith('Realized & Unrealized Performance Summary,'))
+    .join('\n')
+    .replaceAll(
+      'Realized & Unrealized Performance Summary',
+      'Realized & Unrealized Performance Summary in Base',
+    )
+  assert(
+    hasDiagnostic(
+      parseIbkrActivityStatement(
+        `${currentSchemaFixture}\n${duplicatedRealizedSection}\n`,
+      ),
+      'accounting_section_conflict',
+    ),
+    'Two alternative realized/unrealized sections were silently combined.',
+  )
+
+  const exactMtmRows = currentSchemaFixture
+    .split('\n')
+    .filter((line) => line.startsWith('Mark-to-Market Performance Summary,'))
+    .join('\n')
+  assert(
+    hasDiagnostic(
+      parseIbkrActivityStatement(`${currentSchemaFixture}\n${exactMtmRows}\n`),
+      'accounting_section_conflict',
+    ),
+    'An exact duplicate MTM section was merged and counted twice.',
+  )
+  const exactRealizedRows = currentSchemaFixture
+    .split('\n')
+    .filter((line) =>
+      line.startsWith('Realized & Unrealized Performance Summary,'),
+    )
+    .join('\n')
+  assert(
+    hasDiagnostic(
+      parseIbkrActivityStatement(
+        `${currentSchemaFixture}\n${exactRealizedRows}\n`,
+      ),
+      'accounting_section_conflict',
+    ),
+    'An exact duplicate realized/unrealized section was counted twice.',
+  )
+
+  const mtmHeader = currentSchemaFixture
+    .split('\n')
+    .find((line) =>
+      line.startsWith('Mark-to-Market Performance Summary,Header,'),
+    )
+  const firstMtmDataRow = currentSchemaFixture
+    .split('\n')
+    .find((line) =>
+      line.startsWith('Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,'),
+    )
+  assert(mtmHeader && firstMtmDataRow, 'The duplicate-column test fixture is incomplete.')
+  for (const [firstValue, secondValue] of [
+    ['208.863355', '1USD2'],
+    ['1USD2', '208.863355'],
+  ]) {
+    const firstRow = firstMtmDataRow.replace(',208.863355,', `,${firstValue},`)
+    const duplicateNumericColumnFixture = currentSchemaFixture.replace(
+      `${mtmHeader}\n${firstMtmDataRow}`,
+      `${mtmHeader},Mark-to-Market P/L Total\n${firstRow}${secondValue}`,
+    )
+    const duplicateNumericColumnResult = parseIbkrActivityStatement(
+      duplicateNumericColumnFixture,
+    )
+    assert(
+      hasDiagnostic(duplicateNumericColumnResult, 'accounting_value_invalid') &&
+        !duplicateNumericColumnResult.report,
+      'A duplicate recognized numeric column was resolved by header order.',
+    )
+  }
+
+  const duplicateIdentityColumnFixture = currentSchemaFixture.replace(
+    mtmHeader,
+    `${mtmHeader},Symbol`,
+  )
+  assert(
+    hasDiagnostic(
+      parseIbkrActivityStatement(duplicateIdentityColumnFixture),
+      'accounting_section_conflict',
+    ),
+    'A duplicate Symbol identity column was resolved by header order.',
+  )
+
+  const trailingDigitHeaderResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replaceAll(
+      'Mark-to-Market P/L Total',
+      'Mark-to-Market P/L Total 2',
+    ),
+  )
+  assert(
+    hasDiagnostic(trailingDigitHeaderResult, 'mtm_section_missing') &&
+      !trailingDigitHeaderResult.report,
+    'An unregistered raw header ending in a digit impersonated a known field.',
+  )
+
+  const removeMtmAmountCoherently = (fixture, removedAmount) => {
+    if (removedAmount === 208.863355) {
+      return fixture
+        .replace(',740.123456,', ',531.260101,')
+        .replace('Change in NAV,Data,Mark-to-Market,742.343458', 'Change in NAV,Data,Mark-to-Market,533.480103')
+        .replace('Total P/L for Statement Period,,,,,,,,,,,,750.243455,', 'Total P/L for Statement Period,,,,,,,,,,,,541.380100,')
+        .replace('Net Asset Value,Data,Stock,10000.000000,16500.250000,0.000000,16500.250000,6500.250000', 'Net Asset Value,Data,Stock,10000.000000,16291.386645,0.000000,16291.386645,6291.386645')
+        .replace('Net Asset Value,Data,Total,25000.125000,33750.368455,0.000000,33750.368455,8750.243455', 'Net Asset Value,Data,Total,25000.125000,33541.505100,0.000000,33541.505100,8541.380100')
+        .replace('Change in NAV,Data,Ending Value,33750.368455', 'Change in NAV,Data,Ending Value,33541.505100')
+    }
+    if (removedAmount === 167.622477) {
+      return fixture
+        .replace(',740.123456,', ',572.500979,')
+        .replace('Change in NAV,Data,Mark-to-Market,742.343458', 'Change in NAV,Data,Mark-to-Market,574.720981')
+        .replace('Total P/L for Statement Period,,,,,,,,,,,,750.243455,', 'Total P/L for Statement Period,,,,,,,,,,,,582.620978,')
+        .replace('Net Asset Value,Data,Stock,10000.000000,16500.250000,0.000000,16500.250000,6500.250000', 'Net Asset Value,Data,Stock,10000.000000,16332.627523,0.000000,16332.627523,6332.627523')
+        .replace('Net Asset Value,Data,Total,25000.125000,33750.368455,0.000000,33750.368455,8750.243455', 'Net Asset Value,Data,Total,25000.125000,33582.745978,0.000000,33582.745978,8582.620978')
+        .replace('Change in NAV,Data,Ending Value,33750.368455', 'Change in NAV,Data,Ending Value,33582.745978')
+    }
+    throw new Error(`Unsupported coherent MTM reduction: ${removedAmount}`)
+  }
+
+  for (const placeholder of ['', '-', '--']) {
+    const missingRequiredMtm = removeMtmAmountCoherently(
+      currentSchemaFixture.replace(',208.863355,', `,${placeholder},`),
+      208.863355,
+    )
+    const missingRequiredMtmResult = parseIbkrActivityStatement(missingRequiredMtm)
+    assert(
+      hasDiagnostic(missingRequiredMtmResult, 'accounting_value_invalid') &&
+        !missingRequiredMtmResult.report,
+      `A required YTD MTM placeholder was treated as zero: ${JSON.stringify(placeholder)}`,
+    )
+  }
+
+  const mismatchingMtmComponentsResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace('180.123456,20.250000', '181.123456,20.250000'),
+  )
+  assert(
+    hasDiagnostic(mismatchingMtmComponentsResult, 'accounting_section_conflict') &&
+      !mismatchingMtmComponentsResult.report,
+    'An MTM row whose components did not equal its broker total was accepted.',
+  )
+  const returnTaggedAccountingResult = parseIbkrActivityStatement(
+    addColumnToFirstSectionBlock(
+      currentSchemaFixture,
+      'Mark-to-Market Performance Summary',
+      'Time Weighted Rate of Return',
+      '7.654321%',
+    ).replace('180.123456,20.250000', '181.123456,20.250000'),
+  )
+  assert(
+    hasDiagnostic(returnTaggedAccountingResult, 'accounting_section_conflict') &&
+      !returnTaggedAccountingResult.report,
+    'An added return column made accounting rows bypass component validation.',
+  )
+
+  for (const partialHeaderMutation of [
+    mtmHeader.replace('Mark-to-Market P/L Total', 'Mark-to-Market P/L Total 2'),
+    mtmHeader.replace(',Symbol,', ',Symbol 2,'),
+    mtmHeader.replace(',Mark-to-Market P/L Other,', ',Mark-to-Market P/L Other 2,'),
+  ]) {
+    const partialHeaderFixture = removeMtmAmountCoherently(
+      currentSchemaFixture.replace(mtmHeader, partialHeaderMutation),
+      167.622477,
+    )
+    const partialHeaderResult = parseIbkrActivityStatement(partialHeaderFixture)
+    assert(
+      hasDiagnostic(partialHeaderResult, 'accounting_section_conflict') &&
+        !partialHeaderResult.report,
+      'A partially drifted repeated MTM header silently dropped a complete asset block.',
+    )
+  }
+
+  const coherentlyRemoveRealizedDetail = (placeholder, metric) => {
+    if (metric === 'realized') {
+      return currentSchemaFixture
+        .replace(',150.111111,100.222222,', `,${placeholder},100.222222,`)
+        .replace('Total Stocks,,0.000000,150.111111,-50.333333,0.000000,0.000000,99.777778,100.222222,-30.444444,0.000000,0.000000,69.777778,169.555556', 'Total Stocks,,0.000000,0.000000,-50.333333,0.000000,0.000000,-50.333333,100.222222,-30.444444,0.000000,0.000000,69.777778,19.444445')
+        .replace('Total (All Assets),,0.000000,461.545453,-50.333333,0.000000,0.000000,411.212120,140.888888,-45.373736,0.000000,0.000000,95.515152,506.727272', 'Total (All Assets),,0.000000,311.434342,-50.333333,0.000000,0.000000,261.101009,140.888888,-45.373736,0.000000,0.000000,95.515152,356.616161')
+    }
+    return currentSchemaFixture
+      .replace(',150.111111,100.222222,0.000000,0.000000,0.000000,100.222222,250.333333,', `,150.111111,100.222222,0.000000,0.000000,0.000000,${placeholder},250.333333,`)
+      .replace('Total Stocks,,0.000000,150.111111,-50.333333,0.000000,0.000000,99.777778,100.222222,-30.444444,0.000000,0.000000,69.777778,169.555556', 'Total Stocks,,0.000000,150.111111,-50.333333,0.000000,0.000000,99.777778,0.000000,-30.444444,0.000000,0.000000,-30.444444,69.333334')
+      .replace('Total (All Assets),,0.000000,461.545453,-50.333333,0.000000,0.000000,411.212120,140.888888,-45.373736,0.000000,0.000000,95.515152,506.727272', 'Total (All Assets),,0.000000,461.545453,-50.333333,0.000000,0.000000,411.212120,40.666666,-45.373736,0.000000,0.000000,-4.707070,406.505050')
+  }
+
+  for (const metric of ['realized', 'unrealized']) {
+    for (const placeholder of ['', '-', '--']) {
+      const missingDetailResult = parseIbkrActivityStatement(
+        coherentlyRemoveRealizedDetail(placeholder, metric),
+      )
+      assert(
+        hasDiagnostic(missingDetailResult, 'accounting_value_invalid') &&
+          !missingDetailResult.report,
+        `A required ${metric} placeholder was silently dropped: ${JSON.stringify(placeholder)}`,
+      )
+    }
+  }
+
+  for (const placeholder of ['', '-', '--']) {
+    const missingStatementComponent = currentSchemaFixture
+      .replace(',,,,,,,,,,12.340001,', `,,,,,,,,,,${placeholder},`)
+      .replace('Change in NAV,Data,Interest,12.340001', 'Change in NAV,Data,Interest,0.000000')
+      .replace('Total P/L for Statement Period,,,,,,,,,,,,750.243455,', 'Total P/L for Statement Period,,,,,,,,,,,,737.903454,')
+      .replace('Net Asset Value,Data,Cash,15000.125000,17113.340479,0.000000,17113.340479,2113.215479', 'Net Asset Value,Data,Cash,15000.125000,17101.000478,0.000000,17101.000478,2100.875478')
+      .replace('Cash Report,Data,Base Currency Summary,USD,15000.125000,17113.340479,17113.340479', 'Cash Report,Data,Base Currency Summary,USD,15000.125000,17101.000478,17101.000478')
+      .replace('Net Asset Value,Data,Total,25000.125000,33750.368455,0.000000,33750.368455,8750.243455', 'Net Asset Value,Data,Total,25000.125000,33738.028454,0.000000,33738.028454,8737.903454')
+      .replace('Change in NAV,Data,Ending Value,33750.368455', 'Change in NAV,Data,Ending Value,33738.028454')
+    const missingStatementComponentResult = parseIbkrActivityStatement(
+      missingStatementComponent,
+    )
+    assert(
+      hasDiagnostic(missingStatementComponentResult, 'accounting_value_invalid') &&
+        !missingStatementComponentResult.report,
+      `A required statement component placeholder was silently omitted: ${JSON.stringify(placeholder)}`,
+    )
+  }
+
+  const unrelatedTwrResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\nUnrelated Section,Header,TWR\nUnrelated Section,Data,99%\n`,
+  )
+  assert(
+    unrelatedTwrResult.report?.seasonReturn === 0.07654321 &&
+      !unrelatedTwrResult.report.metricSourceRefs.seasonReturn?.some(
+        (ref) => ref.section === 'Unrelated Section',
+      ),
+    'An unrelated section supplied or conflicted with the Season Return.',
+  )
+
+  const taintedSectionResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replaceAll(
+      'Mark-to-Market Performance Summary',
+      'Mark-to-Market Performance Summary张三',
+    ),
+  )
+  assert(
+    hasDiagnostic(taintedSectionResult, 'mtm_section_missing') &&
+      !taintedSectionResult.report,
+    'A non-ASCII-suffixed section label normalized into a registered section.',
+  )
+
+  const taintedHeaderFixture = currentSchemaFixture.replace(
+    ',Conid,Underlying,Multiplier,',
+    ',Conid,Underlying张三,Multiplier,',
+  )
+  const taintedHeaderResult = parseIbkrActivityStatement(taintedHeaderFixture)
+  assert(
+    taintedHeaderResult.errors.length === 0 &&
+      taintedHeaderResult.report &&
+      !JSON.stringify(taintedHeaderResult.report).includes('张三'),
+    'A tainted schema header was accepted into provenance output.',
+  )
+
+  for (const [malformedValue, adjustedAllAssetsTotal] of [
+    ['1USD2', '531.260101'],
+    ['208.863355%', '740.123456'],
+    ['CNY 208.863355', '740.123456'],
+  ]) {
+    const selfReconcilingMalformedMtm = currentSchemaFixture
+      .replace(',208.863355,', `,${malformedValue},`)
+      .replace(',740.123456,', `,${adjustedAllAssetsTotal},`)
+    const selfReconcilingMalformedMtmResult = parseIbkrActivityStatement(
+      selfReconcilingMalformedMtm,
+    )
+    assert(
+      hasDiagnostic(selfReconcilingMalformedMtmResult, 'accounting_value_invalid') &&
+        !selfReconcilingMalformedMtmResult.report,
+      `A malformed YTD MTM value was silently omitted or coerced: ${malformedValue}`,
+    )
+  }
+
+  for (const [optionalField, malformedOptionalFixture] of [
+    ['TWR', currentSchemaFixture.replace('7.654321%', '7%%')],
+    [
+      'current unrealized',
+      currentSchemaFixture.replace(
+        ',-4.040404,0.000000,0.000000,-4.040404,6.060606,',
+        ',-4.040404,0.000000,0.000000,1e3,6.060606,',
+      ),
+    ],
+    [
+      'NAV current total',
+      currentSchemaFixture.replace(
+        'Net Asset Value,Data,Total,25000.125000,33750.368455,0.000000,33750.368455,8750.243455',
+        'Net Asset Value,Data,Total,25000.125000,33750.368455,0.000000,USD 33750.368455,8750.243455',
+      ),
+    ],
+  ]) {
+    const malformedOptionalResult = parseIbkrActivityStatement(
+      malformedOptionalFixture,
+    )
+    assert(
+      hasDiagnostic(malformedOptionalResult, 'accounting_value_invalid') &&
+        !malformedOptionalResult.report,
+      `A malformed optional ${optionalField} value was silently treated as missing: ${diagnosticsText(malformedOptionalResult)}`,
+    )
+  }
+
+  for (const [label, mutatedTotal, expectedCode] of [
+    ['malformed realized total', '1USD2', 'accounting_value_invalid'],
+    ['mismatching realized total', '412.212120', 'accounting_section_conflict'],
+  ]) {
+    const resultWithBadRealizedTotal = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        ',411.212120,140.888888,',
+        `,${mutatedTotal},140.888888,`,
+      ),
+    )
+    assert(
+      hasDiagnostic(resultWithBadRealizedTotal, expectedCode) &&
+        !resultWithBadRealizedTotal.report,
+      `A ${label} was ignored.`,
+    )
+  }
+  for (const [label, mutatedTotal, expectedCode] of [
+    ['malformed unrealized total', 'USD 95.515152', 'accounting_value_invalid'],
+    ['mismatching unrealized total', '96.515152', 'accounting_section_conflict'],
+  ]) {
+    const resultWithBadUnrealizedTotal = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        ',95.515152,506.727272,',
+        `,${mutatedTotal},506.727272,`,
+      ),
+    )
+    assert(
+      hasDiagnostic(resultWithBadUnrealizedTotal, expectedCode) &&
+        !resultWithBadUnrealizedTotal.report,
+      `A ${label} was ignored.`,
+    )
+  }
+
+  const unsafeAggregateResult = parseIbkrActivityStatement(
+    currentSchemaFixture
+      .replace(',208.863355,', `,${Number.MAX_SAFE_INTEGER},`)
+      .replace(',740.123456,', `,${Number.MAX_SAFE_INTEGER},`),
+  )
+  assert(
+    hasDiagnostic(unsafeAggregateResult, 'accounting_value_invalid') &&
+      !unsafeAggregateResult.report,
+    'An exact decimal aggregate outside the safe output boundary was published.',
+  )
+
+  const cashHeader =
+    'Cash Report,Header,Currency Summary,Currency,Starting Cash,Ending Cash,Ending Settled Cash'
+  const cashRow =
+    'Cash Report,Data,Base Currency Summary,USD,15000.125000,17113.340479,17113.340479'
+  const navHeader =
+    'Net Asset Value,Header,Asset Class,Prior Total,Current Long,Current Short,Current Total,Change'
+  const navCashRow =
+    'Net Asset Value,Data,Cash,15000.125000,17113.340479,0.000000,17113.340479,2113.215479'
+  const withoutNavSection = currentSchemaFixture
+    .split('\n')
+    .filter((line) => !line.startsWith('Net Asset Value,'))
+    .join('\n')
+  const cashFallbackResult = parseIbkrActivityStatement(withoutNavSection)
+  assert(
+    cashFallbackResult.report?.cashValue === 17113.340479,
+    'The Base Currency Summary cash fallback was not read.',
+  )
+  const verticalCashFixture = withoutNavSection
+    .replace(
+      cashHeader,
+      'Cash Report,Header,Currency Summary,Currency,Total,Securities,Futures',
+    )
+    .replace(
+      cashRow,
+      'Cash Report,Data,Starting Cash,Base Currency Summary,15000.125000,15000.125000,0.000000\nCash Report,Data,Ending Cash,Base Currency Summary,17113.340479,17113.340479,0.000000',
+    )
+  const verticalCashResult = parseIbkrActivityStatement(verticalCashFixture)
+  assert(
+    verticalCashResult.report?.cashValue === 17113.340479,
+    `The standard vertical Cash Report ending balance was not read: ${diagnosticsText(verticalCashResult)}`,
+  )
+  const currencyOnlyFlexCashFixture = withoutNavSection
+    .replace(
+      cashHeader,
+      'Cash Report,Header,Currency,Starting Cash,Ending Cash,Ending Settled Cash',
+    )
+    .replace(
+      cashRow,
+      'Cash Report,Data,Base Currency Summary,15000.125000,17113.340479,17113.340479',
+    )
+  const currencyOnlyFlexCashResult = parseIbkrActivityStatement(
+    currencyOnlyFlexCashFixture,
+  )
+  assert(
+    currencyOnlyFlexCashResult.report?.cashValue === 17113.340479,
+    `The official Currency-only Flex Cash Report layout was rejected: ${diagnosticsText(currencyOnlyFlexCashResult)}`,
+  )
+  const verticalCashWithNav = currentSchemaFixture
+    .replace(
+      cashHeader,
+      'Cash Report,Header,Currency Summary,Currency,Total,Securities,Futures',
+    )
+    .replace(
+      cashRow,
+      'Cash Report,Data,Starting Cash,Base Currency Summary,15000.125000,15000.125000,0.000000\nCash Report,Data,Ending Cash,Base Currency Summary,17113.340479,17113.340479,0.000000',
+    )
+  for (const driftedVerticalHeader of [
+    'Cash Report,Header,Currency Summary,Currency 2,Total,Securities,Futures',
+    'Cash Report,Header,Currency Summary 2,Currency,Total,Securities,Futures',
+    'Cash Report,Header,Currency Summary,Currency,Total 2,Securities,Futures',
+  ]) {
+    const driftedVerticalResult = parseIbkrActivityStatement(
+      `${verticalCashWithNav}\n${driftedVerticalHeader}\nCash Report,Data,Ending Cash,Base Currency Summary,999.999999,999.999999,0.000000\n`,
+    )
+    assert(
+      hasDiagnostic(driftedVerticalResult, 'accounting_section_conflict') &&
+        !driftedVerticalResult.report,
+      'A drifted repeated vertical Cash Report header was hidden by an earlier valid ending balance.',
+    )
+  }
+  const crossSourceCashConflictResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Cash Report,Data,Base Currency Summary,USD,15000.125000,17113.340479,17113.340479',
+      'Cash Report,Data,Base Currency Summary,USD,15000.125000,999.999999,999.999999',
+    ),
+  )
+  assert(
+    hasDiagnostic(crossSourceCashConflictResult, 'accounting_section_conflict') &&
+      !crossSourceCashConflictResult.report,
+    'Conflicting NAV and Cash Report base-currency cash values were resolved by source priority.',
+  )
+  for (const driftedCashHeader of [
+    'Cash Report,Header,Currency Summary,Currency,Starting Cash,Ending Balance,Ending Settled Cash',
+    'Cash Report,Header,Currency Group,Currency,Starting Cash,Ending Cash,Ending Settled Cash',
+  ]) {
+    const driftedCashConflictResult = parseIbkrActivityStatement(
+      currentSchemaFixture
+        .replace(
+          'Cash Report,Header,Currency Summary,Currency,Starting Cash,Ending Cash,Ending Settled Cash',
+          driftedCashHeader,
+        )
+        .replace(
+          'Cash Report,Data,Base Currency Summary,USD,15000.125000,17113.340479,17113.340479',
+          'Cash Report,Data,Base Currency Summary,USD,15000.125000,999.999999,999.999999',
+        ),
+    )
+    assert(
+      hasDiagnostic(driftedCashConflictResult, 'accounting_section_conflict') &&
+        !driftedCashConflictResult.report,
+      'A drifted Cash Report header bypassed the base-currency cash cross-check.',
+    )
+  }
+  for (const partialCashHeader of [
+    cashHeader.replace('Ending Cash', 'Ending Cash 2'),
+    cashHeader.replace('Currency Summary', 'Currency Summary 2'),
+    cashHeader.replace(',Currency,', ',Currency 2,'),
+  ]) {
+    const partialCashHeaderResult = parseIbkrActivityStatement(
+      `${currentSchemaFixture}\n${partialCashHeader}\n${cashRow.replaceAll('17113.340479', '999.999999')}\n`,
+    )
+    assert(
+      hasDiagnostic(partialCashHeaderResult, 'accounting_section_conflict') &&
+        !partialCashHeaderResult.report,
+      `A malformed repeated Cash Report header was hidden by an earlier valid base-currency row: ${partialCashHeader}`,
+    )
+  }
+  const headerOnlyCashResult = parseIbkrActivityStatement(
+    currentSchemaFixture
+      .split('\n')
+      .filter((line) => !line.startsWith('Cash Report,Data,'))
+      .join('\n'),
+  )
+  assert(
+    hasDiagnostic(headerOnlyCashResult, 'accounting_section_conflict') &&
+      !headerOnlyCashResult.report,
+    'A present but data-less Cash Report was treated as an absent optional section.',
+  )
+  for (const [label, danglingHeaderFixture] of [
+    [
+      'Cash Report',
+      `${currentSchemaFixture}\nCash Report,Header,Currency Summary,Currency,Ending Cash 2\n`,
+    ],
+    [
+      'row-oriented NAV',
+      `${currentSchemaFixture}\nNet Asset Value,Header,Asset Class 2,Current Total\n`,
+    ],
+    [
+      'wide NAV',
+      `${buildWideNavFixture('EQUS')}\nEQUS,Header,Cash,Total\n`,
+    ],
+  ]) {
+    const danglingHeaderResult = parseIbkrActivityStatement(
+      danglingHeaderFixture,
+    )
+    assert(
+      hasDiagnostic(danglingHeaderResult, 'accounting_section_conflict') &&
+        !danglingHeaderResult.report,
+      `A trailing ${label} header without data was ignored.`,
+    )
+  }
+  const duplicateCashRows = currentSchemaFixture
+    .split('\n')
+    .filter((line) => line.startsWith('Cash Report,'))
+    .join('\n')
+    .replace(',17113.340479,17113.340479', ',999.999999,999.999999')
+  const conflictingCashResult = parseIbkrActivityStatement(
+    `${withoutNavSection}\n${duplicateCashRows}\n`,
+  )
+  assert(
+    hasDiagnostic(conflictingCashResult, 'accounting_section_conflict') &&
+      !conflictingCashResult.report,
+    'A duplicate Base Currency cash row replaced the first value by row order.',
+  )
+
+  for (const conflictingMetadataFixture of [
+    `${currentSchemaFixture}\nStatement,Header,Field Name,Field Value\nStatement,Data,Title,Portfolio Analyst\nStatement,Data,Period,"February 1, 2026 - August 15, 2026"\n`,
+    `${currentSchemaFixture}\nAccount Information,Data,Period,"February 1, 2026 - August 15, 2026"\n`,
+    `BOF,SYNTHETIC_ACCOUNT_2026_A,Activity Statement,2026-02-01,2026-08-15\n${currentSchemaFixture}`,
+  ]) {
+    const conflictingMetadataResult = parseIbkrActivityStatement(
+      conflictingMetadataFixture,
+    )
+    assert(
+      hasDiagnostic(conflictingMetadataResult, 'accounting_section_conflict') &&
+        !conflictingMetadataResult.report,
+      'Conflicting mandatory statement metadata was resolved by source order.',
+    )
+  }
+
+  const navTotalRow = currentSchemaFixture
+    .split('\n')
+    .find((line) => line.startsWith('Net Asset Value,Data,Total,'))
+  assert(navTotalRow, 'The NAV duplicate-total fixture is incomplete.')
+  const duplicateNavTotalResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\nNet Asset Value,Header,Asset Class,Prior Total,Current Long,Current Short,Current Total,Change\n${navTotalRow.replaceAll('33750.368455', '34750.368455')}\n`,
+  )
+  assert(
+    hasDiagnostic(duplicateNavTotalResult, 'accounting_section_conflict') &&
+      !duplicateNavTotalResult.report,
+    'A duplicate NAV total replaced the first broker total by row order.',
+  )
+  const navComponentMismatchResult = parseIbkrActivityStatement(
+    currentSchemaFixture
+      .replace(
+        navCashRow,
+        'Net Asset Value,Data,Cash,15000.125000,17113.340479,0.000000,999.999999,2113.215479',
+      )
+      .replace(cashRow, cashRow.replaceAll('17113.340479', '999.999999')),
+  )
+  assert(
+    hasDiagnostic(navComponentMismatchResult, 'accounting_section_conflict') &&
+      !navComponentMismatchResult.report,
+    'A NAV Current Long plus Current Short mismatch was published as cash.',
+  )
+  const navDetailSumMismatchResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Net Asset Value,Data,Stock,10000.000000,16500.250000,0.000000,16500.250000,6500.250000',
+      'Net Asset Value,Data,Stock,10000.000000,16501.250000,0.000000,16501.250000,6501.250000',
+    ),
+  )
+  assert(
+    hasDiagnostic(navDetailSumMismatchResult, 'accounting_section_conflict') &&
+      !navDetailSumMismatchResult.report,
+    'NAV detail rows did not have to sum to the broker Total row.',
+  )
+  const partialNavHeaderResult = parseIbkrActivityStatement(
+    currentSchemaFixture
+      .replace(navHeader, navHeader.replace('Asset Class', 'Asset Class 2'))
+      .replace(navCashRow, `${navCashRow}\n${navHeader}`)
+      .replace(cashRow, cashRow.replaceAll('17113.340479', '999.999999')),
+  )
+  assert(
+    hasDiagnostic(partialNavHeaderResult, 'accounting_section_conflict') &&
+      !partialNavHeaderResult.report,
+    'A partial NAV identity-header drift made the Cash row disappear from validation.',
+  )
+  const returnTaggedNavResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Net Asset Value,Header,Time Weighted Rate of Return',
+      'Net Asset Value,Header,Asset Class 2,Current Total,Time Weighted Rate of Return\nNet Asset Value,Data,Cash,999.999999,7.654321%\nNet Asset Value,Header,Time Weighted Rate of Return',
+    ),
+  )
+  assert(
+    hasDiagnostic(returnTaggedNavResult, 'accounting_section_conflict') &&
+      !returnTaggedNavResult.report,
+    'An added return column made a malformed NAV accounting row bypass validation.',
+  )
+  const fullyDriftedReturnTaggedNavResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Net Asset Value,Header,Time Weighted Rate of Return',
+      'Net Asset Value,Header,Asset Class 2,Current Total 2,Time Weighted Rate of Return\nNet Asset Value,Data,Cash,999.999999,7.654321%\nNet Asset Value,Header,Time Weighted Rate of Return',
+    ),
+  )
+  assert(
+    hasDiagnostic(
+      fullyDriftedReturnTaggedNavResult,
+      'accounting_section_conflict',
+    ) && !fullyDriftedReturnTaggedNavResult.report,
+    'A return field hid a NAV row after every accounting header was drifted.',
+  )
+  const withSlbCollateralResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      navCashRow,
+      `${navCashRow}\nNet Asset Value,Data,SLB Cash Collateral,0.000000,0.000000,0.000000,0.000000,0.000000`,
+    ),
+  )
+  assert(
+    withSlbCollateralResult.report?.cashValue === 17113.340479,
+    `SLB Cash Collateral was confused with ordinary Cash: ${diagnosticsText(withSlbCollateralResult)}`,
+  )
+  const onlySlbCollateralResult = parseIbkrActivityStatement(
+    currentSchemaFixture
+      .replace(
+        navCashRow,
+        navCashRow.replace(',Cash,', ',SLB Cash Collateral,'),
+      )
+      .split('\n')
+      .filter((line) => !line.startsWith('Cash Report,'))
+      .join('\n'),
+  )
+  assert(
+    onlySlbCollateralResult.report &&
+      onlySlbCollateralResult.report.cashValue === undefined,
+    'SLB Cash Collateral was published as ordinary available cash.',
   )
 
   const conflictingTwrResult = parseIbkrActivityStatement(
@@ -194,6 +1370,16 @@ try {
   assert(statementSource?.recordType === 'EMPTY', 'The empty Total P/L record type was not preserved.')
   assert(statementSource?.field === 'Mark-to-Market P/L Total', 'The Total P/L field source is incorrect.')
   assert((statementSource?.rowNumber ?? 0) > 0, 'The Total P/L one-based row number is missing.')
+
+  const withNumericStatementMetadata = `${currentSchemaFixture}\nStatement,Data,Report Version,1\n`
+  const numericStatementMetadataCheck = parseIbkrActivityStatement(
+    withNumericStatementMetadata,
+  ).report?.reconciliations.find((check) => check.id === 'statement_period_pnl')
+  assert(
+    numericStatementMetadataCheck?.status === 'PASS_EXACT' &&
+      !numericStatementMetadataCheck.sourceRefs.some((ref) => ref.section === 'Statement'),
+    'Numeric Statement metadata leaked into the Total P/L section match.',
+  )
 
   const optionWithMapping = currentReport.symbols.find((symbol) => symbol.optionYtdMtm !== 0)
   const optionRefs = optionWithMapping?.sourceRefs.optionYtdMtm ?? []
@@ -282,6 +1468,24 @@ try {
 
   const canonicalAssignmentRow = 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
   const opaqueAssignmentRow = 'Trades,Data,Equity and Index Options,USD,OPAQUE-CONTRACT-A,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
+  const dedicatedLifecycleFixture = `${currentSchemaFixture}
+"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
+"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Assignment
+"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTB 17JUL26 80 C,ZZFICTB,2026-07-18,Expiration
+`
+  const dedicatedLifecycleResult = parseIbkrActivityStatement(
+    dedicatedLifecycleFixture,
+  )
+  assert(
+    dedicatedLifecycleResult.report?.events.length === 2 &&
+      dedicatedLifecycleResult.report.events.some(
+        (event) => event.type === 'assignment' && event.date === '2026-06-20',
+      ) &&
+      dedicatedLifecycleResult.report.events.some(
+        (event) => event.type === 'expiration' && event.date === '2026-07-18',
+      ),
+    'Dedicated lifecycle rows were combined with Trades and counted twice.',
+  )
   const explicitUnderlyingResult = parseIbkrActivityStatement(
     currentSchemaFixture.replace(canonicalAssignmentRow, opaqueAssignmentRow),
   )
@@ -620,16 +1824,53 @@ try {
   assert(forexResult.report?.otherPnl === 125, 'Explicit non-stock performance was not classified as Other.')
   assert(forexResult.report?.stockPnl === 13690, 'Forex performance polluted stock P&L.')
 
-  const currentMtmStyle = sample
-    .replaceAll(
-      'Month & Year to Date Performance Summary',
-      'Mark-to-Market Performance Summary',
+  for (const cfdCategory of ['Equity CFD', 'Stock CFD']) {
+    const cfdFixture = currentSchemaFixture.replace(
+      'Mark-to-Market Performance Summary,Data,Forex,XTS.USD,',
+      `Mark-to-Market Performance Summary,Data,${cfdCategory},XTS.USD,`,
     )
-    .replace('YTD Mark-to-Market', 'Mark-to-Market P/L Total')
+    const cfdResult = parseIbkrActivityStatement(cfdFixture)
+    const cfdSymbol = cfdResult.report?.symbols.find(
+      (symbol) => symbol.symbol === 'XTS.USD',
+    )
+    assert(
+      cfdResult.report?.otherPnl === 122.278756 &&
+        cfdResult.report.stockPnl === 167.622477 &&
+        cfdSymbol?.otherYtdMtm === 122.278756 &&
+        cfdSymbol.stockYtdMtm === 0,
+      `An explicit ${cfdCategory} category was incorrectly classified as stock.`,
+    )
+  }
+
+  const currentMtmStyle = currentSchemaFixture
+    .replaceAll(
+      'Mark-to-Market P/L Position',
+      'Prior Open MTM Profit and Loss',
+    )
+    .replaceAll(
+      'Mark-to-Market P/L Transaction',
+      'Transaction MTM Profit and Loss',
+    )
+    .replaceAll('Mark-to-Market P/L Commissions', 'Commissions')
+    .replaceAll('Mark-to-Market P/L Other', 'Other')
+    .replaceAll('Mark-to-Market P/L Total', 'Total')
+    .replaceAll('Mark-to-Market Performance Summary', 'MTMP')
   const currentMtmResult = parseIbkrActivityStatement(currentMtmStyle)
   assert(
-    currentMtmResult.report?.seasonPnl === 20040,
-    'The current Mark-to-Market Performance Summary field aliases were not parsed.',
+    currentMtmResult.report?.seasonPnl === 740.123456,
+    'The official code-tagged Mark-to-Market Flex field layout was not parsed.',
+  )
+  const currentMtmWithoutOther = dropSectionColumn(
+    currentMtmStyle,
+    'MTMP',
+    'Other',
+  )
+  const currentMtmWithoutOtherResult = parseIbkrActivityStatement(
+    currentMtmWithoutOther,
+  )
+  assert(
+    currentMtmWithoutOtherResult.report?.seasonPnl === 740.123456,
+    `A current Flex MTMP layout without the retired Other field was rejected: ${diagnosticsText(currentMtmWithoutOtherResult)}`,
   )
 
   const wrongReportType = sample.replace(
@@ -726,8 +1967,13 @@ try {
     optionPnl: result.report.optionPnl,
     symbols: result.report.symbols.length,
     events: result.report.events.length,
-    negativeCases: 31,
-    compatibilityCases: 10,
+    numericGrammarCases:
+      supportedNumericForms.length +
+      rejectedNumericForms.length +
+      supportedPercentForms.length +
+      rejectedPercentForms.length,
+    sectionBoundaryCases: 12,
+    explicitOtherAssetCases: 3,
     localizedDiagnosticCodes: PARSER_DIAGNOSTIC_CODES.length,
     currentSchemaChecks: 5,
     sourceReferenceChecks: allSourceRefs.length,
