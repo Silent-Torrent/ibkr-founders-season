@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.8
+## Completed through coding checkpoint 0.10
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -15,6 +15,8 @@
 - [x] Missing-account rejection and session-salted SHA-256 account comparison key; masked account suffixes are display-only.
 - [x] Strict three-letter base-currency validation with safe display fallback for malformed or conflicting currency rows.
 - [x] YTD MTM aggregation by underlying and asset class.
+- [x] Separate MTM and Month/YTD schema families, and allow their coexistence only after exact all-assets plus normalized broker-category + underlying equivalence without double counting.
+- [x] Exact YTD per-asset subtotal/detail closure, Total/SubTotal exclusion, Data-only lifecycle events, and cross-family mapping isolation.
 - [x] Realized and current-unrealized explanatory fields.
 - [x] Option event detection.
 - [x] Ledger filters, sorting, and symbol detail drawer.

@@ -48,7 +48,10 @@ try {
 
   writeFileSync(join(output, 'package.json'), '{"type":"commonjs"}\n')
   const require = createRequire(import.meta.url)
-  const { parseIbkrActivityStatement: parseIbkrActivityStatementRaw } = require(join(output, 'lib/ibkr.js'))
+  const {
+    parseIbkrActivityStatement: parseIbkrActivityStatementRaw,
+    ytdInstrumentMappingSectionAliases,
+  } = require(join(output, 'lib/ibkr.js'))
   const {
     parseCsvRows,
     parseDateFlexible,
@@ -114,6 +117,19 @@ try {
       .map((row) => row.map(encodeCsvCell).join(','))
       .join('\n')
   }
+  const addColumnToEverySectionBlock = (
+    fixture,
+    section,
+    columnName,
+    value,
+  ) => parseCsvRows(fixture)
+    .map((row) => {
+      if (row[0] !== section) return row
+      if (row[1]?.toUpperCase() === 'HEADER') return [...row, columnName]
+      return [...row, value]
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
   const buildWideNavFixture = (
     sectionName,
     {
@@ -145,6 +161,43 @@ try {
     }
     return rows.join('\n')
   }
+  const buildMonthYtdSection = (
+    sectionName = 'Month & Year to Date Performance Summary',
+  ) => [
+    `${sectionName},Header,Asset Class,Symbol,Description,Mark-to-Market MTD,Mark-to-Market YTD,Realized S/T MTD,Reazlied S/T YTD,Realized L/T MTD,Realized L/T YTD,Total`,
+    `${sectionName},Data,Stocks,ZZFICTA,Synthetic Alpha Systems,0.000000,208.863355,0.000000,150.111111,0.000000,0.000000,208.863355`,
+    `${sectionName},Data,Stocks,ZZFICTB,Synthetic Beta Dynamics,0.000000,-41.240878,0.000000,-50.333333,0.000000,0.000000,-41.240878`,
+    `${sectionName},Data,Equity and Index Options,ZZFICTA,Synthetic Alpha options,0.000000,354.777778,0.000000,220.555555,0.000000,0.000000,354.777778`,
+    `${sectionName},Data,Equity and Index Options,ZZFICTB,Synthetic Beta options,0.000000,95.444445,0.000000,80.777777,0.000000,0.000000,95.444445`,
+    `${sectionName},Data,Forex,XTS.USD,Synthetic test currency,0.000000,122.278756,0.000000,10.101010,0.000000,0.000000,122.278756`,
+    `${sectionName},Data,Total (All Assets),,,0.000000,740.123456,0.000000,411.212120,0.000000,0.000000,740.123456`,
+  ].join('\n')
+
+  const deliberatelyContaminatedSharedMappingAliases = [
+    'Mark-to-Market Performance Summary',
+    'Month & Year to Date Performance Summary',
+    'Profit and Loss by Underlying Instruments',
+    'Trades',
+  ]
+  const mtmMappingAliases = ytdInstrumentMappingSectionAliases(
+    'MTM',
+    deliberatelyContaminatedSharedMappingAliases,
+  )
+  const monthYtdMappingAliases = ytdInstrumentMappingSectionAliases(
+    'MONTH_YTD',
+    deliberatelyContaminatedSharedMappingAliases,
+  )
+  assert(
+    mtmMappingAliases.includes('Mark-to-Market Performance Summary') &&
+      mtmMappingAliases.includes('Trades') &&
+      !mtmMappingAliases.includes('Month & Year to Date Performance Summary') &&
+      !mtmMappingAliases.includes('Profit and Loss by Underlying Instruments') &&
+      monthYtdMappingAliases.includes('Month & Year to Date Performance Summary') &&
+      monthYtdMappingAliases.includes('Profit and Loss by Underlying Instruments') &&
+      monthYtdMappingAliases.includes('Trades') &&
+      !monthYtdMappingAliases.includes('Mark-to-Market Performance Summary'),
+    'The production YTD mapping selector allowed one source family to pollute the other.',
+  )
 
   assert(toIsoDate(parseDateFlexible('2024-02-29')) === '2024-02-29', 'A valid leap date was rejected.')
   assert(parseDateFlexible('2026-02-29') === undefined, 'A nonexistent numeric date was normalized instead of rejected.')
@@ -333,21 +386,22 @@ try {
     .find((line) =>
       line.startsWith('Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,'),
     )
-  const allAssetsYtdRow = currentSchemaFixture
-    .split('\n')
-    .find((line) =>
-      line.startsWith(
-        'Mark-to-Market Performance Summary,Data,Total (All Assets),',
-      ),
-    )
   assert(
-    stockDetailTemplate && allAssetsYtdRow,
+    stockDetailTemplate,
     'The punctuation-identity fixture is incomplete.',
   )
+  const offsettingStockDetail = (symbol, amount) => {
+    const row = [...parseCsvRows(stockDetailTemplate)[0]]
+    row[3] = symbol
+    for (let index = 8; index <= 12; index += 1) row[index] = '0.000000'
+    row[8] = amount
+    row[12] = amount
+    return row.map(encodeCsvCell).join(',')
+  }
   const punctuationIdentityResult = parseIbkrActivityStatement(
     currentSchemaFixture.replace(
-      allAssetsYtdRow,
-      `${stockDetailTemplate.replace(',ZZFICTA,', ',BRK.B,')}\n${stockDetailTemplate.replace(',ZZFICTA,', ',BRK-B,')}\n${allAssetsYtdRow}`,
+      stockDetailTemplate,
+      `${offsettingStockDetail('BRK.B', '1.000000')}\n${offsettingStockDetail('BRK-B', '-1.000000')}\n${stockDetailTemplate}`,
     ),
   )
   assert(
@@ -359,7 +413,7 @@ try {
       punctuationIdentityResult.report.symbols.some(
         (symbol) => symbol.symbol === 'BRK-B',
       ),
-    'Distinct punctuated symbols collapsed into one accounting identity.',
+    `Distinct punctuated symbols collapsed into one accounting identity: ${diagnosticsText(punctuationIdentityResult)}`,
   )
 
   const realizedOtherTemplate = currentSchemaFixture
@@ -417,6 +471,28 @@ try {
         (warning) => warning.code === 'realized_section_missing',
       ),
     'A missing realized/unrealized section was not preserved as a fixed parser fact and warning.',
+  )
+  const sampleWithoutRealizedSummary = sample
+    .split('\n')
+    .filter(
+      (line) =>
+        !line.startsWith('Realized & Unrealized Performance Summary,'),
+    )
+    .join('\n')
+    .replace(
+      'Month & Year to Date Performance Summary,Data,Total (All Assets),,,0,20040,0,0,0,0',
+      'Month & Year to Date Performance Summary,Data,Total (All Assets),,,0,20040,0,11280,0,0',
+    )
+  const sampleYtdRealizedFallbackResult = parseIbkrActivityStatement(
+    sampleWithoutRealizedSummary,
+  )
+  assert(
+    sampleYtdRealizedFallbackResult.report?.parserFacts.realizedSectionMissing ===
+      true &&
+      sampleYtdRealizedFallbackResult.report.symbols.find(
+        (symbol) => symbol.symbol === 'NVDA',
+      )?.totalRealizedYtd === 6450,
+    'Month/YTD realized fields were not retained as the warned fallback when the dedicated realized section was absent.',
   )
 
   const misleadingSummaryResult = parseIbkrActivityStatement(
@@ -482,15 +558,14 @@ try {
     'Known IBKR section codes were overridden by variable BOS descriptions.',
   )
   const codedPluiResult = parseIbkrActivityStatement(
-    currentSchemaFixture.replaceAll('Mark-to-Market Performance Summary', 'PLUI'),
+    sample.replaceAll('Month & Year to Date Performance Summary', 'PLUI'),
   )
   assert(
     codedPluiResult.errors.length === 0 &&
-      codedPluiResult.report?.seasonPnl === 740.123456,
+      codedPluiResult.report?.seasonPnl === 20040,
     'The registered PLUI YTD section code was rejected.',
   )
-  for (const ytdSectionName of [
-    'Mark-to-Market Performance Summary in Base',
+  for (const monthYtdSectionName of [
     'Month & Year to Date Performance Summary',
     'Month & Year to Date Performance Summary in Base',
     'Month and Year to Date Performance Summary',
@@ -498,17 +573,25 @@ try {
     'Profit and Loss by Underlying Instruments',
   ]) {
     const namedYtdResult = parseIbkrActivityStatement(
-      currentSchemaFixture.replaceAll(
-        'Mark-to-Market Performance Summary',
-        ytdSectionName,
+      sample.replaceAll(
+        'Month & Year to Date Performance Summary',
+        monthYtdSectionName,
       ),
     )
     assert(
       namedYtdResult.errors.length === 0 &&
-        namedYtdResult.report?.seasonPnl === 740.123456,
-      `A registered YTD section name was rejected: ${ytdSectionName}`,
+        namedYtdResult.report?.seasonPnl === 20040,
+      `A registered Month/YTD section name was rejected: ${monthYtdSectionName}`,
     )
   }
+  const renamedMtmAsPluiResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replaceAll('Mark-to-Market Performance Summary', 'PLUI'),
+  )
+  assert(
+    hasDiagnostic(renamedMtmAsPluiResult, 'accounting_section_conflict') &&
+      !renamedMtmAsPluiResult.report,
+    'An MTM component layout was accepted after only relabelling it as PLUI.',
+  )
   for (const realizedSectionName of [
     'Realized & Unrealized Performance Summary in Base',
     'Realized and Unrealized Performance Summary',
@@ -700,22 +783,414 @@ try {
     'An unknown BOS section code impersonated the registered MTM section.',
   )
 
-  const secondaryYtdSection = currentSchemaFixture
+  const secondaryYtdSection = buildMonthYtdSection()
+  const monthYtdOnlyFixture = `${currentSchemaFixture
     .split('\n')
-    .filter((line) => line.startsWith('Mark-to-Market Performance Summary,'))
-    .join('\n')
-    .replaceAll(
-      'Mark-to-Market Performance Summary',
-      'Month & Year to Date Performance Summary',
+    .filter(
+      (line) =>
+        !line.startsWith('Mark-to-Market Performance Summary,') &&
+        !line.startsWith('Total P/L for Statement Period,'),
     )
+    .join('\n')}\n${secondaryYtdSection}\n`
+  const monthYtdOnlyResult = parseIbkrActivityStatement(monthYtdOnlyFixture)
+  assert(
+    monthYtdOnlyResult.errors.length === 0 &&
+      monthYtdOnlyResult.report?.seasonPnl === 740.123456 &&
+      monthYtdOnlyResult.report.stockPnl === 167.622477 &&
+      monthYtdOnlyResult.report.optionPnl === 450.222223,
+    `A family-correct Month/YTD-only statement was rejected: ${diagnosticsText(monthYtdOnlyResult)}`,
+  )
   const coexistingYtdResult = parseIbkrActivityStatement(
     `${currentSchemaFixture}\n${secondaryYtdSection}\n`,
   )
   assert(
-    hasDiagnostic(coexistingYtdResult, 'accounting_section_conflict') &&
-      !coexistingYtdResult.report,
-    'Multiple alternative YTD sections were guessed between instead of failing closed.',
+    coexistingYtdResult.errors.length === 0 &&
+      coexistingYtdResult.report?.seasonPnl === 740.123456 &&
+      coexistingYtdResult.report.stockPnl === 167.622477 &&
+      coexistingYtdResult.report.optionPnl === 450.222223 &&
+      coexistingYtdResult.report.otherPnl === 122.278756 &&
+      coexistingYtdResult.report.metricSourceRefs.seasonPnl?.every(
+        (ref) => ref.section === 'Mark-to-Market Performance Summary',
+      ),
+    `Equivalent MTM and Month/YTD sections were not cross-checked safely: ${diagnosticsText(coexistingYtdResult)}`,
   )
+  const monthYtdWithDistinctGenericTotal = parseCsvRows(secondaryYtdSection)
+    .map((row) => {
+      if (row[1]?.toUpperCase() !== 'DATA') return row
+      const next = [...row]
+      next[next.length - 1] = '999.000000'
+      return next
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const distinctGenericTotalResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${monthYtdWithDistinctGenericTotal}\n`,
+  )
+  assert(
+    distinctGenericTotalResult.errors.length === 0 &&
+      distinctGenericTotalResult.report?.seasonPnl === 740.123456,
+    'The generic Month/YTD Total field was mistaken for Mark-to-Market YTD.',
+  )
+  const alteredUnusedMonthRealized = secondaryYtdSection.replace(
+    ',0.000000,150.111111,0.000000,0.000000,208.863355',
+    ',0.000000,999.000000,0.000000,0.000000,208.863355',
+  )
+  const alteredUnusedMonthRealizedResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${alteredUnusedMonthRealized}\n`,
+  )
+  const alteredUnusedMonthStock =
+    alteredUnusedMonthRealizedResult.report?.symbols.find(
+      (symbol) => symbol.symbol === 'ZZFICTA',
+    )
+  assert(
+    alteredUnusedMonthRealizedResult.errors.length === 0 &&
+      alteredUnusedMonthStock?.stockRealizedYtd === 150.111111 &&
+      alteredUnusedMonthStock.sourceRefs.totalRealizedYtd?.some(
+        (ref) => ref.section === 'Realized & Unrealized Performance Summary',
+      ) &&
+      !alteredUnusedMonthStock.sourceRefs.totalRealizedYtd?.some(
+        (ref) => ref.section === 'Month & Year to Date Performance Summary',
+      ),
+    'Month/YTD realized fields overrode the dedicated realized/FIFO section.',
+  )
+  const alteredMonthOnlyRealizedResult = parseIbkrActivityStatement(
+    monthYtdOnlyFixture.replace(
+      ',0.000000,150.111111,0.000000,0.000000,208.863355',
+      ',0.000000,999.000000,0.000000,0.000000,208.863355',
+    ),
+  )
+  assert(
+    alteredMonthOnlyRealizedResult.report?.symbols.find(
+      (symbol) => symbol.symbol === 'ZZFICTA',
+    )?.stockRealizedYtd === 150.111111,
+    'Month/YTD-only MTM authority also overrode the dedicated realized/FIFO explanation source.',
+  )
+  const mixedWithoutDedicatedRealized = `${currentSchemaFixture
+    .split('\n')
+    .filter(
+      (line) =>
+        !line.startsWith('Realized & Unrealized Performance Summary,'),
+    )
+    .join('\n')}\n${secondaryYtdSection}\n`
+  const mixedWithoutDedicatedRealizedWithLong =
+    mixedWithoutDedicatedRealized
+      .replace(
+        ',0.000000,150.111111,0.000000,0.000000,208.863355',
+        ',0.000000,100.111111,0.000000,50.000000,208.863355',
+      )
+      .replace(
+        ',0.000000,411.212120,0.000000,0.000000,740.123456',
+        ',0.000000,361.212120,0.000000,50.000000,740.123456',
+      )
+  const mixedWithoutDedicatedRealizedResult = parseIbkrActivityStatement(
+    mixedWithoutDedicatedRealizedWithLong,
+  )
+  const mixedFallbackAlpha =
+    mixedWithoutDedicatedRealizedResult.report?.symbols.find(
+      (symbol) => symbol.symbol === 'ZZFICTA',
+    )
+  assert(
+    mixedWithoutDedicatedRealizedResult.errors.length === 0 &&
+      mixedWithoutDedicatedRealizedResult.report?.parserFacts
+        .realizedSectionMissing === true &&
+      mixedFallbackAlpha?.stockRealizedYtd === 150.111111 &&
+      mixedFallbackAlpha.optionRealizedYtd === 220.555555 &&
+      mixedFallbackAlpha.totalRealizedYtd === 370.666666 &&
+      mixedFallbackAlpha.sourceRefs.totalRealizedYtd?.some(
+        (ref) =>
+          ref.section === 'Month & Year to Date Performance Summary' &&
+          ref.field === 'Reazlied S/T YTD',
+      ) &&
+      mixedFallbackAlpha.sourceRefs.totalRealizedYtd.some(
+        (ref) =>
+          ref.section === 'Month & Year to Date Performance Summary' &&
+          ref.field === 'Realized L/T YTD',
+      ),
+    `Mixed MTM + Month/YTD did not retain the official Month/YTD realized fallback when FIFO was absent: ${JSON.stringify({ diagnostics: mixedWithoutDedicatedRealizedResult.errors, alpha: mixedFallbackAlpha })}`,
+  )
+  const symbolColumnTotalFallbackResult = parseIbkrActivityStatement(
+    mixedWithoutDedicatedRealized.replace(
+      ',Data,Total (All Assets),,,0.000000,740.123456,',
+      ',Data,,Total (All Assets),,0.000000,740.123456,',
+    ),
+  )
+  assert(
+    symbolColumnTotalFallbackResult.errors.length === 0 &&
+      symbolColumnTotalFallbackResult.report?.symbols.every(
+        (symbol) => symbol.symbol !== 'TOTAL (ALL ASSETS)',
+      ) &&
+      symbolColumnTotalFallbackResult.report.symbols.find(
+        (symbol) => symbol.symbol === 'ZZFICTA',
+      )?.totalRealizedYtd === 370.666666,
+    `A Month/YTD total in the Symbol column became a duplicate realized instrument: ${diagnosticsText(symbolColumnTotalFallbackResult)}`,
+  )
+  const unclosedRealizedFallbackResult = parseIbkrActivityStatement(
+    mixedWithoutDedicatedRealized.replace(
+      ',0.000000,150.111111,0.000000,0.000000,208.863355',
+      ',0.000000,999.000000,0.000000,0.000000,208.863355',
+    ),
+  )
+  assert(
+    hasDiagnostic(
+      unclosedRealizedFallbackResult,
+      'accounting_section_conflict',
+    ) && !unclosedRealizedFallbackResult.report,
+    'Month/YTD realized fallback details did not close to the broker realized totals.',
+  )
+  const mtmWithImpersonatingRealized = addColumnToEverySectionBlock(
+    addColumnToEverySectionBlock(
+      currentSchemaFixture
+        .split('\n')
+        .filter(
+          (line) =>
+            !line.startsWith('Realized & Unrealized Performance Summary,'),
+        )
+        .join('\n'),
+      'Mark-to-Market Performance Summary',
+      'YTD Realized S/T',
+      '999.000000',
+    ),
+    'Mark-to-Market Performance Summary',
+    'YTD Realized L/T',
+    '0.000000',
+  )
+  const mtmWithImpersonatingRealizedResult = parseIbkrActivityStatement(
+    mtmWithImpersonatingRealized,
+  )
+  assert(
+    hasDiagnostic(
+      mtmWithImpersonatingRealizedResult,
+      'accounting_section_conflict',
+    ) && !mtmWithImpersonatingRealizedResult.report,
+    'Recognized Month/YTD realized fields inside MTM supplied a false realized fallback.',
+  )
+  const codedMixedYtdResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${buildMonthYtdSection('PLUI')}\n`,
+  )
+  assert(
+    codedMixedYtdResult.errors.length === 0 &&
+      codedMixedYtdResult.report?.seasonPnl === 740.123456,
+    `The official PLUI code failed the mixed-family equivalence gate: ${diagnosticsText(codedMixedYtdResult)}`,
+  )
+  const reversedYtdOrderResult = parseIbkrActivityStatement(
+    `${secondaryYtdSection}\n${currentSchemaFixture}`,
+  )
+  assert(
+    reversedYtdOrderResult.errors.length === 0 &&
+      reversedYtdOrderResult.report?.seasonPnl ===
+        coexistingYtdResult.report?.seasonPnl &&
+      reversedYtdOrderResult.report?.stockPnl ===
+        coexistingYtdResult.report?.stockPnl &&
+      reversedYtdOrderResult.report?.optionPnl ===
+        coexistingYtdResult.report?.optionPnl,
+    'Changing the order of equivalent YTD source families changed the result.',
+  )
+
+  const multiContractMtmFixture = currentSchemaFixture.replace(
+    'Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,-1.000000,0.000000,4.500000,0.000000,300.111111,60.222222,-5.555555,0.000000,354.777778,A',
+    [
+      'Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,-1.000000,0.000000,4.500000,0.000000,150.111111,30.222222,-2.555555,0.000000,177.777778,A',
+      'Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTA 18DEC26 130 C,0.000000,1.000000,0.000000,1.000000,150.000000,30.000000,-3.000000,0.000000,177.000000,A',
+    ].join('\n'),
+  )
+  const multiContractMixedResult = parseIbkrActivityStatement(
+    `${multiContractMtmFixture}\n${secondaryYtdSection}\n`,
+  )
+  assert(
+    multiContractMixedResult.errors.length === 0 &&
+      multiContractMixedResult.report?.optionPnl === 450.222223 &&
+      multiContractMixedResult.report.symbols.find(
+        (symbol) => symbol.symbol === 'ZZFICTA',
+      )?.optionYtdMtm === 354.777778,
+    `Multiple MTM option contracts were not reconciled to one Month/YTD underlying: ${diagnosticsText(multiContractMixedResult)}`,
+  )
+
+  const withoutFiiOrTrades = currentSchemaFixture
+    .split('\n')
+    .filter(
+      (line) =>
+        !line.startsWith('Financial Instrument Information,') &&
+        !line.startsWith('Trades,'),
+    )
+    .join('\n')
+  const mixedWithoutFiiOrTradesResult = parseIbkrActivityStatement(
+    `${withoutFiiOrTrades}\n${secondaryYtdSection}\n`,
+  )
+  assert(
+    mixedWithoutFiiOrTradesResult.errors.length === 0 &&
+      mixedWithoutFiiOrTradesResult.report?.symbols.find(
+        (symbol) => symbol.symbol === 'ZZFICTA',
+      )?.optionYtdMtm === 354.777778,
+    `Independent option-contract inference failed without FII/Trades: ${diagnosticsText(mixedWithoutFiiOrTradesResult)}`,
+  )
+  const opaqueOptionContractResult = parseIbkrActivityStatement(
+    withoutFiiOrTrades.replace(
+      'Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,',
+      'Mark-to-Market Performance Summary,Data,Equity and Index Options,OPAQUE-MTM-CONTRACT,',
+    ),
+  )
+  assert(
+    hasDiagnostic(opaqueOptionContractResult, 'accounting_section_conflict') &&
+      !opaqueOptionContractResult.report,
+    'An opaque MTM option contract was published as though the contract text were an underlying.',
+  )
+  const opaqueFifoWithoutMappingsResult = parseIbkrActivityStatement(
+    monthYtdOnlyFixture
+      .split('\n')
+      .filter(
+        (line) =>
+          !line.startsWith('Financial Instrument Information,') &&
+          !line.startsWith('Trades,'),
+      )
+      .join('\n')
+      .replaceAll(
+        'ZZFICTA 19JUN26 125 P',
+        'OPAQUE-FIFO-CONTRACT',
+      ),
+  )
+  assert(
+    hasDiagnostic(
+      opaqueFifoWithoutMappingsResult,
+      'accounting_section_conflict',
+    ) && !opaqueFifoWithoutMappingsResult.report,
+    'An opaque FIFO option contract became a fabricated underlying in a Month/YTD-only statement.',
+  )
+  const crossPollutingMonthYtd = parseCsvRows(secondaryYtdSection)
+    .map((row) => {
+      if (row[1]?.toUpperCase() === 'HEADER') {
+        return [...row, 'Underlying Symbol']
+      }
+      const next = [...row]
+      if (
+        row[1]?.toUpperCase() === 'DATA' &&
+        row[2] === 'Equity and Index Options' &&
+        row[3] === 'ZZFICTA'
+      ) {
+        next[3] = 'ZZFICTA 19JUN26 125 P'
+        return [...next, 'ZZFICTB']
+      }
+      return [...next, '']
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const crossPollutingUnderlyingResult = parseIbkrActivityStatement(
+    `${withoutFiiOrTrades}\n${crossPollutingMonthYtd}\n`,
+  )
+  assert(
+    hasDiagnostic(
+      crossPollutingUnderlyingResult,
+      'accounting_section_conflict',
+    ) && !crossPollutingUnderlyingResult.report,
+    'One YTD family supplied a wrong option-underlying alias to both source snapshots.',
+  )
+  const equalOptionMtmFixture = withoutFiiOrTrades
+    .replace(
+      '300.111111,60.222222,-5.555555,0.000000,354.777778,A',
+      '170.4444445,60.222222,-5.555555,0.000000,225.1111115,A',
+    )
+    .replace(
+      '120.333333,-20.444444,-4.444444,0.000000,95.444445,Ep',
+      '249.9999995,-20.444444,-4.444444,0.000000,225.1111115,Ep',
+    )
+  const equalOptionMonthYtd = parseCsvRows(
+    secondaryYtdSection
+      .replaceAll('354.777778', '225.1111115')
+      .replaceAll('95.444445', '225.1111115'),
+  )
+    .map((row) => {
+      if (row[1]?.toUpperCase() === 'HEADER') {
+        return [...row, 'Underlying Symbol']
+      }
+      if (
+        row[1]?.toUpperCase() === 'DATA' &&
+        row[2] === 'Equity and Index Options'
+      ) {
+        return [...row, row[3] === 'ZZFICTA' ? 'ZZFICTB' : 'ZZFICTA']
+      }
+      return [...row, '']
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const equalAmountAliasSwapResult = parseIbkrActivityStatement(
+    `${equalOptionMtmFixture}\n${equalOptionMonthYtd}\n`,
+  )
+  assert(
+    hasDiagnostic(equalAmountAliasSwapResult, 'accounting_section_conflict') &&
+      !equalAmountAliasSwapResult.report,
+    'Equal MTM amounts hid a swapped Month/YTD option-underlying identity.',
+  )
+
+  const redistributedMonthYtd = secondaryYtdSection
+    .replaceAll('208.863355', '209.863355')
+    .replaceAll('-41.240878', '-42.240878')
+  const redistributedYtdResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${redistributedMonthYtd}\n`,
+  )
+  assert(
+    hasDiagnostic(redistributedYtdResult, 'accounting_section_conflict') &&
+      !redistributedYtdResult.report,
+    'Offsetting per-underlying changes hid behind an unchanged all-assets total.',
+  )
+
+  const swappedAssetBuckets = secondaryYtdSection
+    .replace(
+      ',Data,Stocks,ZZFICTA,Synthetic Alpha Systems,',
+      ',Data,Equity and Index Options,ZZFICTA,Synthetic Alpha Systems,',
+    )
+    .replace(
+      ',Data,Equity and Index Options,ZZFICTA,Synthetic Alpha options,',
+      ',Data,Stocks,ZZFICTA,Synthetic Alpha options,',
+    )
+  const swappedAssetBucketsResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${swappedAssetBuckets}\n`,
+  )
+  assert(
+    hasDiagnostic(swappedAssetBucketsResult, 'accounting_section_conflict') &&
+      !swappedAssetBucketsResult.report,
+    'A Stock/Option bucket swap hid behind equal underlying and total values.',
+  )
+  const changedOtherAssetCategory = secondaryYtdSection.replace(
+    ',Data,Forex,XTS.USD,Synthetic test currency,',
+    ',Data,Futures,XTS.USD,Synthetic test currency,',
+  )
+  const changedOtherAssetCategoryResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${changedOtherAssetCategory}\n`,
+  )
+  assert(
+    hasDiagnostic(
+      changedOtherAssetCategoryResult,
+      'accounting_section_conflict',
+    ) && !changedOtherAssetCategoryResult.report,
+    'Different broker asset categories were treated as equivalent merely because both publish in the Other bucket.',
+  )
+  const nonAsciiAssetCategoryResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture.replace(
+      'Mark-to-Market Performance Summary,Data,Forex,XTS.USD,',
+      'Mark-to-Market Performance Summary,Data,期货,XTS.USD,',
+    )}\n${secondaryYtdSection.replace(
+      ',Data,Forex,XTS.USD,Synthetic test currency,',
+      ',Data,外汇,XTS.USD,Synthetic test currency,',
+    )}\n`,
+  )
+  assert(
+    hasDiagnostic(nonAsciiAssetCategoryResult, 'accounting_section_conflict') &&
+      !nonAsciiAssetCategoryResult.report,
+    'Two unsupported non-English asset labels collapsed into one cross-source Other key.',
+  )
+
+  const missingUnderlyingMonthYtd = secondaryYtdSection.replace(
+    ',Data,Forex,XTS.USD,Synthetic test currency,',
+    ',Data,Forex,XTS2.USD,Synthetic test currency,',
+  )
+  const missingUnderlyingYtdResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${missingUnderlyingMonthYtd}\n`,
+  )
+  assert(
+    hasDiagnostic(missingUnderlyingYtdResult, 'accounting_section_conflict') &&
+      !missingUnderlyingYtdResult.report,
+    'A missing Month/YTD asset-and-underlying key was accepted.',
+  )
+
   const conflictingSecondaryYtd = secondaryYtdSection.replace(
     ',740.123456,',
     ',741.123456,',
@@ -726,7 +1201,209 @@ try {
   assert(
     hasDiagnostic(conflictingYtdSectionsResult, 'accounting_section_conflict') &&
       !conflictingYtdSectionsResult.report,
-    'Conflicting alternative YTD sections were accepted.',
+    'Conflicting all-assets totals across YTD families were accepted.',
+  )
+
+  const oneMicroDifferenceMonthYtd = secondaryYtdSection
+    .replaceAll('208.863355', '208.863356')
+    .replace('740.123456', '740.123457')
+  const oneMicroDifferenceResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${oneMicroDifferenceMonthYtd}\n`,
+  )
+  assert(
+    hasDiagnostic(oneMicroDifferenceResult, 'accounting_section_conflict') &&
+      !oneMicroDifferenceResult.report,
+    'A one-micro-unit cross-source accounting difference was rounded away.',
+  )
+
+  const duplicateMonthYtdFamily = buildMonthYtdSection(
+    'Month and Year to Date Performance Summary in Base',
+  )
+  const duplicateMonthYtdFamilyResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${secondaryYtdSection}\n${duplicateMonthYtdFamily}\n`,
+  )
+  assert(
+    hasDiagnostic(duplicateMonthYtdFamilyResult, 'accounting_section_conflict') &&
+      !duplicateMonthYtdFamilyResult.report,
+    'Two alternative Month/YTD sections were silently selected between.',
+  )
+
+  const monthYtdWithoutRealized = dropSectionColumn(
+    dropSectionColumn(
+      secondaryYtdSection,
+      'Month & Year to Date Performance Summary',
+      'Reazlied S/T YTD',
+    ),
+    'Month & Year to Date Performance Summary',
+    'Realized L/T YTD',
+  )
+  const monthYtdWithoutRealizedResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${monthYtdWithoutRealized}\n`,
+  )
+  assert(
+    monthYtdWithoutRealizedResult.errors.length === 0 &&
+      monthYtdWithoutRealizedResult.report?.seasonPnl === 740.123456,
+    `An optional all-section omission of Month/YTD realized fields was rejected: ${diagnosticsText(monthYtdWithoutRealizedResult)}`,
+  )
+  const partialMonthYtdRealized = dropSectionColumn(
+    secondaryYtdSection,
+    'Month & Year to Date Performance Summary',
+    'Realized L/T YTD',
+  )
+  const partialMonthYtdRealizedResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${partialMonthYtdRealized}\n`,
+  )
+  assert(
+    hasDiagnostic(partialMonthYtdRealizedResult, 'accounting_section_conflict') &&
+      !partialMonthYtdRealizedResult.report,
+    'A one-sided Month/YTD realized field selection bypassed the paired schema.',
+  )
+
+  const accountScopedMonthYtd = addColumnToFirstSectionBlock(
+    addColumnToFirstSectionBlock(
+      secondaryYtdSection,
+      'Month & Year to Date Performance Summary',
+      'Account ID',
+      'SYNTHETIC_ACCOUNT_2026_A',
+    ),
+    'Month & Year to Date Performance Summary',
+    'Model',
+    '',
+  )
+  const accountScopedMonthYtdResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${accountScopedMonthYtd}\n`,
+  )
+  assert(
+    accountScopedMonthYtdResult.errors.length === 0 &&
+      accountScopedMonthYtdResult.report?.seasonPnl === 740.123456,
+    `A matching full-account Month/YTD scope was rejected: ${diagnosticsText(accountScopedMonthYtdResult)}`,
+  )
+  const mismatchedYtdAccountResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${accountScopedMonthYtd.replaceAll(
+      'SYNTHETIC_ACCOUNT_2026_A',
+      'SYNTHETIC_OTHER_ACCOUNT',
+    )}\n`,
+  )
+  assert(
+    hasDiagnostic(mismatchedYtdAccountResult, 'accounting_section_conflict') &&
+      !mismatchedYtdAccountResult.report,
+    'A YTD section from a different account passed the full-account scope gate.',
+  )
+  const modelScopedYtdResult = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${addColumnToFirstSectionBlock(
+      secondaryYtdSection,
+      'Month & Year to Date Performance Summary',
+      'Model',
+      'SYNTHETIC_MODEL_A',
+    )}\n`,
+  )
+  assert(
+    hasDiagnostic(modelScopedYtdResult, 'accounting_section_conflict') &&
+      !modelScopedYtdResult.report,
+    'A partial Model slice was accepted as full-account ranking evidence.',
+  )
+
+  const matchingScopedRealized = addColumnToEverySectionBlock(
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Realized & Unrealized Performance Summary',
+      'Account ID',
+      'SYNTHETIC_ACCOUNT_2026_A',
+    ),
+    'Realized & Unrealized Performance Summary',
+    'Model',
+    '',
+  )
+  const matchingScopedRealizedResult = parseIbkrActivityStatement(
+    matchingScopedRealized,
+  )
+  assert(
+    matchingScopedRealizedResult.errors.length === 0 &&
+      matchingScopedRealizedResult.report,
+    `A matching full-account Realized/FIFO scope was rejected: ${diagnosticsText(matchingScopedRealizedResult)}`,
+  )
+  for (const scopedRealizedFixture of [
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Realized & Unrealized Performance Summary',
+      'Account ID',
+      'SYNTHETIC_OTHER_ACCOUNT',
+    ),
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Realized & Unrealized Performance Summary',
+      'Model',
+      'SYNTHETIC_MODEL_A',
+    ),
+  ]) {
+    const scopedRealizedResult = parseIbkrActivityStatement(
+      scopedRealizedFixture,
+    )
+    assert(
+      hasDiagnostic(scopedRealizedResult, 'accounting_section_conflict') &&
+        !scopedRealizedResult.report,
+      'A different-account or Model-sliced Realized/FIFO section supplied ranking explanations.',
+    )
+  }
+
+  for (const scopedFiiFixture of [
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Financial Instrument Information',
+      'Account ID',
+      'SYNTHETIC_OTHER_ACCOUNT',
+    ),
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Financial Instrument Information',
+      'Model',
+      'SYNTHETIC_MODEL_A',
+    ),
+  ]) {
+    const scopedFiiResult = parseIbkrActivityStatement(scopedFiiFixture)
+    assert(
+      hasDiagnostic(scopedFiiResult, 'accounting_section_conflict') &&
+        !scopedFiiResult.report,
+      'A different-account or Model-sliced FII section supplied an option-underlying mapping.',
+    )
+  }
+  const duplicateFiiSymbolResult = parseIbkrActivityStatement(
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Financial Instrument Information',
+      'Symbol',
+      'SYNTHETIC_CONFLICTING_SYMBOL',
+    ),
+  )
+  assert(
+    hasDiagnostic(duplicateFiiSymbolResult, 'accounting_section_conflict') &&
+      !duplicateFiiSymbolResult.report,
+    'A duplicate conflicting FII identity field silently supplied an option-underlying mapping.',
+  )
+  const emptyFiiAssetClassResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Financial Instrument Information,Data,Equity and Index Options,ZZFICTA,',
+      'Financial Instrument Information,Data,,ZZFICTA,',
+    ),
+  )
+  assert(
+    hasDiagnostic(emptyFiiAssetClassResult, 'accounting_section_conflict') &&
+      !emptyFiiAssetClassResult.report,
+    'An empty FII Asset Class supplied an inferred option-underlying mapping.',
+  )
+
+  const modelScopedTradesResult = parseIbkrActivityStatement(
+    addColumnToEverySectionBlock(
+      currentSchemaFixture,
+      'Trades',
+      'Model',
+      'SYNTHETIC_MODEL_A',
+    ),
+  )
+  assert(
+    hasDiagnostic(modelScopedTradesResult, 'accounting_section_conflict') &&
+      !modelScopedTradesResult.report,
+    'A Model-sliced event section supplied full-account option events.',
   )
 
   const duplicatedRealizedSection = currentSchemaFixture
@@ -871,6 +1548,168 @@ try {
       !mismatchingMtmComponentsResult.report,
     'An MTM row whose components did not equal its broker total was accepted.',
   )
+  const selfConsistentWrongAssetSubtotalResult =
+    parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        'Mark-to-Market Performance Summary,Data,Total,,,,,,89.666667,70.375001,-1.919191,9.500000,167.622477,',
+        'Mark-to-Market Performance Summary,Data,Total,,,,,,90.666667,70.375001,-1.919191,9.500000,168.622477,',
+      ),
+    )
+  assert(
+    hasDiagnostic(
+      selfConsistentWrongAssetSubtotalResult,
+      'accounting_section_conflict',
+    ) && !selfConsistentWrongAssetSubtotalResult.report,
+    'An internally self-consistent asset subtotal disagreed with its detail block but was accepted.',
+  )
+  const subtotalImpersonatesAllAssetsFixture = parseCsvRows(
+    currentSchemaFixture,
+  )
+    .flatMap((row) => {
+      if (
+        row[0] === 'Mark-to-Market Performance Summary' &&
+        row[1]?.toUpperCase() === 'DATA' &&
+        row[2] === 'Total (All Assets)'
+      ) {
+        return []
+      }
+      if (
+        row[0] === 'Mark-to-Market Performance Summary' &&
+        row[2] === 'Total' &&
+        row[12] === '167.622477'
+      ) {
+        const next = [...row]
+        next[1] = 'SubTotal'
+        next[2] = 'Stocks'
+        next[3] = 'Total (All Assets)'
+        return [next]
+      }
+      return [row]
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const subtotalImpersonatesAllAssetsResult = parseIbkrActivityStatement(
+    subtotalImpersonatesAllAssetsFixture,
+  )
+  assert(
+    hasDiagnostic(
+      subtotalImpersonatesAllAssetsResult,
+      'accounting_section_conflict',
+    ) && !subtotalImpersonatesAllAssetsResult.report,
+    'A contradictory per-asset subtotal impersonated the authoritative All Assets row.',
+  )
+
+  let delayedStockDetail
+  const detailAfterClosedSubtotalFixture = parseCsvRows(currentSchemaFixture)
+    .flatMap((row) => {
+      if (
+        row[0] === 'Mark-to-Market Performance Summary' &&
+        row[1]?.toUpperCase() === 'DATA' &&
+        row[2] === 'Stocks' &&
+        row[3] === 'ZZFICTB'
+      ) {
+        delayedStockDetail = row
+        return []
+      }
+      if (
+        row[0] === 'Mark-to-Market Performance Summary' &&
+        row[2] === 'Total' &&
+        row[12] === '167.622477'
+      ) {
+        const subtotal = [...row]
+        subtotal[1] = 'SubTotal'
+        subtotal[2] = 'Stocks'
+        subtotal[3] = 'Total Stocks'
+        subtotal[8] = '180.123456'
+        subtotal[9] = '20.250000'
+        subtotal[10] = '-1.010101'
+        subtotal[11] = '9.500000'
+        subtotal[12] = '208.863355'
+        return delayedStockDetail ? [subtotal, delayedStockDetail] : [subtotal]
+      }
+      return [row]
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  assert(delayedStockDetail, 'The delayed-detail fixture did not find ZZFICTB.')
+  const detailAfterClosedSubtotalResult = parseIbkrActivityStatement(
+    detailAfterClosedSubtotalFixture,
+  )
+  assert(
+    hasDiagnostic(
+      detailAfterClosedSubtotalResult,
+      'accounting_section_conflict',
+    ) && !detailAfterClosedSubtotalResult.report,
+    'A detail appended after its asset subtotal bypassed subtotal/detail closure.',
+  )
+  const emptyMtmAssetClassResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Mark-to-Market Performance Summary,Data,Forex,XTS.USD,',
+      'Mark-to-Market Performance Summary,Data,,XTS.USD,',
+    ),
+  )
+  assert(
+    hasDiagnostic(emptyMtmAssetClassResult, 'accounting_section_conflict') &&
+      !emptyMtmAssetClassResult.report,
+    'An empty detail Asset Class was inferred into a different public asset bucket.',
+  )
+  const symbolLabelledStockSubtotalResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Mark-to-Market Performance Summary,Data,Total,,,,,,89.666667,70.375001,-1.919191,9.500000,167.622477,',
+      'Mark-to-Market Performance Summary,SubTotal,Stocks,Total Stocks,,,,,89.666667,70.375001,-1.919191,9.500000,167.622477,',
+    ),
+  )
+  assert(
+    symbolLabelledStockSubtotalResult.errors.length === 0 &&
+      symbolLabelledStockSubtotalResult.report?.stockPnl === 167.622477 &&
+      symbolLabelledStockSubtotalResult.report.symbols.every(
+        (symbol) => symbol.symbol !== 'TOTAL STOCKS',
+      ),
+    `A Symbol-labelled stock subtotal was counted as a second stock instrument: ${diagnosticsText(symbolLabelledStockSubtotalResult)}`,
+  )
+  const symbolLabelledFifoSubtotalResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Realized & Unrealized Performance Summary,SubTotal,Total Stocks,,',
+      'Realized & Unrealized Performance Summary,SubTotal,Stocks,Total Stocks,',
+    ),
+  )
+  assert(
+    symbolLabelledFifoSubtotalResult.errors.length === 0 &&
+      symbolLabelledFifoSubtotalResult.report?.symbols.every(
+        (symbol) => symbol.symbol !== 'TOTAL STOCKS',
+      ) &&
+      symbolLabelledFifoSubtotalResult.report.symbols.find(
+        (symbol) => symbol.symbol === 'ZZFICTA',
+      )?.stockRealizedYtd === 150.111111,
+    `A Symbol-labelled FIFO subtotal was counted as a second realized instrument: ${diagnosticsText(symbolLabelledFifoSubtotalResult)}`,
+  )
+  const optionContractMisclassifiedAsStockResult =
+    parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        'Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,',
+        'Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA 19JUN26 125 P,',
+      ),
+    )
+  assert(
+    hasDiagnostic(
+      optionContractMisclassifiedAsStockResult,
+      'accounting_section_conflict',
+    ) && !optionContractMisclassifiedAsStockResult.report,
+    'A known option contract was relabelled as Stock and published as a new stock underlying.',
+  )
+  const fifoOptionMisclassifiedAsStockResult = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      'Realized & Unrealized Performance Summary,Data,Equity and Index Options,ZZFICTA 19JUN26 125 P,',
+      'Realized & Unrealized Performance Summary,Data,Stocks,ZZFICTA 19JUN26 125 P,',
+    ),
+  )
+  assert(
+    hasDiagnostic(
+      fifoOptionMisclassifiedAsStockResult,
+      'accounting_section_conflict',
+    ) && !fifoOptionMisclassifiedAsStockResult.report,
+    'A known FIFO option contract was relabelled as Stock and attached to a fabricated stock underlying.',
+  )
   const returnTaggedAccountingResult = parseIbkrActivityStatement(
     addColumnToFirstSectionBlock(
       currentSchemaFixture,
@@ -957,6 +1796,108 @@ try {
       ),
     'An unrelated section supplied or conflicted with the Season Return.',
   )
+
+  const withoutNavTwr = currentSchemaFixture
+    .split('\n')
+    .filter(
+      (line) =>
+        line !== 'Net Asset Value,Header,Time Weighted Rate of Return' &&
+        line !== 'Net Asset Value,Data,7.654321%',
+    )
+    .join('\n')
+  const mtmTwrResult = parseIbkrActivityStatement(
+    `${withoutNavTwr}\nMark-to-Market Performance Summary,Header,Time Weighted Rate of Return\nMark-to-Market Performance Summary,Data,12.5%\n`,
+  )
+  assert(
+    mtmTwrResult.errors.length === 0 &&
+      mtmTwrResult.report?.seasonReturn === 0.125 &&
+      mtmTwrResult.report.metricSourceRefs.seasonReturn?.some(
+        (ref) => ref.section === 'Mark-to-Market Performance Summary',
+      ),
+    `An official MTM TWR field was not retained as Season Return: ${diagnosticsText(mtmTwrResult)}`,
+  )
+  const mtmAccountingRowsWithTwrResult = parseIbkrActivityStatement(
+    addColumnToEverySectionBlock(
+      withoutNavTwr,
+      'Mark-to-Market Performance Summary',
+      'TWR',
+      '12.5%',
+    ),
+  )
+  assert(
+    mtmAccountingRowsWithTwrResult.errors.length === 0 &&
+      mtmAccountingRowsWithTwrResult.report?.seasonReturn === 0.125,
+    `An official MTM TWR column was rejected: ${diagnosticsText(mtmAccountingRowsWithTwrResult)}`,
+  )
+  for (const monthYtdReturnSection of [
+    'Month & Year to Date Performance Summary',
+    'PLUI',
+  ]) {
+    const monthYtdTwrResult = parseIbkrActivityStatement(
+      `${withoutNavTwr}\n${buildMonthYtdSection(monthYtdReturnSection)}\n${monthYtdReturnSection},Header,Time Weighted Rate of Return\n${monthYtdReturnSection},Data,99%\n`,
+    )
+    assert(
+      hasDiagnostic(monthYtdTwrResult, 'accounting_section_conflict') &&
+        !monthYtdTwrResult.report,
+      `A non-official ${monthYtdReturnSection} return field impersonated MTM/NAV Season Return.`,
+    )
+    const monthYtdRowsWithTwrResult = parseIbkrActivityStatement(
+      `${withoutNavTwr}\n${addColumnToEverySectionBlock(
+        buildMonthYtdSection(monthYtdReturnSection),
+        monthYtdReturnSection,
+        'TWR',
+        '99%',
+      )}\n`,
+    )
+    assert(
+      hasDiagnostic(
+        monthYtdRowsWithTwrResult,
+        'accounting_section_conflict',
+      ) && !monthYtdRowsWithTwrResult.report,
+      `A ${monthYtdReturnSection} TWR column bypassed the field-family gate.`,
+    )
+
+    let namedPairInserted = false
+    const monthYtdNamedPairReturnFixture = parseCsvRows(
+      buildMonthYtdSection(monthYtdReturnSection),
+    )
+      .map((row) => {
+        if (row[1]?.toUpperCase() === 'HEADER') {
+          return [...row, 'Field Name', 'Field Value']
+        }
+        if (row[1]?.toUpperCase() !== 'DATA') return row
+        if (!namedPairInserted) {
+          namedPairInserted = true
+          return [...row, 'TWR', '99%']
+        }
+        return [...row, '', '']
+      })
+      .map((row) => row.map(encodeCsvCell).join(','))
+      .join('\n')
+    const monthYtdNamedPairReturnResult = parseIbkrActivityStatement(
+      `${withoutNavTwr}\n${monthYtdNamedPairReturnFixture}\n`,
+    )
+    assert(
+      hasDiagnostic(
+        monthYtdNamedPairReturnResult,
+        'accounting_section_conflict',
+      ) && !monthYtdNamedPairReturnResult.report,
+      `A ${monthYtdReturnSection} named Field Name/Field Value TWR pair bypassed the field-family gate.`,
+    )
+    const monthYtdBlankNamedReturnResult = parseIbkrActivityStatement(
+      `${withoutNavTwr}\n${monthYtdNamedPairReturnFixture.replace(
+        ',TWR,99%',
+        ',TWR,',
+      )}\n`,
+    )
+    assert(
+      hasDiagnostic(
+        monthYtdBlankNamedReturnResult,
+        'accounting_section_conflict',
+      ) && !monthYtdBlankNamedReturnResult.report,
+      `A blank-valued ${monthYtdReturnSection} named return alias bypassed the field-family gate.`,
+    )
+  }
 
   const taintedSectionResult = parseIbkrActivityStatement(
     currentSchemaFixture.replaceAll(
@@ -1486,6 +2427,70 @@ try {
       ),
     'Dedicated lifecycle rows were combined with Trades and counted twice.',
   )
+  const subtotalOnlyLifecycleResult = parseIbkrActivityStatement(`${currentSchemaFixture}
+"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
+"Options Exercises, Assignments and Expirations",SubTotal,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Assignment
+`)
+  assert(
+    subtotalOnlyLifecycleResult.errors.length === 0 &&
+      subtotalOnlyLifecycleResult.report?.events.length === 2 &&
+      subtotalOnlyLifecycleResult.report.events.every((event) =>
+        event.sourceRefs.every((ref) => ref.recordType !== 'SUBTOTAL'),
+      ),
+    `A lifecycle subtotal became a real event or suppressed the Trades fallback: ${diagnosticsText(subtotalOnlyLifecycleResult)}`,
+  )
+  const ambiguousLifecycleTypeResult = parseIbkrActivityStatement(`${currentSchemaFixture}
+"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type,Type
+"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Open,Exercise
+`)
+  assert(
+    hasDiagnostic(
+      ambiguousLifecycleTypeResult,
+      'accounting_section_conflict',
+    ) && !ambiguousLifecycleTypeResult.report,
+    'A duplicate lifecycle type column was filtered before ambiguity validation and silently fell back to Trades.',
+  )
+  const misclassifiedDedicatedEventResult = parseIbkrActivityStatement(`${currentSchemaFixture}
+"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
+"Options Exercises, Assignments and Expirations",Data,Stocks,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Exercise
+"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTB 17JUL26 80 C,ZZFICTB,2026-07-18,Expiration
+`)
+  assert(
+    hasDiagnostic(
+      misclassifiedDedicatedEventResult,
+      'accounting_section_conflict',
+    ) && !misclassifiedDedicatedEventResult.report,
+    'A non-option dedicated lifecycle Data row disappeared beside a valid event.',
+  )
+  const lifecycleMappingPrecedenceFixture = `${currentSchemaFixture
+    .split('\n')
+    .filter((line) => !line.startsWith('Financial Instrument Information,'))
+    .join('\n')
+    .replace(
+      ',ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",',
+      ',ZZFICTA 19JUN26 125 P,ZZFICTB,"2026-06-19, 16:00:00",',
+    )}
+"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Date,Transaction Type
+"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTA 19JUN26 125 P,2026-06-20,Assignment
+`
+  const lifecycleMappingPrecedenceResult = parseIbkrActivityStatement(
+    lifecycleMappingPrecedenceFixture,
+  )
+  const lifecycleMappedAlpha =
+    lifecycleMappingPrecedenceResult.report?.symbols.find(
+      (symbol) => symbol.symbol === 'ZZFICTA',
+    )
+  assert(
+    lifecycleMappingPrecedenceResult.errors.length === 0 &&
+      lifecycleMappedAlpha?.optionYtdMtm === 354.777778 &&
+      lifecycleMappedAlpha.optionRealizedYtd === 220.555555 &&
+      lifecycleMappingPrecedenceResult.report?.events.length === 1 &&
+      lifecycleMappingPrecedenceResult.report.events[0]?.symbol === 'ZZFICTA' &&
+      !lifecycleMappingPrecedenceResult.report.events[0]?.sourceRefs.some(
+        (ref) => ref.section === 'Trades',
+      ),
+    `An unselected Trades fallback overrode dedicated lifecycle mapping: ${diagnosticsText(lifecycleMappingPrecedenceResult)}`,
+  )
   const explicitUnderlyingResult = parseIbkrActivityStatement(
     currentSchemaFixture.replace(canonicalAssignmentRow, opaqueAssignmentRow),
   )
@@ -1841,6 +2846,30 @@ try {
       `An explicit ${cfdCategory} category was incorrectly classified as stock.`,
     )
   }
+  for (const unsupportedOptionCategory of [
+    'Options on Futures',
+    'Futures Options',
+  ]) {
+    const unsupportedOptionFixture = currentSchemaFixture.replace(
+      'Mark-to-Market Performance Summary,Data,Forex,XTS.USD,',
+      `Mark-to-Market Performance Summary,Data,${unsupportedOptionCategory},XTS.USD,`,
+    )
+    const unsupportedOptionResult = parseIbkrActivityStatement(
+      unsupportedOptionFixture,
+    )
+    const unsupportedOptionSymbol =
+      unsupportedOptionResult.report?.symbols.find(
+        (symbol) => symbol.symbol === 'XTS.USD',
+      )
+    assert(
+      unsupportedOptionResult.errors.length === 0 &&
+        unsupportedOptionResult.report?.optionPnl === 450.222223 &&
+        unsupportedOptionResult.report.otherPnl === 122.278756 &&
+        unsupportedOptionSymbol?.optionYtdMtm === 0 &&
+        unsupportedOptionSymbol.otherYtdMtm === 122.278756,
+      `Unsupported ${unsupportedOptionCategory} performance entered the equity/index option ranking bucket.`,
+    )
+  }
 
   const currentMtmStyle = currentSchemaFixture
     .replaceAll(
@@ -1973,7 +3002,7 @@ try {
       supportedPercentForms.length +
       rejectedPercentForms.length,
     sectionBoundaryCases: 12,
-    explicitOtherAssetCases: 3,
+    explicitOtherAssetCases: 5,
     localizedDiagnosticCodes: PARSER_DIAGNOSTIC_CODES.length,
     currentSchemaChecks: 5,
     sourceReferenceChecks: allSourceRefs.length,

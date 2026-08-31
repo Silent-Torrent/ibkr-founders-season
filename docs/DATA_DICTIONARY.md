@@ -1,6 +1,6 @@
 # P&L Arena 数据字典与数据边界
 
-> 状态：2026 Founders Season checkpoint 0.9 已实现字段 + 未来边界基线
+> 状态：2026 Founders Season checkpoint 0.10 已实现字段 + 未来边界基线
 > 适用范围：当前本地 MVP；标明“未来”的字段只是设计约束，不得当作已实现 schema
 > 目的：规定「读取什么、如何计算、可以保存什么、可以公开什么」。本文档不是对任何一份用户报表的真实性背书。
 
@@ -94,12 +94,12 @@
 
 | 字段 | 类型 | 来源/公式 | 必需 | 敏感度 | 存储/公开 | 校验与失败处理 |
 |---|---|---|---|---|---|---|
-| `reportedAllAssetsYtdMtm` | decimal | 当前唯一受支持 YTD 业绩区块的 All Assets YTD MTM | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 无此字段则拒绝；多个 YTD 源当前失败关闭 |
+| `reportedAllAssetsYtdMtm` | decimal | 权威 YTD 业绩区块的 All Assets YTD MTM；双家族共存时优先 MTM | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 无此字段则拒绝；MTM + Month/YTD 必须逐规范化券商资产类别和 underlying 精确一致，且只计一次 |
 | `seasonPnl` | decimal | 已验收的 All Assets YTD MTM | 是 | S2 | LOCAL_SESSION；公开须 opt-in | 当前与 `reportedAllAssetsYtdMtm` 同源 |
 | `stockPnl` / `optionPnl` / `otherPnl` | decimal | 三个资产桶的 YTD MTM 明细汇总 | 是 | S2 | LOCAL_SESSION | 分类和 underlying 映射后十进制安全聚合 |
 | `parsedAllAssetsYtdMtm` | decimal | `stockPnl + optionPnl + otherPnl` | 是 | S2 | LOCAL_SESSION | 只作明细对账，不覆盖已存在的券商汇总 |
 | `mtmReconciliationDifference` | decimal | `reportedAllAssetsYtdMtm - parsedAllAssetsYtdMtm` | 是 | S1 | LOCAL_SESSION | 方向固定为 reported - parsed；超过 CSV 容差则可见告警 |
-| `seasonReturn` | decimal/null | 显式 TWR/YTD return | 否 | S2 | LOCAL_SESSION；公开须 opt-in | 缺失时不自行计算 |
+| `seasonReturn` | decimal/null | MTM、NAV 或 Change-in-NAV 中的显式 TWR/YTD return | 否 | S2 | LOCAL_SESSION；公开须 opt-in | 缺失时不自行计算；Month/YTD/PLUI 不能提供 |
 | `statementPeriodTotalPnl` | decimal/null | Total P/L for Statement Period | 否 | S2 | LOCAL_SESSION | 对账用；不替换 `reportedAllAssetsYtdMtm` |
 | `beginningNav` / `endingNav` / `calculatedEndingNav` | decimal/null | NAV/Change in NAV 与桥接计算 | 否 | S2 | LOCAL_SESSION | 精确值默认不分享 |
 | `netLiquidationValue` / `cashValue` | decimal/null | 行式 NAV 或当前 wide Flex NAV，及 Cash Report 交叉检查 | 否 | S2 | LOCAL_SESSION | NAV 分项与 Total 先闭合；两源同时存在时必须一致；`cashValue` 仅取精确 `Cash`，不取 `SLB Cash Collateral` |
@@ -114,10 +114,13 @@
 3. 标的级 `totalRealizedYtd + totalCurrentUnrealized` 不必等于 YTD MTM；它们只是解释字段。
 4. 重复快照必须拒绝；旧快照不得覆盖新快照；同年快照不得求和。
 5. 任何不支持的区块、资产类别、代码、币种或对账差异必须产生可见警告，不能默认丢弃。
-6. 当前版本每份文件只允许一个受支持的 YTD 业绩来源；MTM 与 Month/YTD 同时出现时阻断，不能相加或按先后顺序猜选。
+6. MTM 与 Month/YTD 可以同时出现，但必须先分别校验，再对 All Assets 总额与每个 `规范化券商资产类别 + underlying` 做精确等价比较；通过后只用 MTM 计算成绩，绝不相加。公开展示虽将 Forex/Futures 等统称为 Other，交叉校验仍保留它们各自的原始类别语义。
 7. 金额必须使用十进制安全聚合；重复识别列、重复明细、冲突的券商总计或无法精确进入 Worker 数值协议的结果必须阻断。
+8. Realized/FIFO 存在时是已实现/当前未实现解释的权威来源；缺失时仅允许经校验的 Month/YTD realized S/T + L/T 作带警告备用，MTM 不能冒充。
+9. YTD、Realized/FIFO、FII 和被选中的事件区块如果暴露 Account ID/Model，必须同属报表账户且 Model 为空；空 Asset Class 不得靠猜测分类。
+10. YTD 中任何已出现的资产小计必须逐字段精确等于对应明细块，关闭后不得再追加同资产明细；All Assets 必须是身份独立、非 SubTotal 的唯一总计。Total/SubTotal 不得成为标的、映射别名或事件。专用生命周期的全部 `Data` 行必须先通过类型、合约、资产身份和歧义校验；小计不能压掉 Trades 备用来源，畸形 Data 也不能静默回退。
 
-Checkpoint 0.9 的仓库证据是完全虚构的 current-schema fixture 上三项 `PASS_EXACT` 与失败关闭回归。最终私密样本只读复验也是三项 `PASS_EXACT`，且前后源文件哈希一致；这不能证明文件真伪，也不扩展为其他 IBKR 模板。
+Checkpoint 0.10 的仓库证据是完全虚构的 current-schema fixture、家族正确的 mixed-YTD 合成回归、三项 `PASS_EXACT` 和对抗性失败关闭用例。私密样本只作仓库外的只读校准；这不能证明文件真伪，也不扩展为其他 IBKR 模板。
 
 ### 4.3 Underlying 级
 
@@ -157,7 +160,7 @@ Expiry、strike、right、multiplier、broker instrument ID 和规范化 `source
 
 ## 5. P1 解释与对账字段
 
-P1 表中大多数是未来目标字段，不是 checkpoint 0.9 `PortfolioReport` schema。实现前必须逐项确认会计口径、必要性和存储边界。
+P1 表中大多数是未来目标字段，不是 checkpoint 0.10 `PortfolioReport` schema。实现前必须逐项确认会计口径、必要性和存储边界。
 
 | 类别 | 规范化字段 | 类型 | 敏感度 | 保存边界 | 会计规则 |
 |---|---|---|---|---|---|

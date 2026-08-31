@@ -33,6 +33,8 @@ The fixture deliberately includes the current English, one-account, calendar-yea
 
 There is intentionally **no exercise (`Ex`) event**. The fixture validates assignment and expiration structure only; it must not be cited as exercise coverage.
 
+Checkpoint 0.10's mixed MTM + Month/YTD coverage is generated only from repository-owned fictional values inside `scripts/smoke-parser.mjs`. It uses a family-correct Month/YTD field layout and verifies exact all-assets plus normalized broker-category + underlying equivalence, option-contract aggregation, production mapping-family isolation, source-order independence, exact per-asset subtotal/detail closure including post-subtotal details and All-Assets impersonation, dedicated realized/FIFO precedence with a Month/YTD fallback only when that section is absent, MTM-only TWR sourcing including named-pair rejection in Month/YTD, full-account scope across explanation/mapping sections, lifecycle Data-only selection with subtotal fallback safety and malformed-row rejection, and fail-closed adversarial variants. It is not derived from a private report.
+
 ## Expected accounting values
 
 All amounts are in USD and retain six decimal places unless a source field uses a different scale.

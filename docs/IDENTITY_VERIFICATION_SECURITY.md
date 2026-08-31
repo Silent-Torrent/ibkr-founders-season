@@ -372,9 +372,9 @@ P&L Arena 会处理账户表现、持仓、交易和券商账户等高敏感数�
 
 ## 12. 当前开发顺序
 
-1. 先完成 checkpoint 0.9 会计失败关闭、虚构 fixture 与完整本地验证；当前默认持久化移除已是已完成基线。
-2. 下一个兼容性任务是为 MTM + Month/YTD 同时存在建立完全虚构样本和 underlying-aware 等价门槛；完成前继续失败关闭。
-3. 再获得合格的 Exercise 事件 fixture，并用虚构数据完成真 iPhone Safari/VoiceOver 及近上限性能检查。
+1. Checkpoint 0.9 会计失败关闭、虚构 fixture 与默认不持久化已是基线。
+2. Checkpoint 0.10 已为 MTM + Month/YTD 建立家族分离校验、完全虚构 mixed 回归和 `规范化券商资产类别 + underlying` 精确等价门槛；YTD、Realized/FIFO、FII 与事件解释的可见账户/Model 范围也必须一致，否则失败关闭。
+3. 下一步获得合格的 Exercise 事件 fixture，并用虚构数据完成真 iPhone Safari/VoiceOver 及近上限性能检查。
 4. 根据用户的 L 决定，当前不做任何新托管或公开 Beta；本地产品就绪后仍需单独审批和发布门槛。
 5. 只在用户另行批准产品范围和 C 阶段安全设计后，才开始账号、正式勋章和真实排行榜。
 6. 原始文件服务端上传和 IBKR token 属于两个独立的高风险变更，必须分别审批、分别测试、分别上线。

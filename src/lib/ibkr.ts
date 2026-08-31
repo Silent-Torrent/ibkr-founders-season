@@ -57,6 +57,7 @@ interface InstrumentUnderlying {
 }
 
 interface InstrumentUnderlyingMapResult {
+  contractAliases: Set<string>
   conflictingAliases: Set<string>
   hasConflicts: boolean
   mapping: Map<string, InstrumentUnderlying>
@@ -82,13 +83,16 @@ const MTM_PERFORMANCE_SECTION_ALIASES = [
   'Mark-to-Market Performance Summary',
   'Mark-to-Market Performance Summary in Base',
 ]
-const YTD_PERFORMANCE_SECTION_ALIASES = [
-  ...MTM_PERFORMANCE_SECTION_ALIASES,
+const MONTH_YTD_PERFORMANCE_SECTION_ALIASES = [
   'Month & Year to Date Performance Summary',
   'Month & Year to Date Performance Summary in Base',
   'Month and Year to Date Performance Summary',
   'Month and Year to Date Performance Summary in Base',
   'Profit and Loss by Underlying Instruments',
+]
+const YTD_PERFORMANCE_SECTION_ALIASES = [
+  ...MTM_PERFORMANCE_SECTION_ALIASES,
+  ...MONTH_YTD_PERFORMANCE_SECTION_ALIASES,
 ]
 const REALIZED_PERFORMANCE_SECTION_ALIASES = [
   'Realized & Unrealized Performance Summary',
@@ -143,12 +147,14 @@ const NAV_WIDE_METADATA_FIELD_ALIASES = [
   ['Model'],
   ['Report Date'],
 ]
-const YTD_MTM_FIELD_ALIASES = [
+const MONTH_YTD_MTM_FIELD_ALIASES = [
   'YTD Mark-to-Market',
   'Mark-to-Market YTD',
   'YTD MTM P/L',
   'YTD MTM PNL',
   'YTD MTM',
+]
+const MTM_TOTAL_FIELD_ALIASES = [
   'Mark-to-Market P/L Total',
   'Mark-to-Market PNL Total',
   'Total',
@@ -246,15 +252,6 @@ const OPTION_LIFECYCLE_SECTION_ALIASES = [
   'Options Exercises, Assignments and Expirations',
   'Option Exercises, Assignments and Expirations',
 ]
-const OPTION_EVENT_SECTION_ALIASES = [
-  ...OPTION_LIFECYCLE_SECTION_ALIASES,
-  'Trades',
-]
-const OPTION_CONTRACT_INDEX_SECTION_ALIASES = [
-  ...YTD_PERFORMANCE_SECTION_ALIASES,
-  ...REALIZED_PERFORMANCE_SECTION_ALIASES,
-  ...OPTION_EVENT_SECTION_ALIASES,
-]
 const KNOWN_SYNTHETIC_STATEMENTS = new Set([
   'a81d783777ab4bd84bf8066764425489be96d60f67270cbbc2ffebac495a0d7f',
   '80831483527003e501aa63f1691a2f155a37b8279f68e2e3e31cb244a219d7ff',
@@ -276,7 +273,7 @@ const SECTION_CODES: Record<string, string> = {
   EQUS: 'Net Asset Value',
   FIFO: 'Realized & Unrealized Performance Summary',
   MTMP: 'Mark-to-Market Performance Summary',
-  PLUI: 'Month & Year to Date Performance Summary',
+  PLUI: 'Profit and Loss by Underlying Instruments',
   POST: 'Open Positions',
   POSS: 'Open Positions',
   TRNT: 'Trades',
@@ -638,12 +635,30 @@ function addAccountingMatch(
   )
 }
 
-function isOverallTotalLabel(asset: string, symbol: string): boolean {
+function isOverallTotalRow(
+  record: SectionRecord,
+  asset: string,
+  symbol: string,
+): boolean {
+  if (record.recordType === 'SUBTOTAL') return false
+
+  const overallLabels = new Set([
+    'totalallassets',
+    'totalallassetclasses',
+  ])
+  const neutralCompanionLabels = new Set([
+    '',
+    'all',
+    'allassets',
+    'allassetclasses',
+    'total',
+    ...overallLabels,
+  ])
+  const assetIsOverall = overallLabels.has(asset)
+  const symbolIsOverall = overallLabels.has(symbol)
   return (
-    asset === 'totalallassets' ||
-    asset === 'totalallassetclasses' ||
-    symbol === 'totalallassets' ||
-    symbol === 'totalallassetclasses'
+    (assetIsOverall && neutralCompanionLabels.has(symbol)) ||
+    (symbolIsOverall && neutralCompanionLabels.has(asset))
   )
 }
 
@@ -664,6 +679,13 @@ function isReturnOnlyRecord(record: SectionRecord): boolean {
       fieldValues.length === 1 &&
       fieldValues[0]?.value.trim() &&
       matchesSchemaAlias(fieldNames[0]?.value ?? '', RETURN_FIELD_ALIASES),
+  )
+}
+
+function hasNamedReturnAlias(record: SectionRecord): boolean {
+  const fieldNames = fieldMatchesFor(record, ['Field Name', 'Name', 'Item'])
+  return fieldNames.some((fieldName) =>
+    matchesSchemaAlias(fieldName.value, RETURN_FIELD_ALIASES),
   )
 }
 
@@ -738,22 +760,172 @@ function requiredNumericMatches(
   return { matches, schemaValid }
 }
 
+function subtotalAssetKey(
+  rawAsset: string | undefined,
+  rawSymbol: string | undefined,
+): string | undefined {
+  const normalizedAsset = normalizeSchemaKey(rawAsset ?? '') ?? ''
+  const normalizedSymbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
+  const stripTotalPrefix = (value: string): string =>
+    value.replace(/^(?:subtotal|total)/, '')
+
+  const explicitCategory =
+    normalizedAsset && !/^(?:subtotal|total)/.test(normalizedAsset)
+      ? normalizedAsset
+      : stripTotalPrefix(normalizedAsset) || stripTotalPrefix(normalizedSymbol)
+  if (!explicitCategory || explicitCategory === 'allassets') return undefined
+  return crossSourceAssetKey(explicitCategory, '')
+}
+
+function validateYtdAssetSubtotalClosure(
+  records: SectionRecord[],
+  family: 'MTM' | 'MONTH_YTD',
+  invalidNumericFields: SourceRef[],
+  exposesMtmOther: boolean,
+  exposesYtdRealized: boolean,
+): boolean {
+  const metricAliasGroups =
+    family === 'MTM'
+      ? [
+          MTM_POSITION_FIELD_ALIASES,
+          MTM_TRANSACTION_FIELD_ALIASES,
+          MTM_COMMISSION_FIELD_ALIASES,
+          ...(exposesMtmOther ? [MTM_OTHER_FIELD_ALIASES] : []),
+          MTM_TOTAL_FIELD_ALIASES,
+        ]
+      : [
+          MONTH_YTD_MTM_FIELD_ALIASES,
+          ...(exposesYtdRealized
+            ? [
+                YTD_REALIZED_SHORT_FIELD_ALIASES,
+                YTD_REALIZED_LONG_FIELD_ALIASES,
+              ]
+            : []),
+        ]
+  const detailsByAsset = new Map<
+    string,
+    Array<{ values: number[]; sourceRefs: SourceRef[] }>
+  >()
+  const closedAssets = new Set<string>()
+  let lastDetailAsset: string | undefined
+  let valid = true
+
+  const emptyMetricTotals = (): Array<{
+    values: number[]
+    sourceRefs: SourceRef[]
+  }> => metricAliasGroups.map(() => ({ values: [], sourceRefs: [] }))
+
+  for (const record of records) {
+    if (isReturnOnlyRecord(record)) continue
+
+    const rawAsset = valueFor(record, ASSET_IDENTITY_FIELD_ALIASES)
+    const rawSymbol = valueFor(record, SYMBOL_IDENTITY_FIELD_ALIASES)
+    const normalizedAsset = normalizeSchemaKey(rawAsset ?? '') ?? ''
+    const normalizedSymbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
+    if (isOverallTotalRow(record, normalizedAsset, normalizedSymbol)) {
+      lastDetailAsset = undefined
+      continue
+    }
+
+    const totalRow = isAccountingTotalRow(
+      record,
+      normalizedAsset,
+      normalizedSymbol,
+    )
+    const supplementalRow =
+      family === 'MTM' &&
+      (normalizedAsset === 'brokerinterestpaidandreceived' ||
+        normalizedAsset === 'otherfees') &&
+      !identityValueFor(record)
+    if (supplementalRow) continue
+
+    if (!totalRow) {
+      const detailAsset = crossSourceAssetKey(
+        rawAsset,
+        rawSymbol ?? identityValueFor(record),
+      )
+      if (closedAssets.has(detailAsset)) {
+        valid = false
+        continue
+      }
+      const metricTotals = detailsByAsset.get(detailAsset) ?? emptyMetricTotals()
+      metricAliasGroups.forEach((aliases, index) => {
+        const match = numericMatchFor(
+          record,
+          aliases,
+          invalidNumericFields,
+          true,
+        )
+        if (!match) {
+          valid = false
+          return
+        }
+        metricTotals[index].values.push(match.value)
+        metricTotals[index].sourceRefs.push(match.sourceRef)
+      })
+      detailsByAsset.set(detailAsset, metricTotals)
+      lastDetailAsset = detailAsset
+      continue
+    }
+
+    const explicitSubtotalAsset = subtotalAssetKey(rawAsset, rawSymbol)
+    const subtotalKey = explicitSubtotalAsset ?? lastDetailAsset
+    const metricTotals = subtotalKey
+      ? detailsByAsset.get(subtotalKey)
+      : undefined
+    if (
+      !subtotalKey ||
+      !metricTotals ||
+      closedAssets.has(subtotalKey) ||
+      (explicitSubtotalAsset != null &&
+        lastDetailAsset != null &&
+        explicitSubtotalAsset !== lastDetailAsset)
+    ) {
+      valid = false
+      lastDetailAsset = undefined
+      continue
+    }
+
+    metricAliasGroups.forEach((aliases, index) => {
+      const reported = numericMatchFor(
+        record,
+        aliases,
+        invalidNumericFields,
+        true,
+      )
+      const calculated = sumAccountingValues(
+        metricTotals[index].values,
+        metricTotals[index].sourceRefs,
+        invalidNumericFields,
+      )
+      if (
+        !reported ||
+        calculated == null ||
+        !exactAccountingValuesMatch(reported.value, calculated)
+      ) {
+        valid = false
+      }
+    })
+    closedAssets.add(subtotalKey)
+    lastDetailAsset = undefined
+  }
+
+  return valid
+}
+
 function validateYtdAccountingSection(
   records: SectionRecord[],
   invalidNumericFields: SourceRef[],
+  family: 'MTM' | 'MONTH_YTD',
 ): boolean {
+  const ytdMtmAliases =
+    family === 'MTM' ? MTM_TOTAL_FIELD_ALIASES : MONTH_YTD_MTM_FIELD_ALIASES
   const requiredMtmComponentAliases = [
     MTM_POSITION_FIELD_ALIASES,
     MTM_TRANSACTION_FIELD_ALIASES,
     MTM_COMMISSION_FIELD_ALIASES,
   ]
-  const requiresMtmComponents = records.some(
-    (record) =>
-      matchesSchemaAlias(record.section, MTM_PERFORMANCE_SECTION_ALIASES) ||
-      [...requiredMtmComponentAliases, MTM_OTHER_FIELD_ALIASES].some(
-        (aliases) => fieldMatchesFor(record, aliases).length > 0,
-      ),
-  )
+  const requiresMtmComponents = family === 'MTM'
   // IBKR no longer lets newly created or edited Flex queries select the
   // historical Other component. Treat it as section-wide optional: if any
   // repeated header exposes it, every accounting row must expose it so a
@@ -761,15 +933,31 @@ function validateYtdAccountingSection(
   const exposesMtmOther = records.some(
     (record) => fieldMatchesFor(record, MTM_OTHER_FIELD_ALIASES).length > 0,
   )
-  const requiresYtdRealized = records.some(
+  const exposesYtdRealized = records.some(
     (record) =>
       fieldMatchesFor(record, YTD_REALIZED_SHORT_FIELD_ALIASES).length > 0 ||
       fieldMatchesFor(record, YTD_REALIZED_LONG_FIELD_ALIASES).length > 0,
   )
+  // Realized YTD belongs to IBKR's Month/YTD family, not MTM. A recognized
+  // realized field inside MTM is schema drift and must not become a fallback
+  // merely because the dedicated Realized/FIFO section is absent.
+  const requiresYtdRealized = family === 'MONTH_YTD' && exposesYtdRealized
+  const exposesReturnField = records.some(
+    (record) =>
+      fieldMatchesFor(record, RETURN_FIELD_ALIASES).length > 0 ||
+      hasNamedReturnAlias(record),
+  )
   let valid = records.length > 0
 
+  if (family === 'MTM' && exposesYtdRealized) valid = false
+  if (family === 'MONTH_YTD' && exposesReturnField) valid = false
+
   for (const record of records) {
-    if (isReturnOnlyRecord(record)) continue
+    if (isReturnOnlyRecord(record)) {
+      if (family === 'MTM') continue
+      valid = false
+      continue
+    }
 
     if (!rowIdentitySchemaIsValid(record)) valid = false
 
@@ -786,12 +974,20 @@ function validateYtdAccountingSection(
       (normalizedAsset === 'brokerinterestpaidandreceived' ||
         normalizedAsset === 'otherfees') &&
       !identityValueFor(record)
-    if (!totalRow && !supplementalRow && !identityValueFor(record)) valid = false
+    if (
+      !totalRow &&
+      !supplementalRow &&
+      (!rawAsset?.trim() ||
+        !normalizeSchemaKey(rawAsset) ||
+        !identityValueFor(record))
+    ) {
+      valid = false
+    }
 
-    if (fieldMatchesFor(record, YTD_MTM_FIELD_ALIASES).length !== 1) valid = false
+    if (fieldMatchesFor(record, ytdMtmAliases).length !== 1) valid = false
     const ytdTotal = numericMatchFor(
       record,
-      YTD_MTM_FIELD_ALIASES,
+      ytdMtmAliases,
       invalidNumericFields,
       true,
     )
@@ -841,60 +1037,344 @@ function validateYtdAccountingSection(
     }
   }
 
-  return valid
+  return (
+    valid &&
+    validateYtdAssetSubtotalClosure(
+      records,
+      family,
+      invalidNumericFields,
+      exposesMtmOther,
+      exposesYtdRealized,
+    )
+  )
 }
 
 interface YtdSectionSnapshot {
-  values: Map<string, number[]>
+  mtmByAssetAndUnderlying: Map<string, number>
+  totalMtm?: number
+  mtmMatchesDetails: boolean
   conflict: boolean
 }
 
 function ytdSectionSnapshot(
   records: SectionRecord[],
+  family: 'MTM' | 'MONTH_YTD',
+  instrumentIndex: InstrumentUnderlyingMapResult,
   invalidNumericFields: SourceRef[],
 ): YtdSectionSnapshot {
-  const values = new Map<string, number[]>()
-  const detailKeys = new Set<string>()
-  let overallTotalRows = 0
+  const mtmAliases =
+    family === 'MTM' ? MTM_TOTAL_FIELD_ALIASES : MONTH_YTD_MTM_FIELD_ALIASES
+  const metricAliases: Array<[string, string[]]> = [['mtm', mtmAliases]]
 
-  const metricAliases: Array<[string, string[]]> = [
-    ['mtm', YTD_MTM_FIELD_ALIASES],
-    ['realizedShort', YTD_REALIZED_SHORT_FIELD_ALIASES],
-    ['realizedLong', YTD_REALIZED_LONG_FIELD_ALIASES],
-  ]
+  const detailsByMetric = new Map<
+    string,
+    Map<string, { value: number; sourceRefs: SourceRef[] }>
+  >()
+  const totalsByMetric = new Map<string, NumericMatch>()
+  const rawDetailKeys = new Set<string>()
+  let overallTotalRows = 0
+  let conflict = records.length === 0
+  let mtmMatchesDetails = false
 
   for (const record of records) {
-    const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
-    const rawSymbol = valueFor(record, ['Symbol'])
+    if (isReturnOnlyRecord(record)) {
+      if (family === 'MTM') continue
+      conflict = true
+      continue
+    }
+
+    const rawAsset = valueFor(record, ASSET_IDENTITY_FIELD_ALIASES)
+    const rawSymbol = valueFor(record, SYMBOL_IDENTITY_FIELD_ALIASES)
     const asset = normalizeSchemaKey(rawAsset ?? '') ?? ''
     const symbolSchema = normalizeSchemaKey(rawSymbol ?? '') ?? ''
-    const symbolIdentity = normalizeInstrumentKey(rawSymbol ?? '')
-    const overallTotal = isOverallTotalLabel(asset, symbolSchema)
-    if (overallTotal) overallTotalRows += 1
+    const overallTotal = isOverallTotalRow(record, asset, symbolSchema)
+    if (overallTotal) {
+      overallTotalRows += 1
+      for (const [metric, aliases] of metricAliases) {
+        const match = numericMatchFor(
+          record,
+          aliases,
+          invalidNumericFields,
+          true,
+        )
+        if (!match || totalsByMetric.has(metric)) conflict = true
+        else totalsByMetric.set(metric, match)
+      }
+      continue
+    }
 
-    let hasAccountingValue = false
+    const totalRow = isAccountingTotalRow(record, asset, symbolSchema)
+    const rawIdentity = identityValueFor(record)
+    // Per-asset subtotal rows and MTM-only statement-period supplements are
+    // not underlying details and must not enter the cross-source key map.
+    if (totalRow || !rawIdentity) continue
+
+    const rawDetailKey = `${asset}|${normalizeInstrumentKey(rawIdentity)}`
+    if (rawDetailKeys.has(rawDetailKey)) conflict = true
+    rawDetailKeys.add(rawDetailKey)
+
+    const assetClass = classifyAsset(rawAsset, rawSymbol ?? rawIdentity)
+    if (
+      assetClass !== 'OPTION' &&
+      (instrumentIndex.contractAliases.has(
+        normalizeInstrumentKey(rawIdentity),
+      ) || inferOptionUnderlyingFromContract(rawIdentity) != null)
+    ) {
+      conflict = true
+      continue
+    }
+    const resolution = resolveUnderlying(
+      record,
+      rawSymbol,
+      assetClass,
+      instrumentIndex,
+    )
+    if (
+      family === 'MTM' &&
+      assetClass === 'OPTION' &&
+      optionUnderlyingResolutionIsOpaque(rawSymbol, resolution)
+    ) {
+      conflict = true
+      continue
+    }
+    const underlying = normalizeInstrumentKey(resolution.underlying)
+    if (!underlying || isTotalRow(underlying)) {
+      conflict = true
+      continue
+    }
+    if (
+      family === 'MONTH_YTD' &&
+      assetClass === 'OPTION' &&
+      normalizeInstrumentKey(rawIdentity) !== underlying
+    ) {
+      // Month/YTD and PLUI are underlying-level families. A row-level option
+      // identity that points at a different explicit Underlying is not a
+      // harmless alias: equal P&L values could otherwise hide an A/B swap.
+      conflict = true
+      continue
+    }
+    const canonicalKey = `${crossSourceAssetKey(
+      rawAsset,
+      rawSymbol ?? rawIdentity,
+    )}|${underlying}`
+
     for (const [metric, aliases] of metricAliases) {
-      const match = numericMatchFor(record, aliases, invalidNumericFields)
-      if (!match) continue
-      hasAccountingValue = true
-      const key = `${record.recordType}|${asset}|${symbolIdentity}|${metric}`
-      const candidates = values.get(key) ?? []
-      candidates.push(match.value)
-      values.set(key, candidates)
-    }
-
-    const rowIdentity = `${asset}|${symbolIdentity}`
-    const genericTotal = isTotalRow(rawAsset ?? '') || isTotalRow(rawSymbol ?? '')
-    if (hasAccountingValue && rowIdentity !== '|' && !genericTotal) {
-      if (detailKeys.has(rowIdentity)) return { values, conflict: true }
-      detailKeys.add(rowIdentity)
+      const match = numericMatchFor(
+        record,
+        aliases,
+        invalidNumericFields,
+        true,
+      )
+      if (!match) {
+        conflict = true
+        continue
+      }
+      const metricDetails = detailsByMetric.get(metric) ?? new Map()
+      const previous = metricDetails.get(canonicalKey)
+      const sourceRefs = dedupeSourceRefs([
+        ...(previous?.sourceRefs ?? []),
+        match.sourceRef,
+        ...resolution.sourceRefs,
+      ])
+      const value = previous
+        ? sumAccountingValues(
+            [previous.value, match.value],
+            sourceRefs,
+            invalidNumericFields,
+          )
+        : match.value
+      if (value == null) conflict = true
+      else metricDetails.set(canonicalKey, { value, sourceRefs })
+      detailsByMetric.set(metric, metricDetails)
     }
   }
 
-  for (const candidates of values.values()) {
-    candidates.sort((left, right) => left - right)
+  if (overallTotalRows !== 1) conflict = true
+  for (const [metric] of metricAliases) {
+    const details = detailsByMetric.get(metric)
+    const total = totalsByMetric.get(metric)
+    if (!details || details.size === 0 || !total) {
+      conflict = true
+      continue
+    }
+    const calculated = sumAccountingValues(
+      [...details.values()].map((detail) => detail.value),
+      [...details.values()].flatMap((detail) => detail.sourceRefs),
+      invalidNumericFields,
+    )
+    if (calculated == null) conflict = true
+    else if (metric === 'mtm') {
+      mtmMatchesDetails = exactAccountingValuesMatch(total.value, calculated)
+    }
   }
-  return { values, conflict: overallTotalRows !== 1 }
+
+  return {
+    mtmByAssetAndUnderlying: new Map(
+      [...(detailsByMetric.get('mtm') ?? new Map()).entries()].map(
+        ([key, detail]) => [key, detail.value],
+      ),
+    ),
+    totalMtm: totalsByMetric.get('mtm')?.value,
+    mtmMatchesDetails,
+    conflict,
+  }
+}
+
+function validateFullAccountSectionScope(
+  records: SectionRecord[],
+  expectedAccountId: string | undefined,
+): boolean {
+  const accountingRecords = records.filter((record) => !isReturnOnlyRecord(record))
+  const exposesAccountId = accountingRecords.some(
+    (record) => fieldMatchesFor(record, ['Account ID', 'AccountID']).length > 0,
+  )
+  const exposesModel = accountingRecords.some(
+    (record) => fieldMatchesFor(record, ['Model']).length > 0,
+  )
+
+  for (const record of accountingRecords) {
+    if (exposesAccountId) {
+      const matches = fieldMatchesFor(record, ['Account ID', 'AccountID'])
+      if (
+        matches.length !== 1 ||
+        !matches[0].value.trim() ||
+        (expectedAccountId != null && matches[0].value.trim() !== expectedAccountId)
+      ) {
+        return false
+      }
+    }
+    if (exposesModel) {
+      const matches = fieldMatchesFor(record, ['Model'])
+      // Rankings are full-account only. A non-empty model is a partial slice,
+      // while a missing Model column on only some repeated headers is drift.
+      if (matches.length !== 1 || matches[0].value.trim()) return false
+    }
+  }
+  return true
+}
+
+function exposesYtdRealizedFields(records: SectionRecord[]): boolean {
+  return records.some(
+    (record) =>
+      fieldMatchesFor(record, YTD_REALIZED_SHORT_FIELD_ALIASES).length > 0 ||
+      fieldMatchesFor(record, YTD_REALIZED_LONG_FIELD_ALIASES).length > 0,
+  )
+}
+
+function validateYtdRealizedFallbackTotals(
+  records: SectionRecord[],
+  invalidNumericFields: SourceRef[],
+): boolean {
+  const shortDetails: NumericMatch[] = []
+  const longDetails: NumericMatch[] = []
+  let reportedShort: NumericMatch | undefined
+  let reportedLong: NumericMatch | undefined
+  let overallRows = 0
+  let valid = records.length > 0
+
+  for (const record of records) {
+    if (isReturnOnlyRecord(record)) continue
+
+    const rawAsset = valueFor(record, ASSET_IDENTITY_FIELD_ALIASES)
+    const rawSymbol = valueFor(record, SYMBOL_IDENTITY_FIELD_ALIASES)
+    const asset = normalizeSchemaKey(rawAsset ?? '') ?? ''
+    const symbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
+    const realizedShort = numericMatchFor(
+      record,
+      YTD_REALIZED_SHORT_FIELD_ALIASES,
+      invalidNumericFields,
+      true,
+    )
+    const realizedLong = numericMatchFor(
+      record,
+      YTD_REALIZED_LONG_FIELD_ALIASES,
+      invalidNumericFields,
+      true,
+    )
+
+    if (isOverallTotalRow(record, asset, symbol)) {
+      overallRows += 1
+      if (!realizedShort || reportedShort || !realizedLong || reportedLong) {
+        valid = false
+      } else {
+        reportedShort = realizedShort
+        reportedLong = realizedLong
+      }
+      continue
+    }
+    if (isAccountingTotalRow(record, asset, symbol)) continue
+    if (!realizedShort || !realizedLong) {
+      valid = false
+      continue
+    }
+    shortDetails.push(realizedShort)
+    longDetails.push(realizedLong)
+  }
+
+  const detailsMatch = (
+    details: NumericMatch[],
+    reported: NumericMatch | undefined,
+  ): boolean => {
+    if (details.length === 0 || !reported) return false
+    const calculated = sumAccountingValues(
+      details.map((detail) => detail.value),
+      details.map((detail) => detail.sourceRef),
+      invalidNumericFields,
+    )
+    return (
+      calculated != null &&
+      exactAccountingValuesMatch(calculated, reported.value)
+    )
+  }
+
+  return (
+    valid &&
+    overallRows === 1 &&
+    detailsMatch(shortDetails, reportedShort) &&
+    detailsMatch(longDetails, reportedLong)
+  )
+}
+
+function validateInstrumentReferenceIdentities(
+  records: SectionRecord[],
+): boolean {
+  return records.every((record) => {
+    const assets = fieldMatchesFor(record, ASSET_IDENTITY_FIELD_ALIASES)
+    const symbols = fieldMatchesFor(record, SYMBOL_IDENTITY_FIELD_ALIASES)
+    return (
+      assets.length === 1 &&
+      Boolean(assets[0].value.trim()) &&
+      Boolean(normalizeSchemaKey(assets[0].value)) &&
+      symbols.length === 1 &&
+      Boolean(symbols[0].value.trim())
+    )
+  })
+}
+
+function ytdSnapshotsMatch(
+  left: YtdSectionSnapshot,
+  right: YtdSectionSnapshot,
+): boolean {
+  if (
+    left.conflict ||
+    right.conflict ||
+    !left.mtmMatchesDetails ||
+    !right.mtmMatchesDetails ||
+    left.totalMtm == null ||
+    right.totalMtm == null ||
+    !exactAccountingValuesMatch(left.totalMtm, right.totalMtm) ||
+    left.mtmByAssetAndUnderlying.size !== right.mtmByAssetAndUnderlying.size
+  ) {
+    return false
+  }
+
+  for (const [key, leftValue] of left.mtmByAssetAndUnderlying) {
+    const rightValue = right.mtmByAssetAndUnderlying.get(key)
+    if (rightValue == null || !exactAccountingValuesMatch(leftValue, rightValue)) {
+      return false
+    }
+  }
+  return true
 }
 
 function hasDuplicateAccountingDetails(
@@ -981,9 +1461,16 @@ function validateRealizedSection(
     const rawSymbol = valueFor(record, ['Symbol'])
     const asset = normalizeSchemaKey(rawAsset ?? '') ?? ''
     const symbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
-    const overallTotal = isOverallTotalLabel(asset, symbol)
+    const overallTotal = isOverallTotalRow(record, asset, symbol)
     const genericTotal = isAccountingTotalRow(record, asset, symbol)
-    if (!genericTotal && !identityValueFor(record)) valid = false
+    if (
+      !genericTotal &&
+      (!rawAsset?.trim() ||
+        !normalizeSchemaKey(rawAsset) ||
+        !identityValueFor(record))
+    ) {
+      valid = false
+    }
 
     if (fieldMatchesFor(record, REALIZED_TOTAL_FIELD_ALIASES).length !== 1) {
       valid = false
@@ -1130,6 +1617,10 @@ function normalizedDifference(
   return Math.abs(difference) <= CSV_RECONCILIATION_EPSILON ? 0 : difference
 }
 
+function exactAccountingValuesMatch(left: number, right: number): boolean {
+  return sumExactNumbers([left, -right]) === 0
+}
+
 function findNamedMatch(
   records: SectionRecord[],
   names: string[],
@@ -1213,28 +1704,50 @@ function classifyAsset(value: string | undefined, symbol: string): AssetClass {
   const normalized = rawAsset ? normalizeSchemaKey(rawAsset) ?? 'unsupportedassetclass' : ''
   if (normalized.includes('cfd')) return 'OTHER'
   if (
-    normalized === 'opt' ||
-    normalized.includes('option') ||
-    normalized.includes('equityandindexoption')
+    [
+      'opt',
+      'option',
+      'options',
+      'equityoption',
+      'equityoptions',
+      'indexoption',
+      'indexoptions',
+      'equityandindexoption',
+      'equityandindexoptions',
+    ].includes(normalized)
   ) {
     return 'OPTION'
   }
   if (
-    normalized === 'stk' ||
-    normalized.includes('stock') ||
-    normalized.includes('equity')
+    ['stk', 'stock', 'stocks', 'equity', 'equities'].includes(normalized)
   ) {
     return 'STOCK'
   }
 
-  const compact = symbol.replace(/\s/g, '').toUpperCase()
-  if (/^[A-Z.\-]{1,8}\d{6}[CP]\d{8}$/.test(compact)) return 'OPTION'
-  if (/\s\d{1,2}[A-Z]{3}\d{2,4}\s\d+(?:\.\d+)?\s[CP]$/i.test(symbol)) return 'OPTION'
+  if (!normalized) {
+    const compact = symbol.replace(/\s/g, '').toUpperCase()
+    if (/^[A-Z.\-]{1,8}\d{6}[CP]\d{8}$/.test(compact)) return 'OPTION'
+    if (/\s\d{1,2}[A-Z]{3}\d{2,4}\s\d+(?:\.\d+)?\s[CP]$/i.test(symbol)) return 'OPTION'
+  }
 
   // A missing category is common on some stock summary rows. An explicit but
-  // unrecognized category (for example Forex or Futures) must not be counted
-  // as stock performance.
+  // unrecognized category (for example Forex, Futures, or Options on Futures)
+  // must not enter the supported stock/equity-index-option ranking buckets.
   return normalized ? 'OTHER' : 'STOCK'
+}
+
+function crossSourceAssetKey(
+  value: string | undefined,
+  symbol: string,
+): string {
+  const assetClass = classifyAsset(value, symbol)
+  if (assetClass !== 'OTHER') return assetClass
+
+  // The public ledger intentionally groups all unsupported asset categories
+  // under Other, but source reconciliation must retain the broker's actual
+  // normalized category. Otherwise Forex in one official family could match
+  // Futures or Bonds in the other merely because all publish as Other.
+  return `OTHER:${normalizeSchemaKey(value?.trim() ?? '') ?? 'missing'}`
 }
 
 function normalizeInstrumentKey(value: string): string {
@@ -1356,11 +1869,25 @@ function resolveUnderlying(
   return { sourceRefs: [], underlying: symbol }
 }
 
+function optionUnderlyingResolutionIsOpaque(
+  symbolValue: string | undefined,
+  resolution: UnderlyingResolution,
+): boolean {
+  const symbol = normalizeInstrumentKey(symbolValue ?? '')
+  const underlying = normalizeInstrumentKey(resolution.underlying)
+  return (
+    !underlying ||
+    (underlying === symbol && resolution.sourceRefs.length === 0)
+  )
+}
+
 function buildInstrumentUnderlyingMap(
   store: Map<string, SectionRecord[]>,
+  contractIndexSectionAliases: string[],
 ): InstrumentUnderlyingMapResult {
   const authoritativeCandidates: InstrumentUnderlyingCandidates = new Map()
   const inferredCandidates: InstrumentUnderlyingCandidates = new Map()
+  const contractAliases = new Set<string>()
   const conflictingAliases = new Set<string>()
   const mapping = new Map<string, InstrumentUnderlying>()
   let hasConflicts = false
@@ -1368,8 +1895,18 @@ function buildInstrumentUnderlyingMap(
   for (const record of recordsFor(store, ['Financial Instrument Information'])) {
     const symbol = valueFor(record, ['Symbol'])
     const description = valueFor(record, ['Description'])
+    const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
+    if (
+      isAccountingTotalRow(
+        record,
+        normalizeSchemaKey(rawAsset ?? '') ?? '',
+        normalizeSchemaKey(symbol ?? '') ?? '',
+      )
+    ) {
+      continue
+    }
     const assetClass = classifyAsset(
-      valueFor(record, ['Asset Class', 'Asset Category']),
+      rawAsset,
       symbol ?? description ?? '',
     )
     const explicit = underlyingFieldsFor(record)
@@ -1386,6 +1923,9 @@ function buildInstrumentUnderlyingMap(
     if (!underlying) continue
     for (const alias of [symbol, description]) {
       if (alias?.trim()) {
+        if (normalizeInstrumentKey(alias) !== underlying) {
+          contractAliases.add(normalizeInstrumentKey(alias))
+        }
         addInstrumentUnderlyingCandidate(
           authoritativeCandidates,
           alias,
@@ -1397,13 +1937,24 @@ function buildInstrumentUnderlyingMap(
     }
   }
 
-  for (const record of recordsFor(store, OPTION_CONTRACT_INDEX_SECTION_ALIASES)) {
+  for (const record of recordsFor(store, contractIndexSectionAliases)) {
     const contractMatch = fieldFor(record, ['Symbol', 'Contract'])
     const contract = contractMatch?.value.trim()
     if (!contract) continue
 
+    const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
+    if (
+      isAccountingTotalRow(
+        record,
+        normalizeSchemaKey(rawAsset ?? '') ?? '',
+        normalizeSchemaKey(contract) ?? '',
+      )
+    ) {
+      continue
+    }
+
     const assetClass = classifyAsset(
-      valueFor(record, ['Asset Class', 'Asset Category']),
+      rawAsset,
       contract,
     )
     if (assetClass !== 'OPTION') continue
@@ -1420,6 +1971,7 @@ function buildInstrumentUnderlyingMap(
     }
 
     if (explicit.underlying) {
+      if (aliasKey !== explicit.underlying) contractAliases.add(aliasKey)
       addInstrumentUnderlyingCandidate(
         authoritativeCandidates,
         contract,
@@ -1429,6 +1981,7 @@ function buildInstrumentUnderlyingMap(
       )
     }
     if (inferred) {
+      contractAliases.add(aliasKey)
       addInstrumentUnderlyingCandidate(
         inferredCandidates,
         contract,
@@ -1458,10 +2011,28 @@ function buildInstrumentUnderlyingMap(
   }
 
   return {
+    contractAliases,
     conflictingAliases,
     hasConflicts,
     mapping,
   }
+}
+
+export function ytdInstrumentMappingSectionAliases(
+  family: 'MTM' | 'MONTH_YTD',
+  sharedSectionAliases: readonly string[],
+): string[] {
+  const familyAliases =
+    family === 'MTM'
+      ? MTM_PERFORMANCE_SECTION_ALIASES
+      : MONTH_YTD_PERFORMANCE_SECTION_ALIASES
+  // Keep this guard inside the production selector. Even if a future caller
+  // accidentally passes a YTD alias as a "shared" source, the opposite YTD
+  // family cannot leak into this family's instrument map.
+  const nonYtdSharedAliases = sharedSectionAliases.filter(
+    (alias) => !matchesSchemaAlias(alias, YTD_PERFORMANCE_SECTION_ALIASES),
+  )
+  return [...familyAliases, ...nonYtdSharedAliases]
 }
 
 function isTotalRow(symbol: string): boolean {
@@ -1599,6 +2170,7 @@ function parseOptionEvents(
   const seen = new Set<string>()
 
   for (const record of eventRecords) {
+    if (record.recordType !== 'DATA') continue
     const codeMatch = fieldFor(record, ['Transaction Type', 'Type', 'Code'])
     const type = inferEventType(codeMatch?.value)
     if (!type) continue
@@ -1606,9 +2178,28 @@ function parseOptionEvents(
     const contractMatch = fieldFor(record, ['Symbol', 'Contract'])
     const contract = contractMatch?.value
     const asset = classifyAsset(valueFor(record, ['Asset Class', 'Asset Category']), contract ?? '')
+    if (
+      asset !== 'OPTION' &&
+      (instrumentIndex.contractAliases.has(
+        normalizeInstrumentKey(contract ?? ''),
+      ) || inferOptionUnderlyingFromContract(contract ?? '') != null)
+    ) {
+      markInstrumentAliasConflict(
+        instrumentIndex,
+        normalizeInstrumentKey(contract ?? ''),
+      )
+      continue
+    }
     if (asset !== 'OPTION' && !contract?.match(/[CP]\d{8}$/)) continue
 
     const resolution = resolveUnderlying(record, contract, 'OPTION', instrumentIndex)
+    if (optionUnderlyingResolutionIsOpaque(contract, resolution)) {
+      markInstrumentAliasConflict(
+        instrumentIndex,
+        normalizeInstrumentKey(contract ?? ''),
+      )
+      continue
+    }
     const underlying = resolution.underlying
     if (isTotalRow(underlying)) continue
 
@@ -1639,6 +2230,62 @@ function parseOptionEvents(
   }
 
   return events.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+}
+
+function isOptionEventRecordCandidate(record: SectionRecord): boolean {
+  if (record.recordType !== 'DATA') return false
+  const type = inferEventType(
+    valueFor(record, ['Transaction Type', 'Type', 'Code']),
+  )
+  const contract = valueFor(record, ['Symbol', 'Contract'])?.trim()
+  if (!type || !contract) return false
+  return (
+    classifyAsset(
+      valueFor(record, ['Asset Class', 'Asset Category']),
+      contract,
+    ) === 'OPTION' || /[CP]\d{8}$/.test(contract)
+  )
+}
+
+function dedicatedOptionEventRecordSchemaIsValid(
+  record: SectionRecord,
+): boolean {
+  if (record.recordType !== 'DATA') return false
+  const typeFields = fieldMatchesFor(record, [
+    'Transaction Type',
+    'Type',
+    'Code',
+  ])
+  const contractFields = fieldMatchesFor(record, ['Symbol', 'Contract'])
+  const assetFields = fieldMatchesFor(record, [
+    'Asset Class',
+    'Asset Category',
+  ])
+  if (
+    typeFields.length !== 1 ||
+    contractFields.length !== 1 ||
+    assetFields.length > 1 ||
+    !inferEventType(typeFields[0]?.value) ||
+    !contractFields[0]?.value.trim()
+  ) {
+    return false
+  }
+
+  const rawAsset = assetFields[0]?.value
+  if (
+    rawAsset?.trim() &&
+    classifyAsset(rawAsset, contractFields[0].value) !== 'OPTION'
+  ) {
+    return false
+  }
+  if (!rawAsset?.trim()) {
+    const contract = contractFields[0].value
+    return (
+      inferOptionUnderlyingFromContract(contract) != null ||
+      /[CP]\d{8}$/.test(contract)
+    )
+  }
+  return true
 }
 
 interface CashReportBaseEndingCandidate {
@@ -2262,6 +2909,7 @@ function findNamedNumeric(
 function statementPnlDiagnostic(
   store: Map<string, SectionRecord[]>,
   ytdRecords: SectionRecord[],
+  ytdMtmFieldAliases: string[],
   reportedAllAssetsYtdMtm: number | undefined,
   reportedAllAssetsSourceRefs: SourceRef[],
   invalidNumericFields: SourceRef[],
@@ -2340,7 +2988,7 @@ function statementPnlDiagnostic(
     const symbol = valueFor(record, ['Symbol'])
     const amount = numericMatchFor(
       record,
-      YTD_MTM_FIELD_ALIASES,
+      ytdMtmFieldAliases,
       invalidNumericFields,
       true,
     )
@@ -2896,12 +3544,99 @@ export function parseIbkrActivityStatement(
   }
 
   const symbols = new Map<string, SymbolAccumulator>()
-  const instrumentMappingResult = buildInstrumentUnderlyingMap(store)
+  const financialInstrumentSection = recordsForExclusive(store, [
+    'Financial Instrument Information',
+  ])
+  const lifecycleEventSection = recordsForExclusive(
+    store,
+    OPTION_LIFECYCLE_SECTION_ALIASES,
+  )
+  const tradeEventSection = recordsForExclusive(store, ['Trades'])
+  // A dedicated lifecycle section becomes authoritative when it contains any
+  // Data row. Keep every such row until schema validation so malformed or
+  // duplicate fields cannot disappear before the Trades fallback decision.
+  const lifecycleEventRecords = lifecycleEventSection.records.filter(
+    (record) => record.recordType === 'DATA',
+  )
+  const tradeEventRecords = tradeEventSection.records.filter(
+    isOptionEventRecordCandidate,
+  )
+  const selectedEventMappingSectionAliases =
+    lifecycleEventRecords.length > 0
+      ? OPTION_LIFECYCLE_SECTION_ALIASES
+      : ['Trades']
+  const commonOptionContractIndexSectionAliases = [
+    ...REALIZED_PERFORMANCE_SECTION_ALIASES,
+    ...selectedEventMappingSectionAliases,
+  ]
+  // Mixed-family equivalence must resolve each source independently. Letting
+  // one YTD family contribute aliases to the other would allow a wrong
+  // Underlying value to make both snapshots repeat the same error.
+  const mtmInstrumentMappingResult = buildInstrumentUnderlyingMap(
+    store,
+    ytdInstrumentMappingSectionAliases(
+      'MTM',
+      commonOptionContractIndexSectionAliases,
+    ),
+  )
+  const monthYtdInstrumentMappingResult = buildInstrumentUnderlyingMap(
+    store,
+    ytdInstrumentMappingSectionAliases(
+      'MONTH_YTD',
+      commonOptionContractIndexSectionAliases,
+    ),
+  )
   const invalidAccountingFields: SourceRef[] = []
-  const ytdSection = recordsForExclusive(store, YTD_PERFORMANCE_SECTION_ALIASES)
-  const ytdRecords = ytdSection.records
-  const ytdSnapshot = ytdRecords.length > 0
-    ? ytdSectionSnapshot(ytdRecords, invalidAccountingFields)
+  const mtmSection = recordsForExclusive(store, MTM_PERFORMANCE_SECTION_ALIASES)
+  const monthYtdSection = recordsForExclusive(
+    store,
+    MONTH_YTD_PERFORMANCE_SECTION_ALIASES,
+  )
+  const mtmRecords = mtmSection.records
+  const monthYtdRecords = monthYtdSection.records
+  const realizedSection = recordsForExclusive(
+    store,
+    REALIZED_PERFORMANCE_SECTION_ALIASES,
+  )
+  const realizedRecords = realizedSection.records
+  const useYtdRealizedFallback = realizedRecords.length === 0
+  // MTM is the richer accounting source and stays authoritative when both
+  // official families coexist. Month/YTD is then a cross-check, never a
+  // second input to Season P&L.
+  const ytdRecords = mtmRecords.length > 0 ? mtmRecords : monthYtdRecords
+  const ytdMtmFieldAliases =
+    mtmRecords.length > 0
+      ? MTM_TOTAL_FIELD_ALIASES
+      : MONTH_YTD_MTM_FIELD_ALIASES
+  const primaryYtdInstrumentMappingResult =
+    mtmRecords.length > 0
+      ? mtmInstrumentMappingResult
+      : monthYtdInstrumentMappingResult
+  // Realized YTD is an explanation metric, not the ranking metric. The
+  // official Month/YTD family is its preferred fallback when the dedicated
+  // Realized/FIFO section is absent, even when MTM remains authoritative for
+  // Season P&L. Keep the fallback's own mapping isolated from the other YTD
+  // family for the same reason as the source snapshots above.
+  const ytdRealizedFallbackRecords = exposesYtdRealizedFields(monthYtdRecords)
+    ? monthYtdRecords
+    : []
+  const ytdRealizedFallbackInstrumentMappingResult =
+    monthYtdInstrumentMappingResult
+  const mtmSnapshot = mtmRecords.length > 0
+    ? ytdSectionSnapshot(
+        mtmRecords,
+        'MTM',
+        mtmInstrumentMappingResult,
+        invalidAccountingFields,
+      )
+    : undefined
+  const monthYtdSnapshot = monthYtdRecords.length > 0
+    ? ytdSectionSnapshot(
+        monthYtdRecords,
+        'MONTH_YTD',
+        monthYtdInstrumentMappingResult,
+        invalidAccountingFields,
+      )
     : undefined
   const hasIncompleteCriticalHeaderBlock = [
     ['Statement'],
@@ -2915,13 +3650,56 @@ export function parseIbkrActivityStatement(
   let accountingSectionConflict =
     statementSchemaConflict ||
     hasIncompleteCriticalHeaderBlock ||
-    ytdSection.conflict ||
-    ytdSnapshot?.conflict === true
+    financialInstrumentSection.conflict ||
+    mtmSection.conflict ||
+    monthYtdSection.conflict ||
+    mtmInstrumentMappingResult.hasConflicts ||
+    monthYtdInstrumentMappingResult.hasConflicts ||
+    mtmSnapshot?.conflict === true ||
+    monthYtdSnapshot?.conflict === true
   accountingSectionConflict ||=
-    ytdRecords.length > 0 &&
-    !validateYtdAccountingSection(ytdRecords, invalidAccountingFields)
+    mtmRecords.length > 0 &&
+    !validateYtdAccountingSection(
+      mtmRecords,
+      invalidAccountingFields,
+      'MTM',
+    )
+  accountingSectionConflict ||=
+    monthYtdRecords.length > 0 &&
+    !validateYtdAccountingSection(
+      monthYtdRecords,
+      invalidAccountingFields,
+      'MONTH_YTD',
+    )
+  accountingSectionConflict ||=
+    !validateFullAccountSectionScope(mtmRecords, accountId) ||
+    !validateFullAccountSectionScope(monthYtdRecords, accountId)
+  accountingSectionConflict ||=
+    useYtdRealizedFallback &&
+    ytdRealizedFallbackRecords.length > 0 &&
+    !validateYtdRealizedFallbackTotals(
+      ytdRealizedFallbackRecords,
+      invalidAccountingFields,
+    )
+  accountingSectionConflict ||=
+    !validateFullAccountSectionScope(
+      financialInstrumentSection.records,
+      accountId,
+    ) ||
+    !validateInstrumentReferenceIdentities(
+      financialInstrumentSection.records,
+    ) ||
+    hasAmbiguousSchemaFields(financialInstrumentSection.records, [
+      ['Asset Class', 'Asset Category'],
+      ['Symbol'],
+      ['Description'],
+    ])
+  accountingSectionConflict ||=
+    mtmSnapshot != null &&
+    monthYtdSnapshot != null &&
+    !ytdSnapshotsMatch(mtmSnapshot, monthYtdSnapshot)
   accountingSectionConflict ||= hasAmbiguousSchemaFields(
-    ytdSection.alternatives.flat(),
+    [...mtmSection.alternatives.flat(), ...monthYtdSection.alternatives.flat()],
     [
       ['Asset Class', 'Asset Category'],
       ['Symbol'],
@@ -2941,16 +3719,16 @@ export function parseIbkrActivityStatement(
     const normalizedSymbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
     const ytdMtmMatch = numericMatchFor(
       record,
-      YTD_MTM_FIELD_ALIASES,
+      ytdMtmFieldAliases,
       invalidAccountingFields,
     )
     const ytdMtm = ytdMtmMatch?.value
 
-    const isOverallTotal =
-      normalizedAsset === 'totalallassets' ||
-      normalizedAsset === 'totalallassetclasses' ||
-      normalizedSymbol === 'totalallassets' ||
-      normalizedSymbol === 'totalallassetclasses'
+    const isOverallTotal = isOverallTotalRow(
+      record,
+      normalizedAsset,
+      normalizedSymbol,
+    )
 
     if (isOverallTotal) {
       if (ytdMtmMatch) {
@@ -2969,31 +3747,36 @@ export function parseIbkrActivityStatement(
       }
       continue
     }
+    if (
+      isAccountingTotalRow(record, normalizedAsset, normalizedSymbol)
+    ) {
+      continue
+    }
 
     const assetClass = classifyAsset(rawAsset, rawSymbol ?? '')
     const resolution = resolveUnderlying(
       record,
       rawSymbol,
       assetClass,
-      instrumentMappingResult,
+      primaryYtdInstrumentMappingResult,
     )
+    if (
+      assetClass === 'OPTION' &&
+      optionUnderlyingResolutionIsOpaque(rawSymbol, resolution) &&
+      !(
+        mtmRecords.length === 0 &&
+        monthYtdSnapshot?.mtmByAssetAndUnderlying.has(
+          `OPTION|${normalizeInstrumentKey(rawSymbol ?? '')}`,
+        )
+      )
+    ) {
+      accountingSectionConflict = true
+      continue
+    }
     const underlying = resolution.underlying
     if (isTotalRow(underlying)) continue
 
-    const realizedShortMatch = numericMatchFor(
-      record,
-      YTD_REALIZED_SHORT_FIELD_ALIASES,
-      invalidAccountingFields,
-    )
-    const realizedLongMatch = numericMatchFor(
-      record,
-      YTD_REALIZED_LONG_FIELD_ALIASES,
-      invalidAccountingFields,
-    )
-    const realizedShort = realizedShortMatch?.value
-    const realizedLong = realizedLongMatch?.value
-
-    if (ytdMtm == null && realizedShort == null && realizedLong == null) continue
+    if (ytdMtm == null) continue
     if (ytdMtm != null) ytdValueCount += 1
 
     const accumulator = getAccumulator(
@@ -3005,30 +3788,12 @@ export function parseIbkrActivityStatement(
     const metricRefs = ytdMtmMatch
       ? dedupeSourceRefs([ytdMtmMatch.sourceRef, ...mappingRefs])
       : mappingRefs
-    const realizedRefs = dedupeSourceRefs([
-      ...(realizedShortMatch ? [realizedShortMatch.sourceRef] : []),
-      ...(realizedLongMatch ? [realizedLongMatch.sourceRef] : []),
-      ...mappingRefs,
-    ])
-    const realized =
-      sumAccountingValues(
-        [realizedShort ?? 0, realizedLong ?? 0],
-        realizedRefs,
-        invalidAccountingFields,
-      ) ?? 0
-
     if (assetClass === 'OPTION') {
       accumulator.optionYtdMtm = addAccountingMatch(
         accumulator.optionYtdMtm,
         ytdMtmMatch,
         invalidAccountingFields,
       )
-      accumulator.optionRealizedYtd =
-        sumAccountingValues(
-          [accumulator.optionRealizedYtd, realized],
-          realizedRefs,
-          invalidAccountingFields,
-        ) ?? accumulator.optionRealizedYtd
       if (ytdMtmMatch) {
         optionNumericSourceRefs.push(ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'optionYtdMtm', metricRefs)
@@ -3039,12 +3804,6 @@ export function parseIbkrActivityStatement(
         ytdMtmMatch,
         invalidAccountingFields,
       )
-      accumulator.stockRealizedYtd =
-        sumAccountingValues(
-          [accumulator.stockRealizedYtd, realized],
-          realizedRefs,
-          invalidAccountingFields,
-        ) ?? accumulator.stockRealizedYtd
       if (ytdMtmMatch) {
         stockNumericSourceRefs.push(ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'stockYtdMtm', metricRefs)
@@ -3055,20 +3814,89 @@ export function parseIbkrActivityStatement(
         ytdMtmMatch,
         invalidAccountingFields,
       )
-      accumulator.otherRealizedYtd =
-        sumAccountingValues(
-          [accumulator.otherRealizedYtd, realized],
-          realizedRefs,
-          invalidAccountingFields,
-        ) ?? accumulator.otherRealizedYtd
       if (ytdMtmMatch) {
         otherNumericSourceRefs.push(ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'otherYtdMtm', metricRefs)
       }
     }
 
-    if (realizedShort != null || realizedLong != null) accumulator.hasYtdRealized = true
-    if (realizedRefs.length > 0) {
+  }
+
+  if (useYtdRealizedFallback) {
+    for (const record of ytdRealizedFallbackRecords) {
+      if (isReturnOnlyRecord(record)) continue
+
+      const rawSymbol = valueFor(record, SYMBOL_IDENTITY_FIELD_ALIASES)
+      const rawAsset = valueFor(record, ASSET_IDENTITY_FIELD_ALIASES)
+      const normalizedAsset = normalizeSchemaKey(rawAsset ?? '') ?? ''
+      const normalizedSymbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
+      if (
+        isAccountingTotalRow(record, normalizedAsset, normalizedSymbol)
+      ) {
+        continue
+      }
+      const assetClass = classifyAsset(rawAsset, rawSymbol ?? '')
+      const resolution = resolveUnderlying(
+        record,
+        rawSymbol,
+        assetClass,
+        ytdRealizedFallbackInstrumentMappingResult,
+      )
+      const underlying = resolution.underlying
+      if (isTotalRow(underlying)) continue
+
+      const realizedShortMatch = numericMatchFor(
+        record,
+        YTD_REALIZED_SHORT_FIELD_ALIASES,
+        invalidAccountingFields,
+      )
+      const realizedLongMatch = numericMatchFor(
+        record,
+        YTD_REALIZED_LONG_FIELD_ALIASES,
+        invalidAccountingFields,
+      )
+      if (!realizedShortMatch && !realizedLongMatch) continue
+
+      const realizedRefs = dedupeSourceRefs([
+        ...(realizedShortMatch ? [realizedShortMatch.sourceRef] : []),
+        ...(realizedLongMatch ? [realizedLongMatch.sourceRef] : []),
+        ...resolution.sourceRefs,
+      ])
+      const realized =
+        sumAccountingValues(
+          [realizedShortMatch?.value ?? 0, realizedLongMatch?.value ?? 0],
+          realizedRefs,
+          invalidAccountingFields,
+        ) ?? 0
+      const accumulator = getAccumulator(
+        symbols,
+        underlying,
+        valueFor(record, ['Description']),
+      )
+
+      if (assetClass === 'OPTION') {
+        accumulator.optionRealizedYtd =
+          sumAccountingValues(
+            [accumulator.optionRealizedYtd, realized],
+            realizedRefs,
+            invalidAccountingFields,
+          ) ?? accumulator.optionRealizedYtd
+      } else if (assetClass === 'STOCK') {
+        accumulator.stockRealizedYtd =
+          sumAccountingValues(
+            [accumulator.stockRealizedYtd, realized],
+            realizedRefs,
+            invalidAccountingFields,
+          ) ?? accumulator.stockRealizedYtd
+      } else {
+        accumulator.otherRealizedYtd =
+          sumAccountingValues(
+            [accumulator.otherRealizedYtd, realized],
+            realizedRefs,
+            invalidAccountingFields,
+          ) ?? accumulator.otherRealizedYtd
+      }
+      accumulator.hasYtdRealized = true
       addSymbolSourceRefs(accumulator, 'totalRealizedYtd', realizedRefs)
       if (assetClass === 'OTHER') {
         addSymbolSourceRefs(accumulator, 'otherRealizedYtd', realizedRefs)
@@ -3083,11 +3911,6 @@ export function parseIbkrActivityStatement(
     errors.push({ code: 'mtm_section_missing' })
   }
 
-  const realizedSection = recordsForExclusive(
-    store,
-    REALIZED_PERFORMANCE_SECTION_ALIASES,
-  )
-  const realizedRecords = realizedSection.records
   accountingSectionConflict ||= realizedSection.conflict
   accountingSectionConflict ||= hasAmbiguousSchemaFields(
     realizedSection.alternatives.flat(),
@@ -3104,6 +3927,8 @@ export function parseIbkrActivityStatement(
   accountingSectionConflict ||=
     realizedRecords.length > 0 &&
     !validateRealizedSection(realizedRecords, invalidAccountingFields)
+  accountingSectionConflict ||=
+    !validateFullAccountSectionScope(realizedRecords, accountId)
 
   const realizedSectionMissing = realizedRecords.length === 0
   if (realizedSectionMissing) {
@@ -3112,16 +3937,46 @@ export function parseIbkrActivityStatement(
 
   for (const record of realizedRecords) {
     const rawSymbol = valueFor(record, ['Symbol'])
+    const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
+    const normalizedAsset = normalizeSchemaKey(rawAsset ?? '') ?? ''
+    const normalizedSymbol = normalizeSchemaKey(rawSymbol ?? '') ?? ''
+    if (
+      isAccountingTotalRow(record, normalizedAsset, normalizedSymbol)
+    ) {
+      continue
+    }
     const assetClass = classifyAsset(
-      valueFor(record, ['Asset Class', 'Asset Category']),
+      rawAsset,
       rawSymbol ?? '',
     )
+    if (
+      assetClass !== 'OPTION' &&
+      (primaryYtdInstrumentMappingResult.contractAliases.has(
+        normalizeInstrumentKey(rawSymbol ?? ''),
+      ) || inferOptionUnderlyingFromContract(rawSymbol ?? '') != null)
+    ) {
+      accountingSectionConflict = true
+      continue
+    }
     const resolution = resolveUnderlying(
       record,
       rawSymbol,
       assetClass,
-      instrumentMappingResult,
+      primaryYtdInstrumentMappingResult,
     )
+    if (
+      assetClass === 'OPTION' &&
+      optionUnderlyingResolutionIsOpaque(rawSymbol, resolution) &&
+      !(
+        mtmRecords.length === 0 &&
+        monthYtdSnapshot?.mtmByAssetAndUnderlying.has(
+          `OPTION|${normalizeInstrumentKey(rawSymbol ?? '')}`,
+        )
+      )
+    ) {
+      accountingSectionConflict = true
+      continue
+    }
     const underlying = resolution.underlying
     if (isTotalRow(underlying)) continue
 
@@ -3215,28 +4070,45 @@ export function parseIbkrActivityStatement(
     }
   }
 
-  const lifecycleEventSection = recordsForExclusive(
-    store,
-    OPTION_LIFECYCLE_SECTION_ALIASES,
-  )
-  const tradeEventSection = recordsForExclusive(store, ['Trades'])
   // Dedicated lifecycle rows are authoritative when present. Trades are a
   // fallback only; combining both can count the same broker event twice with
   // different trade/settlement dates.
   const eventRecords =
-    lifecycleEventSection.records.length > 0
-      ? lifecycleEventSection.records
-      : tradeEventSection.records
+    lifecycleEventRecords.length > 0
+      ? lifecycleEventRecords
+      : tradeEventRecords
+  const optionMappingEventRecords = [
+    ...lifecycleEventSection.records,
+    ...tradeEventSection.records,
+  ]
   accountingSectionConflict ||=
     lifecycleEventSection.conflict || tradeEventSection.conflict
+  accountingSectionConflict ||=
+    lifecycleEventRecords.some(
+      (record) => !dedicatedOptionEventRecordSchemaIsValid(record),
+    )
+  accountingSectionConflict ||=
+    !validateFullAccountSectionScope(
+      lifecycleEventSection.records,
+      accountId,
+    ) ||
+    !validateFullAccountSectionScope(tradeEventSection.records, accountId) ||
+    hasAmbiguousSchemaFields(optionMappingEventRecords, [
+      ['Asset Class', 'Asset Category'],
+      ['Symbol', 'Contract'],
+    ])
   accountingSectionConflict ||= hasAmbiguousSchemaFields(eventRecords, [
     ['Transaction Type', 'Type', 'Code'],
     ['Symbol', 'Contract'],
     ['Asset Class', 'Asset Category'],
     ['Date', 'Date/Time', 'Trade Date', 'Report Date'],
   ])
-  const events = parseOptionEvents(eventRecords, symbols, instrumentMappingResult)
-  if (instrumentMappingResult.hasConflicts) {
+  const events = parseOptionEvents(
+    eventRecords,
+    symbols,
+    primaryYtdInstrumentMappingResult,
+  )
+  if (primaryYtdInstrumentMappingResult.hasConflicts) {
     errors.push({ code: 'instrument_alias_conflict' })
   }
 
@@ -3473,7 +4345,7 @@ export function parseIbkrActivityStatement(
 
   const seasonReturnDiagnostic = findSeasonReturn(
     store,
-    ytdRecords,
+    mtmRecords,
     navSection.records,
     invalidAccountingFields,
   )
@@ -3484,6 +4356,7 @@ export function parseIbkrActivityStatement(
   const statementDiagnostic = statementPnlDiagnostic(
     store,
     ytdRecords,
+    ytdMtmFieldAliases,
     reportedAllAssetsYtdMtm,
     reportedAllAssetsSourceRefs,
     invalidAccountingFields,

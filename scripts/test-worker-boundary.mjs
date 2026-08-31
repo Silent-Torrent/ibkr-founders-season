@@ -329,7 +329,7 @@ function optionBoundaryStatement(symbolCount) {
     const strike = index + 1
     const contract = `${underlying} 19JUN26 ${strike} C`
     rows.push(
-      `Month & Year to Date Performance Summary,Data,Equity and Index Options,${contract},Boundary,0,1,0,0,0,0`,
+      `Month & Year to Date Performance Summary,Data,Equity and Index Options,${underlying},Boundary,0,1,0,0,0,0`,
     )
     instruments.push(
       `Financial Instrument Information,Data,Equity and Index Options,${underlying},${contract},SYNTH-CONID-${String(index).padStart(3, '0')},${underlying},100,2026-06-19,C,${strike},`,
