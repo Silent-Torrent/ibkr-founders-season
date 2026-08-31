@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.10
+## Completed through coding checkpoint 0.11
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -42,6 +42,7 @@
 - [x] Structured parser/import diagnostics rendered in English, Simplified Chinese, and Traditional Chinese without interpolating unvalidated free-form statement text; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
 - [x] Deterministic option-underlying alias candidates: retain agreeing duplicate provenance and reject the whole report on any conflicting Symbol/Description alias, independent of row order.
 - [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, a real downloaded/decoded 1200×1500 PNG with privacy canaries, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
+- [x] Runtime-only fully fictional exact-capacity input: 5,242,880 bytes, 100,000 rows, 500 underlyings, and 1,000 assignment/expiration events; production Chrome verifies complete Worker import/render, bounded main-thread gaps, Ledger search/drawer behavior, visible cancellation with Worker termination, real-CSV 501-symbol/1,001-event fail-closed paths, and 5 MiB plus one-byte preflight rejection.
 - [x] Three-locale Privacy & Data dialog with the approved local-processing, storage, authenticity, PDF, disclaimer, and clearing boundaries.
 - [x] Accessible privacy-dialog focus behavior: initial focus, Tab/Shift+Tab containment, Escape/backdrop close, background lock, and focus return.
 - [x] Matching modal focus behavior for the symbol drawer, including native source-row summaries.
@@ -78,7 +79,8 @@
 - [x] Verify with a synthetic import that refresh returns to Demo instead of restoring the report.
 - [ ] Verify the complete deployed browser Network/Storage boundary.
 - [x] Reject unterminated fields, payloads over 10 million characters, fields over 250,000 characters, and files over 100,000 rows in regression tests.
-- [x] Add a main-thread responsiveness/time budget or worker boundary for large-but-allowed files.
+- [x] Add a production-Chrome main-thread responsiveness/time gate for a fully fictional file at the exact byte/row/symbol/event caps.
+- [ ] Add parser-stage fail-fast budgets for adversarial files that stay below the byte/row ceilings but exceed instrument/event capacity, rather than relying only on post-parse Worker-output rejection.
 - [ ] Verify real iPhone Safari file import, cancellation, timeout and PNG download using only fictional data.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
 - [ ] Run VoiceOver and real-device accessibility checks on the supported iPhone Safari baseline.

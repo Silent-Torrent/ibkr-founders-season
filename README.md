@@ -2,7 +2,7 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current coded checkpoint 0.10
+## Current coded checkpoint 0.11
 
 The repository already contains:
 
@@ -13,6 +13,7 @@ The repository already contains:
 - Local-only CSV reading; no server or database. File reading and parsing run in a dedicated Web Worker rather than on the UI thread.
 - A 12-second total import timeout covers worker-side file reading, parsing and result return. A replacement that passes the filename, non-empty and size preflight, an explicit cancel, a Demo switch or page unmount terminates the old worker before the replacement is parsed.
 - A versioned Worker protocol validates both requests and complete returned reports on both sides. It rejects malformed objects, unknown fields, sparse arrays, invalid dates/currencies/hashes/numbers, unsafe diagnostics, or parser facts that disagree with the returned TWR evidence and deterministic warnings. It also rejects files above 5 MiB, salts outside 16–128 characters, and reports above the unpaginated-UI budgets. Hard caps are 500 underlyings, 1,000 lifecycle events, 20,000 total source-reference occurrences, and 501 references in one rendered collection (500 detail references plus one broker-total reference).
+- A runtime-only fully fictional capacity generator combines four headline exact caps: 5,242,880 bytes (5 MiB), 100,000 rows, 500 underlyings, and 1,000 assignment/expiration events. The production-Chrome gate imports and renders it through the real Worker, measures main-thread gaps, searches the last underlying, opens its event drawer, exercises the visible cancel control and confirms Worker termination. Separate real-CSV cases with 501 symbols and 1,001 events fail closed without replacing the prior report, while 5 MiB plus one byte is rejected before a Worker starts. Every generated CSV is deleted with the isolated browser profile and is not shipped or committed as a large fixture.
 - Strict current-year YTD validation that rejects nonexistent dates, reversed periods, future period ends, and non-current seasons.
 - Consistent three-letter base-currency validation with a crash-safe display fallback.
 - Heterogeneous IBKR CSV parser with section-scoped repeated headers and explicit source-selection rules.
@@ -39,7 +40,7 @@ The repository already contains:
 - Frozen browser support baseline: iOS 16.4+ and Safari 16.4+. The production build target is explicit and covered by a compatibility contract check; the development server is not used as proof of that floor.
 - Desktop browser keyboard/focus checks have passed for page changes, both dialogs, controls, status messages, and focus return. A 320 px simulated narrow-screen check also covered bottom navigation, the Ledger table and share card, the Arena scroll region, the privacy dialog, and the symbol drawer. This is not a real-iPhone or VoiceOver result.
 - All parser/import diagnostics are fixed structured codes rendered in English, Simplified Chinese, or Traditional Chinese at display time. No unvalidated free-form statement text, filename, account identifier, or holding value is interpolated; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
-- Synthetic sample statement, a fully fictional current-schema regression fixture, parser/Worker/product-policy suites, and an automated production-build import/download test in a real local headless Chrome. That browser test confirms the real module Worker path, three exact reconciliations, a 320 px readable invalid-file state, a downloaded and decoded 1200×1500 PNG with privacy canaries, no synthetic ranking/achievement, refresh-to-Demo behavior, and no external page request or POST.
+- Synthetic sample statement, a fully fictional current-schema regression fixture, parser/Worker/product-policy suites, and an automated production-build import/download/capacity test in a real local headless Chrome. That browser test confirms the real module Worker path, three exact reconciliations, a 320 px readable invalid-file state, a downloaded and decoded 1200×1500 PNG with privacy canaries, no synthetic ranking/achievement, refresh-to-Demo behavior, an import at the exact file/row/symbol/event caps, visible cancellation with Worker termination, real-CSV 501-symbol/1,001-event fail-closed paths, oversized-file preflight, and no external page request or POST.
 
 ## Run on macOS
 
@@ -165,11 +166,13 @@ tests/
     README.md       fixture privacy statement, schema coverage, and expected equations
 scripts/
   smoke-parser.mjs
+  synthetic-capacity-statement.mjs runtime-only fictional boundary generator
   test-browser-import.mjs
   test-mac-launchers.mjs
   test-product-policy.mjs
   test-worker-boundary.mjs
 docs/
+  CAPACITY_BROWSER_EVIDENCE_2026-08-31.md  production-Chrome exact-capacity and cancellation evidence
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
   OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required
   PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md  A + C private-host comparison, proposed gates and stop conditions
@@ -177,12 +180,13 @@ docs/
 
 ## Known MVP limitations
 
-- The checkpoint 0.10 parser has been read-only calibrated against one private English single-account 2026 YTD Activity Statement; all three reconciliation checks passed exactly and its source hash remained unchanged. The private source remains outside the repository; the committed current-schema fixture and mixed-YTD cases are fully synthetic, not transformed or anonymized private data.
+- The checkpoint 0.11 codebase retains the read-only calibration against one private English single-account 2026 YTD Activity Statement; all three reconciliation checks passed exactly and its source hash remained unchanged. The private source remains outside the repository; the committed current-schema fixture, mixed-YTD cases, and runtime capacity input are fully synthetic, not transformed or anonymized private data.
 - The matching PDF has been manually cross-reconciled, but the Web App does not yet automate PDF checks.
 - Other IBKR report variants, locales, account structures and future template changes still require fixtures and aliases.
 - Custom wide Flex NAV queries that omit any registered asset field, or contain a non-empty `Model`, deliberately fail closed; checkpoint 0.9 supports only the full-account, full-field wide NAV contract.
 - A file containing both MTM and Month/YTD is accepted only when the two independently valid sections match exactly by all-assets YTD MTM and by every normalized broker-asset-category + underlying bucket. Missing keys, raw category changes, bucket swaps, Model slices, account mismatch, structural drift, or even a one-micro-unit cross-source difference fail closed. This compatibility gate is arithmetic consistency, not proof that the statement is genuine.
-- The Worker boundary prevents parsing from blocking the UI thread, enforces a total timeout, and validates its serialized protocol, but near-limit performance still needs confirmation on the supported iOS/Safari 16.4+ baseline. Protected-host testing remains deferred with all deployment work.
+- The Worker boundary prevents parser work from blocking the UI thread, enforces a total timeout, and validates its serialized protocol. A fully fictional file at the exact byte/row/symbol/event caps passed the automated macOS production-Chrome responsiveness gate, but boundary performance still needs confirmation on the supported iPhone/Safari 16.4+ baseline. Protected-host testing remains deferred with all deployment work.
+- Capacity output is still checked after the Worker parser constructs its normalized result. An adversarial in-file-limit statement can therefore consume Worker memory/CPU before an over-cap result is rejected; parser-stage fail-fast budgets remain open before public release.
 - The Worker protocol checks the structure and internal consistency of the trusted same-origin parser result. It is not cryptographic proof that an uploaded statement came from IBKR, so local imports remain Self-Reported.
 - A structurally valid report above the current UI capacity caps fails closed with a generic background-parser message. A future larger-account workflow needs pagination/virtualization and a dedicated fixed capacity diagnostic before raising those limits.
 - Desktop keyboard/focus behavior and the principal narrow-screen surfaces have been checked, including at a simulated 320 px width. VoiceOver and real iPhone Safari have not been tested.
@@ -200,5 +204,5 @@ docs/
 
 1. Obtain a qualified exercise-event fixture, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
 2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only.
-3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later for real iPhone Safari/VoiceOver and near-limit checks with fictional data only; desktop Chrome and simulated widths are not substitutes. A public or Production release remains outside the approved current scope.
+3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later for real iPhone Safari/VoiceOver and boundary-capacity checks with developer-certified fictional data only; the new desktop-Chrome capacity pass and simulated widths are not substitutes. A public or Production release remains outside the approved current scope.
 4. Treat visual refinement and original trophy artwork as a later workstream after calculation, privacy, and supported-device gates are stable.

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   existsSync,
   mkdirSync,
@@ -14,6 +15,18 @@ import { createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  generateSyntheticCapacityStatement,
+  generateSyntheticOverEventStatement,
+  generateSyntheticOverSymbolStatement,
+  SYNTHETIC_CAPACITY_EVENTS,
+  SYNTHETIC_CAPACITY_MAX_BYTES,
+  SYNTHETIC_CAPACITY_ROWS,
+  SYNTHETIC_CAPACITY_SYMBOLS,
+  SYNTHETIC_CAPACITY_TARGET_BYTES,
+  SYNTHETIC_OVER_CAP_EVENTS,
+  SYNTHETIC_OVER_CAP_SYMBOLS,
+} from './synthetic-capacity-statement.mjs'
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const fixedNowMs = Date.parse('2026-08-30T12:00:00+08:00')
@@ -55,6 +68,10 @@ let profileDirectory
 let browserArtifactDirectory
 let downloadDirectory
 let invalidFixturePath
+let capacityFixturePath
+let overEventFixturePath
+let overSymbolFixturePath
+let oversizedFixturePath
 let cdp
 let cleanupStarted = false
 
@@ -358,6 +375,15 @@ async function waitForCondition(predicate, label, timeoutMs = 15_000) {
   throw new Error(`${label} timed out.`)
 }
 
+async function waitForAsyncCondition(predicate, label, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (await predicate()) return true
+    await delay(100)
+  }
+  throw new Error(`${label} timed out.`)
+}
+
 function inspectPng(buffer) {
   const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
   assert(buffer.length > 1_000, `Downloaded PNG is unexpectedly small: ${buffer.length} bytes.`)
@@ -390,6 +416,70 @@ async function navigateAndWait(url) {
     (value) => value === 'complete',
     `Navigation to ${url}`,
   )
+}
+
+async function resolveFileInputNodeId() {
+  await waitForPageValue(
+    `Boolean(document.querySelector('input[type="file"]'))`,
+    Boolean,
+    'Import page file input',
+  )
+  const { root } = await cdp.send('DOM.getDocument', { depth: 0, pierce: true })
+  const { nodeId } = await cdp.send('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector: 'input[type="file"]',
+  })
+  assert.notEqual(nodeId, 0, 'The Import page file input could not be resolved.')
+  return nodeId
+}
+
+async function assertProductionWorkerCapacityFailure(filePath, label) {
+  await clickPrimaryNavigation('Import')
+  const nodeId = await resolveFileInputNodeId()
+  const workerCountBefore = workerTargets.length
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [filePath],
+    nodeId,
+  })
+  const failureState = await waitForPageValue(
+    `(() => ({
+      busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      fileInput: Boolean(document.querySelector('input[type="file"]')),
+    }))()`,
+    (value) =>
+      value?.error.includes('could not be parsed safely in the background') &&
+      value?.fileInput === true,
+    label,
+  )
+  assert.equal(failureState.busy, 'false')
+  await waitForCondition(
+    () => workerTargets.length > workerCountBefore,
+    `${label} Worker target creation`,
+  )
+  const rejectedWorkerTarget = workerTargets.at(-1)
+  await waitForAsyncCondition(
+    async () => {
+      const { targetInfos = [] } = await cdp.send('Target.getTargets')
+      return !targetInfos.some(({ targetId }) => targetId === rejectedWorkerTarget.targetId)
+    },
+    `${label} Worker target termination`,
+  )
+
+  await clickPrimaryNavigation('Ledger')
+  const preservedLedger = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) =>
+      value?.heading === 'Ledger' &&
+      value?.rows === SYNTHETIC_CAPACITY_SYMBOLS &&
+      value?.source === 'Self-reported',
+    `${label} preserved prior Ledger`,
+  )
+  assert.equal(preservedLedger.rows, SYNTHETIC_CAPACITY_SYMBOLS)
 }
 
 assert(existsSync(fixturePath), `The canonical synthetic fixture is missing: ${fixturePath}`)
@@ -449,12 +539,30 @@ try {
   profileDirectory = join(browserArtifactDirectory, 'profile')
   downloadDirectory = join(browserArtifactDirectory, 'downloads')
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
+  capacityFixturePath = join(browserArtifactDirectory, 'synthetic-capacity-statement.csv')
+  overEventFixturePath = join(browserArtifactDirectory, 'synthetic-over-event-cap.csv')
+  overSymbolFixturePath = join(browserArtifactDirectory, 'synthetic-over-symbol-cap.csv')
+  oversizedFixturePath = join(browserArtifactDirectory, 'oversized-activity-statement.csv')
   mkdirSync(profileDirectory)
   mkdirSync(downloadDirectory)
   writeFileSync(
     invalidFixturePath,
     'Statement,Header,Field Name,Field Value\nStatement,Data,Title,Not an Activity Statement\n',
   )
+  const capacityStatement = generateSyntheticCapacityStatement()
+  const overEventStatement = generateSyntheticOverEventStatement()
+  const overSymbolStatement = generateSyntheticOverSymbolStatement()
+  writeFileSync(capacityFixturePath, capacityStatement.text)
+  writeFileSync(overEventFixturePath, overEventStatement.text)
+  writeFileSync(overSymbolFixturePath, overSymbolStatement.text)
+  writeFileSync(
+    oversizedFixturePath,
+    Buffer.alloc(SYNTHETIC_CAPACITY_MAX_BYTES + 1, 0x58),
+  )
+  assert.equal(statSync(capacityFixturePath).size, SYNTHETIC_CAPACITY_TARGET_BYTES)
+  assert.equal(overEventStatement.eventCount, SYNTHETIC_OVER_CAP_EVENTS)
+  assert.equal(overSymbolStatement.symbolCount, SYNTHETIC_OVER_CAP_SYMBOLS)
+  assert.equal(statSync(oversizedFixturePath).size, SYNTHETIC_CAPACITY_MAX_BYTES + 1)
   const chrome = trackedSpawn(chromePath, [
     '--headless=new',
     '--disable-background-networking',
@@ -554,7 +662,11 @@ try {
     const { sessionId, targetInfo } = params
     try {
       if (targetInfo?.type === 'worker') {
-        workerTargets.push({ title: targetInfo.title, url: targetInfo.url })
+        workerTargets.push({
+          targetId: targetInfo.targetId,
+          title: targetInfo.title,
+          url: targetInfo.url,
+        })
         await cdp.send('Runtime.enable', {}, sessionId)
         const result = await cdp.send('Runtime.evaluate', {
           expression: fixedDateSource,
@@ -582,7 +694,6 @@ try {
       }
     }
   })
-
   await Promise.all([
     cdp.send('Page.enable'),
     cdp.send('Runtime.enable'),
@@ -609,18 +720,7 @@ try {
   assert.equal(observedPageNow, fixedNowMs, 'The page did not receive the fixed 2026-08-30 clock.')
 
   await clickPrimaryNavigation('Import')
-  await waitForPageValue(
-    `Boolean(document.querySelector('input[type="file"]'))`,
-    Boolean,
-    'Import page file input',
-  )
-
-  const { root } = await cdp.send('DOM.getDocument', { depth: 0, pierce: true })
-  const { nodeId } = await cdp.send('DOM.querySelector', {
-    nodeId: root.nodeId,
-    selector: 'input[type="file"]',
-  })
-  assert.notEqual(nodeId, 0, 'The Import page file input could not be resolved through DOM.setFileInputFiles.')
+  const nodeId = await resolveFileInputNodeId()
 
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     deviceScaleFactor: 1,
@@ -894,6 +994,336 @@ try {
   )
   assert(!refreshState.text.includes('Fully synthetic test'), 'The imported report survived a full refresh.')
 
+  await clickPrimaryNavigation('Import')
+  const cancelNodeId = await resolveFileInputNodeId()
+  const workerCountBeforeCancel = workerTargets.length
+  const cancelProbeInstalled = await evaluate(`(() => {
+    if (globalThis.__capacityCancelProbe) return false;
+    const probe = {
+      busyObserved: false,
+      clicked: false,
+      clickTime: null,
+      failed: false,
+      scheduled: false,
+      started: performance.now(),
+    };
+    Object.defineProperty(globalThis, '__capacityCancelProbe', {
+      configurable: false,
+      enumerable: false,
+      value: probe,
+      writable: false,
+    });
+    const inspect = () => {
+      const zone = document.querySelector('.drop-zone');
+      const button = [...document.querySelectorAll('.drop-zone button')]
+        .find((candidate) => candidate.textContent?.trim() === 'Cancel import');
+      if (zone?.getAttribute('aria-busy') === 'true') probe.busyObserved = true;
+      if (!button || probe.scheduled) return;
+      probe.scheduled = true;
+      setTimeout(() => {
+        const liveButton = [...document.querySelectorAll('.drop-zone button')]
+          .find((candidate) => candidate.textContent?.trim() === 'Cancel import');
+        if (!liveButton) {
+          probe.scheduled = false;
+          if (document.querySelector('main h1')?.textContent?.trim() === 'Ledger') {
+            probe.failed = true;
+            observer.disconnect();
+          }
+          return;
+        }
+        observer.disconnect();
+        liveButton.click();
+        probe.clicked = true;
+        probe.clickTime = performance.now();
+      }, 75);
+    };
+    const observer = new MutationObserver(inspect);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    inspect();
+    return true;
+  })()`)
+  assert.equal(cancelProbeInstalled, true, 'Could not install the real-browser cancel probe.')
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [capacityFixturePath],
+    nodeId: cancelNodeId,
+  })
+  const cancelledImportState = await waitForPageValue(
+    `(() => ({
+      busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+      fileInput: Boolean(document.querySelector('input[type="file"]')),
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      live: document.querySelector('.import-live-status')?.textContent?.trim() ?? '',
+      probe: { ...globalThis.__capacityCancelProbe },
+    }))()`,
+    (value) =>
+      value?.probe?.clicked === true &&
+      value?.fileInput === true &&
+      value?.live === 'Import cancelled.',
+    'Production Worker cancellation through the visible UI',
+  )
+  assert.equal(cancelledImportState.busy, 'false')
+  assert.equal(cancelledImportState.probe.busyObserved, true)
+  await waitForCondition(
+    () => workerTargets.length > workerCountBeforeCancel,
+    'Cancelled production Worker target creation',
+  )
+  const cancelledWorkerTarget = workerTargets.at(-1)
+  const cancelledWorkerTerminated = await waitForAsyncCondition(
+    async () => {
+      const { targetInfos = [] } = await cdp.send('Target.getTargets')
+      return !targetInfos.some(({ targetId }) => targetId === cancelledWorkerTarget.targetId)
+    },
+    'Cancelled production Worker target termination',
+  )
+  await delay(12_250)
+  const noLateCancelledResult = await evaluate(`(() => ({
+    fileInput: Boolean(document.querySelector('input[type="file"]')),
+    heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+    live: document.querySelector('.import-live-status')?.textContent?.trim() ?? '',
+  }))()`)
+  assert.equal(noLateCancelledResult.fileInput, true, 'A cancelled Worker produced a late navigation.')
+  assert.equal(noLateCancelledResult.live, 'Import cancelled.')
+
+  const capacityNodeId = await resolveFileInputNodeId()
+  const capacityProbeInstalled = await evaluate(`(() => {
+    if (globalThis.__capacityImportProbe) return false;
+    const probe = {
+      busyAt: null,
+      finished: false,
+      ledgerReadyAt: null,
+      ledgerAt: null,
+      longTaskFinalized: false,
+      longTaskSupported:
+        PerformanceObserver.supportedEntryTypes?.includes('longtask') ?? false,
+      longTasks: [],
+      maxRafGap: 0,
+      maxTimerGap: 0,
+      rafAfterLedger: false,
+      rafTicks: 0,
+      started: performance.now(),
+      timerAfterLedger: false,
+      timerTicks: 0,
+    };
+    Object.defineProperty(globalThis, '__capacityImportProbe', {
+      configurable: false,
+      enumerable: false,
+      value: probe,
+      writable: false,
+    });
+    let lastRaf = performance.now();
+    let lastTimer = performance.now();
+    const finishIfReady = () => {
+      if (
+        probe.finished ||
+        probe.ledgerReadyAt == null ||
+        !probe.timerAfterLedger ||
+        !probe.rafAfterLedger
+      ) return;
+      probe.finished = true;
+      probe.ledgerAt = performance.now();
+      clearInterval(interval);
+      observer.disconnect();
+      setTimeout(() => {
+        for (const entry of longTaskObserver?.takeRecords() ?? []) {
+          probe.longTasks.push(entry.duration);
+        }
+        longTaskObserver?.disconnect();
+        probe.longTaskFinalized = true;
+      }, 0);
+    };
+    const interval = setInterval(() => {
+      const now = performance.now();
+      probe.maxTimerGap = Math.max(probe.maxTimerGap, now - lastTimer);
+      probe.timerTicks += 1;
+      lastTimer = now;
+      if (probe.ledgerReadyAt != null) probe.timerAfterLedger = true;
+      finishIfReady();
+    }, 16);
+    const frame = (now) => {
+      probe.maxRafGap = Math.max(probe.maxRafGap, now - lastRaf);
+      probe.rafTicks += 1;
+      lastRaf = now;
+      if (probe.ledgerReadyAt != null) probe.rafAfterLedger = true;
+      finishIfReady();
+      if (!probe.finished) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    let longTaskObserver;
+    try {
+      longTaskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) probe.longTasks.push(entry.duration);
+      });
+      longTaskObserver.observe({ type: 'longtask' });
+    } catch {}
+    const inspect = () => {
+      if (
+        probe.busyAt == null &&
+        document.querySelector('.drop-zone')?.getAttribute('aria-busy') === 'true'
+      ) {
+        probe.busyAt = performance.now();
+      }
+      if (
+        probe.ledgerReadyAt == null &&
+        probe.busyAt != null &&
+        document.querySelector('main h1')?.textContent?.trim() === 'Ledger' &&
+        document.querySelectorAll('.data-table tbody tr').length === ${SYNTHETIC_CAPACITY_SYMBOLS}
+      ) {
+        probe.ledgerReadyAt = performance.now();
+      }
+    };
+    const observer = new MutationObserver(inspect);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    inspect();
+    return true;
+  })()`)
+  assert.equal(capacityProbeInstalled, true, 'Could not install the capacity responsiveness probe.')
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [capacityFixturePath],
+    nodeId: capacityNodeId,
+  })
+  const capacityLedgerState = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      quality: document.querySelector('.quality-badge')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      probe: { ...globalThis.__capacityImportProbe },
+    }))()`,
+    (value) =>
+      value?.heading === 'Ledger' &&
+      value?.rows === SYNTHETIC_CAPACITY_SYMBOLS &&
+      value?.probe?.finished === true &&
+      value?.probe?.longTaskFinalized === true,
+    'Exact-capacity production Worker import and render',
+    20_000,
+  )
+  const capacityProbe = capacityLedgerState.probe
+  const capacityDurationMs = capacityProbe.ledgerAt - capacityProbe.started
+  const maxLongTaskMs = Math.max(0, ...capacityProbe.longTasks)
+  assert.equal(capacityLedgerState.source, 'Self-reported')
+  assert.equal(capacityLedgerState.quality, 'Review internal checks')
+  assert.notEqual(capacityProbe.busyAt, null, 'The capacity import never exposed its busy state.')
+  assert.equal(
+    capacityProbe.longTaskSupported,
+    true,
+    'Chrome did not expose the Long Tasks API used by the responsiveness gate.',
+  )
+  assert(capacityProbe.timerTicks > 0, 'No main-thread timer ran during the capacity import.')
+  assert(capacityProbe.rafTicks > 0, 'No animation frame ran during the capacity import.')
+  assert(
+    capacityDurationMs < 10_000,
+    `Exact-capacity end-to-end import and render took ${capacityDurationMs.toFixed(1)} ms, exceeding the 10 s regression gate.`,
+  )
+  assert(
+    capacityProbe.maxTimerGap < 250,
+    `Exact-capacity import blocked a timer for ${capacityProbe.maxTimerGap.toFixed(1)} ms.`,
+  )
+  assert(
+    capacityProbe.maxRafGap < 250,
+    `Exact-capacity import blocked animation frames for ${capacityProbe.maxRafGap.toFixed(1)} ms.`,
+  )
+  assert(
+    maxLongTaskMs < 250,
+    `Exact-capacity import produced a ${maxLongTaskMs.toFixed(1)} ms long task.`,
+  )
+
+  const searchStartedAt = await evaluate(`(() => {
+    const input = document.querySelector('input[aria-label="Search symbols"]');
+    if (!input) return null;
+    const startedAt = performance.now();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(input, 'CAP499');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return startedAt;
+  })()`)
+  assert.notEqual(searchStartedAt, null, 'Could not find the capacity Ledger search input.')
+  const capacitySearchState = await waitForPageValue(
+    `(() => ({
+      finishedAt: performance.now(),
+      rowText: document.querySelector('.data-table tbody tr')?.textContent ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+    }))()`,
+    (value) => value?.rows === 1 && value?.rowText.includes('CAP499'),
+    'Capacity Ledger search response',
+  )
+  const searchDurationMs = capacitySearchState.finishedAt - searchStartedAt
+  assert(
+    searchDurationMs < 500,
+    `Capacity Ledger search took ${searchDurationMs.toFixed(1)} ms to update.`,
+  )
+  const capacityRowOpened = await evaluate(`(() => {
+    const button = document.querySelector('.data-table tbody tr .row-arrow');
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(capacityRowOpened, true, 'Could not open a capacity Ledger row.')
+  const capacityDrawer = await waitForPageValue(
+    `(() => ({
+      counts: [...document.querySelectorAll('.event-summary strong')]
+        .map((element) => element.textContent?.trim()),
+      events: document.querySelectorAll('.event-list > article').length,
+      title: document.querySelector('#symbol-drawer-title')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.title === 'CAP499',
+    'Capacity option lifecycle drawer',
+  )
+  assert.deepEqual(capacityDrawer.counts, ['1', '0', '1'])
+  assert.equal(capacityDrawer.events, 2)
+
+  const drawerClosed = await evaluate(`(() => {
+    const button = document.querySelector('.symbol-drawer .close-button');
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(drawerClosed, true)
+  await waitForPageValue(
+    `!document.querySelector('.symbol-drawer')`,
+    Boolean,
+    'Capacity drawer close',
+  )
+
+  await assertProductionWorkerCapacityFailure(
+    overSymbolFixturePath,
+    '501-symbol production Worker rejection',
+  )
+  await assertProductionWorkerCapacityFailure(
+    overEventFixturePath,
+    '1,001-event production Worker rejection',
+  )
+
+  await clickPrimaryNavigation('Import')
+  const oversizedNodeId = await resolveFileInputNodeId()
+  const workerCountBeforeOversized = workerTargets.length
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [oversizedFixturePath],
+    nodeId: oversizedNodeId,
+  })
+  const oversizedState = await waitForPageValue(
+    `(() => ({
+      busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('larger than the 5 MB safety limit'),
+    'Oversized file browser preflight',
+  )
+  assert.equal(oversizedState.busy, 'false')
+  await delay(250)
+  assert.equal(
+    workerTargets.length,
+    workerCountBeforeOversized,
+    'The browser created a Worker for an oversized file that should fail preflight.',
+  )
+
   await delay(250)
 
   assert.equal(downloadStarts.length, 1, 'A delayed second browser download was observed.')
@@ -942,8 +1372,21 @@ try {
     'The production parser Worker chunk was not requested.',
   )
 
-  console.log('Browser import and PNG download regression passed.')
+  console.log('Browser import, cancellation, capacity, and PNG download regression passed.')
   console.log({
+    cancelledWorkerTerminated,
+    capacityBytes: capacityStatement.byteLength,
+    capacityDurationMs: Number(capacityDurationMs.toFixed(1)),
+    capacityEvents: SYNTHETIC_CAPACITY_EVENTS,
+    capacityMaxLongTaskMs: Number(maxLongTaskMs.toFixed(1)),
+    capacityMaxRafGapMs: Number(capacityProbe.maxRafGap.toFixed(1)),
+    capacityMaxTimerGapMs: Number(capacityProbe.maxTimerGap.toFixed(1)),
+    capacityRows: SYNTHETIC_CAPACITY_ROWS,
+    capacitySearchMs: Number(searchDurationMs.toFixed(1)),
+    capacitySha256: createHash('sha256').update(capacityStatement.text).digest('hex'),
+    capacitySymbols: SYNTHETIC_CAPACITY_SYMBOLS,
+    overCapEventsRejected: SYNTHETIC_OVER_CAP_EVENTS,
+    overCapSymbolsRejected: SYNTHETIC_OVER_CAP_SYMBOLS,
     chrome: basename(chromePath),
     downloadedPngBytes: downloadedPng.length,
     downloadedPngDimensions: pngDimensions,

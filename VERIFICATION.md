@@ -1,4 +1,4 @@
-# Verification record — coding checkpoint 0.10
+# Verification record — coding checkpoint 0.11
 
 Last updated: 2026-08-31
 
@@ -57,6 +57,7 @@ Last updated: 2026-08-31
 - To match the current unpaginated UI, hard output caps are 500 underlyings, 1,000 events, 20,000 total source-reference occurrences, and 501 references in one collection (500 detail references plus one broker-total reference). Additional caps cover diagnostics, sections, 25,000 total array items, and 1,000,000 total string characters.
 - The 100,000-row CSV limit is enforced while rows are being read, rather than only after a full row table has been created.
 - A dedicated Worker contract suite is included in `npm run check` and passed.
+- A runtime-only fully fictional generator produces a deterministic statement at four headline exact caps: 5,242,880 bytes, 100,000 rows, 500 underlyings and 1,000 assignment/expiration events. Direct parser/Worker-boundary checks confirm exact counts, one assignment plus one expiration per symbol, exact MTM closure, and an accepted serialized result. Separate real CSVs with 501 symbols and 1,001 events are parsed but rejected by the Worker-output contract. No multi-megabyte CSV is committed or shipped.
 - All 40 parser/import diagnostic codes have English, Simplified Chinese, and Traditional Chinese messages. Runtime validation permits dynamic values only for the fixed current year and signed MTM difference/currency fields; invalid diagnostics fall back to a fixed message without echoing untrusted input. Ledger warnings retranslate when the interface locale changes.
 - Calendar dates are parsed strictly. Nonexistent dates, reversed statement periods, future period ends, and prior-season reports are rejected instead of being normalized or accepted silently.
 - A same-account, same-season report with the same ending date but different content is rejected; duplicate, older, newer, and different-account snapshot decisions have dedicated regression cases.
@@ -72,7 +73,7 @@ Last updated: 2026-08-31
 - Real TypeScript checking passed with installed dependencies.
 - Production Vite build passed locally.
 - Dependency lockfile created; installed dependency audit reported zero known vulnerabilities.
-- After the final checkpoint 0.9 accounting/schema hardening, the clean install, zero-vulnerability dependency audit, full check suite, real local production-Chrome import/PNG regression, and production build all passed with Node 22.23.2 and npm 10.9.8.
+- After the checkpoint 0.11 capacity/cancellation hardening, the clean install, zero-vulnerability dependency audit, full check suite, real local production-Chrome import/PNG/capacity regression, and production build all passed with Node 22.23.2 and npm 10.9.8.
 - Both beginner-facing macOS scripts select a working Node 22.12+ runtime without exposing errors from this Mac's broken default Node 25 loader. `VERIFY_MAC.command` retains the clean install, audit, full checks and build; `START_MAC.command` conditionally repairs only missing/changed locked dependencies and otherwise starts the local site without repeating the full gate. Their shell syntax and separate roles have an automated contract test.
 - A dedicated Privacy & Data dialog is available from both the desktop privacy card and the page footer.
 - English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, locale-only persistence, no statement upload, the Self-Reported authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
@@ -102,6 +103,9 @@ Last updated: 2026-08-31
 - `npm run check` now builds the production bundle and drives a fresh isolated system Chrome profile through the DevTools protocol; it does not substitute the Vite development server for the browser regression.
 - The automated test selected `tests/fixtures/ibkr-current-schema-synthetic.csv` through the actual file input, observed the dedicated module Worker target/chunk, and fixed both page and Worker time to 2026-08-30 for a stable current-season test.
 - The automated run rendered three underlyings, rounded Season P&L `+$740`, all three reconciliation checks as exact, no synthetic local ranking, no unlocked synthetic achievement, and returned to Demo after refresh.
+- The same production-browser run generated a temporary exact-capacity CSV: 5,242,880 bytes, 100,000 rows, 500 fictional underlyings and 1,000 fictional assignment/expiration events. It observed the busy state, clicked the visible cancel control, confirmed the cancellation announcement and removal of the cancelled Worker target, waited beyond the 12-second timeout window for any late navigation, then completed a fresh import and rendered all 500 rows.
+- The exact-capacity Ledger search returned the final underlying, whose drawer showed one assignment, zero exercises and one expiration. Real CSVs with 501 symbols and 1,001 events both produced the fixed safe failure, terminated their Workers and preserved the prior 500-row report. A 5 MiB plus one-byte `.csv` was rejected before any new Worker target was created.
+- The final checkpoint 0.11 verification measured 857.8 ms from probe start through completed 500-row render plus the next timer/animation frame, a 17.7 ms maximum animation-frame gap, a 72.8 ms maximum timer gap, a 55.0 ms maximum observed long task, and a 15.0 ms search update measured from before dispatch. Every run enforces a sub-10-second total gate, sub-250-ms frame/timer/long-task gates, and a sub-500-ms search gate; these warm-path desktop figures are rerun evidence, not a cold-start or iPhone benchmark.
 - Runtime instrumentation observed no external page request, no POST, no HTTP error, and no console/runtime/log error. This is a local production-bundle check, not the still-deferred deployed Network/Storage gate.
 - Desktop browser keyboard and focus checks passed for both the privacy dialog and symbol drawer: opening moves focus inside, Tab and Shift+Tab wrap at the boundaries, Escape closes, the background remains inert, and focus returns to the opening control.
 - Both the sidebar and footer privacy controls opened the dialog. Backdrop close and the visible close controls worked.
@@ -129,5 +133,6 @@ Last updated: 2026-08-31
 - Custom wide Flex NAV queries with omitted registered asset fields or a non-empty Model are not supported; only the tested full-field account-level layout is accepted.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
 - Exercise remains uncovered by a qualified real or independently proven CSV fixture. Official IBKR documentation confirms `Ex` and the lifecycle-field semantics, but the public samples are HTML and do not prove the completed-exercise CSV serialization; see `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
-- Protected private-host header/Worker MIME inspection, complete Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari import and real-iPhone PNG export remain unverified.
+- Protected private-host header/Worker MIME inspection, complete deployed Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari import/cancellation/timeout and real-iPhone PNG export remain unverified.
+- Output-cap rejection is fail-closed but still occurs after normalized-report construction. Parser-stage fail-fast protection against adversarial below-5-MiB/below-100,001-row files with excessive unique instruments or events is not yet implemented.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.

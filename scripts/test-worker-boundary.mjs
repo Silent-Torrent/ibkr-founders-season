@@ -2,6 +2,18 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { createServer } from 'vite'
+import {
+  generateSyntheticCapacityStatement,
+  generateSyntheticOverEventStatement,
+  generateSyntheticOverSymbolStatement,
+  SYNTHETIC_CAPACITY_EVENTS,
+  SYNTHETIC_CAPACITY_MAX_BYTES,
+  SYNTHETIC_CAPACITY_ROWS,
+  SYNTHETIC_CAPACITY_SYMBOLS,
+  SYNTHETIC_CAPACITY_TARGET_BYTES,
+  SYNTHETIC_OVER_CAP_EVENTS,
+  SYNTHETIC_OVER_CAP_SYMBOLS,
+} from './synthetic-capacity-statement.mjs'
 
 const projectRoot = resolve(import.meta.dirname, '..')
 const referenceTimeMs = Date.UTC(2026, 7, 30, 12)
@@ -397,6 +409,7 @@ try {
   assert.equal(MAX_WORKER_SOURCE_REFS_PER_COLLECTION, 501)
   assert.equal(MAX_WORKER_REPORT_SECTIONS, 256)
   assert.equal(MAX_WORKER_DIAGNOSTICS, 32)
+  assert.equal(MAX_IBKR_WORKER_STATEMENT_BYTES, SYNTHETIC_CAPACITY_MAX_BYTES)
 
   assert.equal(isIbkrParserWorkerRequest(validRequest()), true)
   for (const invalidRequest of [
@@ -547,6 +560,69 @@ try {
       `A real ${optionSymbolCount}-option parser result was rejected by the Worker boundary.`,
     )
   }
+
+  const capacityStatement = generateSyntheticCapacityStatement()
+  assert.equal(capacityStatement.byteLength, SYNTHETIC_CAPACITY_TARGET_BYTES)
+  assert.equal(capacityStatement.rowCount, SYNTHETIC_CAPACITY_ROWS)
+  const capacityResult = parseIbkrActivityStatement(capacityStatement.text, {
+    accountComparisonSalt: 'worker-boundary-salt',
+    currentDate: new Date(referenceTimeMs),
+  })
+  const capacityReport = capacityResult.report
+  assert.deepEqual(capacityResult.errors, [])
+  assert.equal(capacityReport?.symbols.length, SYNTHETIC_CAPACITY_SYMBOLS)
+  assert.equal(capacityReport?.events.length, SYNTHETIC_CAPACITY_EVENTS)
+  assert.equal(
+    capacityReport?.symbols.every(
+      (symbol) =>
+        symbol.assignmentCount === 1 &&
+        symbol.exerciseCount === 0 &&
+        symbol.expirationCount === 1,
+    ),
+    true,
+    'The combined capacity fixture did not preserve one assignment and one expiration per underlying.',
+  )
+  assert.equal(
+    capacityReport?.reconciliations.find(
+      (check) => check.id === 'mtm_all_assets',
+    )?.status,
+    'PASS_EXACT',
+  )
+  assert.equal(
+    isWorkerParseResultWithinLimits(capacityResult, referenceTimeMs),
+    true,
+    'A real parser result at the exact byte, row, symbol, and event caps was rejected.',
+  )
+
+  const overSymbolResult = parseIbkrActivityStatement(
+    generateSyntheticOverSymbolStatement().text,
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(overSymbolResult.errors, [])
+  assert.equal(overSymbolResult.report?.symbols.length, SYNTHETIC_OVER_CAP_SYMBOLS)
+  assert.equal(
+    isWorkerParseResultWithinLimits(overSymbolResult, referenceTimeMs),
+    false,
+    'A real CSV with 501 symbols crossed the 500-symbol Worker output cap.',
+  )
+
+  const overEventResult = parseIbkrActivityStatement(
+    generateSyntheticOverEventStatement().text,
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(overEventResult.errors, [])
+  assert.equal(overEventResult.report?.events.length, SYNTHETIC_OVER_CAP_EVENTS)
+  assert.equal(
+    isWorkerParseResultWithinLimits(overEventResult, referenceTimeMs),
+    false,
+    'A real CSV with 1,001 events crossed the 1,000-event Worker output cap.',
+  )
 
   const currentSchemaFixture = readFileSync(
     resolve(projectRoot, 'tests/fixtures/ibkr-current-schema-synthetic.csv'),
