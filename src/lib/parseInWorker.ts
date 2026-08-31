@@ -48,9 +48,13 @@ export function parseIbkrActivityStatementInWorker(
     accountComparisonSalt = 'standalone-worker-v1',
     referenceTimeMs = Date.now(),
     signal,
-    timeoutMs = IBKR_PARSER_TIMEOUT_MS,
+    timeoutMs: requestedTimeoutMs = IBKR_PARSER_TIMEOUT_MS,
     workerFactory,
   } = options
+  const timeoutMs =
+    Number.isFinite(requestedTimeoutMs) && requestedTimeoutMs > 0
+      ? Math.min(Math.floor(requestedTimeoutMs), IBKR_PARSER_TIMEOUT_MS)
+      : IBKR_PARSER_TIMEOUT_MS
 
   if (signal?.aborted) {
     return Promise.resolve(errorResult('worker_cancelled'))
@@ -77,6 +81,20 @@ export function parseIbkrActivityStatementInWorker(
 
   if (!workerFactory && typeof Worker === 'undefined') {
     return Promise.resolve(errorResult('worker_unavailable'))
+  }
+
+  let filenameFreeStatement: Blob
+  try {
+    // Always cross the worker boundary as a plain Blob. This strips File.name
+    // even when a caller bypasses the UI's filename-free clone.
+    filenameFreeStatement = Blob.prototype.slice.call(
+      statement,
+      0,
+      statement.size,
+      statement.type,
+    ) as Blob
+  } catch {
+    return Promise.resolve(errorResult('worker_failure'))
   }
 
   return new Promise((resolve) => {
@@ -130,7 +148,7 @@ export function parseIbkrActivityStatementInWorker(
       type: 'parse',
       accountComparisonSalt,
       referenceTimeMs,
-      statement,
+      statement: filenameFreeStatement,
     }
     if (!isIbkrParserWorkerRequest(request)) {
       finish(errorResult('worker_failure'))

@@ -5,6 +5,7 @@ export const MAX_CSV_FIELDS_PER_ROW = 4_096
 
 type CsvParseFailureCode = Extract<
   ParserDiagnosticCode,
+  | 'csv_too_large'
   | 'csv_too_many_rows'
   | 'csv_too_many_fields'
   | 'csv_field_too_large'
@@ -21,83 +22,170 @@ export class CsvParseFailure extends Error {
   }
 }
 
+export class CsvRowTokenizer {
+  private row: string[] = []
+  private field = ''
+  private inQuotes = false
+  private pendingQuote = false
+  private rowCount = 0
+  private atStart = true
+  private finished = false
+
+  constructor(
+    private readonly visitor: (row: string[], rowNumber: number) => void,
+    private readonly maxRows?: number,
+  ) {}
+
+  private appendCharacter(char: string): void {
+    this.field += char
+    if (this.field.length > MAX_FIELD_CHARACTERS) {
+      throw new CsvParseFailure('csv_field_too_large')
+    }
+  }
+
+  private appendField(): void {
+    this.row.push(this.field.trim())
+    this.field = ''
+    if (this.row.length > MAX_CSV_FIELDS_PER_ROW) {
+      throw new CsvParseFailure('csv_too_many_fields')
+    }
+  }
+
+  private appendNonEmptyRow(): void {
+    if (!this.row.some((value) => value !== '')) return
+    this.rowCount += 1
+    if (this.maxRows !== undefined && this.rowCount > this.maxRows) {
+      throw new CsvParseFailure('csv_too_many_rows')
+    }
+    this.visitor(this.row, this.rowCount)
+  }
+
+  write(chunk: string): void {
+    if (this.finished) throw new Error('CSV tokenizer is already finished')
+    if (chunk.length === 0) return
+
+    let index = 0
+    if (this.atStart) {
+      this.atStart = false
+      if (chunk[0] === '\uFEFF') index = 1
+    }
+
+    if (this.pendingQuote) {
+      if (chunk[index] === '"') {
+        this.appendCharacter('"')
+        index += 1
+      } else {
+        this.inQuotes = false
+      }
+      this.pendingQuote = false
+    }
+
+    for (; index < chunk.length; index += 1) {
+      const char = chunk[index]
+
+      if (this.inQuotes) {
+        if (char === '"') {
+          if (index + 1 >= chunk.length) {
+            this.pendingQuote = true
+          } else if (chunk[index + 1] === '"') {
+            this.appendCharacter('"')
+            index += 1
+          } else {
+            this.inQuotes = false
+          }
+        } else {
+          this.appendCharacter(char)
+        }
+        continue
+      }
+
+      if (char === '"') {
+        this.inQuotes = true
+      } else if (char === ',') {
+        this.appendField()
+      } else if (char === '\n') {
+        this.appendField()
+        this.appendNonEmptyRow()
+        this.row = []
+      } else if (char !== '\r') {
+        this.appendCharacter(char)
+      }
+    }
+  }
+
+  finish(): number {
+    if (this.finished) return this.rowCount
+    this.finished = true
+
+    if (this.pendingQuote) {
+      this.pendingQuote = false
+      this.inQuotes = false
+    }
+    if (this.inQuotes) {
+      throw new CsvParseFailure('csv_unterminated_quote')
+    }
+    if (this.field !== '' || this.row.length > 0) {
+      this.appendField()
+      this.appendNonEmptyRow()
+    }
+    return this.rowCount
+  }
+}
+
 export function visitCsvRows(
   input: string,
   visitor: (row: string[], rowNumber: number) => void,
   maxRows?: number,
 ): number {
-  const text = input.replace(/^\uFEFF/, '')
-  let row: string[] = []
-  let field = ''
-  let inQuotes = false
-  let rowCount = 0
+  const tokenizer = new CsvRowTokenizer(visitor, maxRows)
+  tokenizer.write(input)
+  return tokenizer.finish()
+}
 
-  const appendField = () => {
-    row.push(field.trim())
-    field = ''
-    if (row.length > MAX_CSV_FIELDS_PER_ROW) {
-      throw new CsvParseFailure('csv_too_many_fields')
-    }
-  }
+/**
+ * Decode a Blob incrementally with the same UTF-8 replacement behavior used
+ * by Blob.text(). Decoded chunks stay transient and are never joined here.
+ */
+export async function visitBlobTextChunks(
+  blob: Blob,
+  visitor: (chunk: string) => void,
+): Promise<number> {
+  const maximumDecodeChunkBytes = 64 * 1_024
+  const reader = blob.stream().getReader()
+  const decoder = new TextDecoder()
+  let characterCount = 0
+  let completed = false
 
-  const appendNonEmptyRow = () => {
-    if (!row.some((value) => value !== '')) return
-    rowCount += 1
-    if (maxRows !== undefined && rowCount > maxRows) {
-      throw new CsvParseFailure('csv_too_many_rows')
-    }
-    visitor(row, rowCount)
-  }
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index]
-
-    if (inQuotes) {
-      if (char === '"') {
-        if (text[index + 1] === '"') {
-          field += '"'
-          if (field.length > MAX_FIELD_CHARACTERS) {
-            throw new CsvParseFailure('csv_field_too_large')
-          }
-          index += 1
-        } else {
-          inQuotes = false
-        }
-      } else {
-        field += char
-        if (field.length > MAX_FIELD_CHARACTERS) {
-          throw new CsvParseFailure('csv_field_too_large')
-        }
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) {
+        completed = true
+        break
       }
-      continue
-    }
-
-    if (char === '"') {
-      inQuotes = true
-    } else if (char === ',') {
-      appendField()
-    } else if (char === '\n') {
-      appendField()
-      appendNonEmptyRow()
-      row = []
-    } else if (char !== '\r') {
-      field += char
-      if (field.length > MAX_FIELD_CHARACTERS) {
-        throw new CsvParseFailure('csv_field_too_large')
+      for (let offset = 0; offset < value.length; offset += maximumDecodeChunkBytes) {
+        const bytes = value.subarray(offset, offset + maximumDecodeChunkBytes)
+        const chunk = decoder.decode(bytes, { stream: true })
+        characterCount += chunk.length
+        if (chunk) visitor(chunk)
       }
     }
+    const finalChunk = decoder.decode()
+    characterCount += finalChunk.length
+    if (finalChunk) visitor(finalChunk)
+    return characterCount
+  } catch (error) {
+    if (!completed) {
+      try {
+        await reader.cancel(error)
+      } catch {
+        // Preserve the parser failure; stream cancellation is best-effort.
+      }
+    }
+    throw error
+  } finally {
+    reader.releaseLock()
   }
-
-  if (inQuotes) {
-    throw new CsvParseFailure('csv_unterminated_quote')
-  }
-
-  if (field !== '' || row.length > 0) {
-    appendField()
-    appendNonEmptyRow()
-  }
-
-  return rowCount
 }
 
 export function parseCsvRows(input: string, maxRows?: number): string[][] {
@@ -346,11 +434,22 @@ export function parseDateRange(value: string | undefined): { start?: Date; end?:
   return {}
 }
 
-export function fingerprintText(value: string): string {
-  let hash = 0x811c9dc5
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193)
+export class TextFingerprintAccumulator {
+  private hash = 0x811c9dc5
+
+  update(value: string): this {
+    for (let index = 0; index < value.length; index += 1) {
+      this.hash ^= value.charCodeAt(index)
+      this.hash = Math.imul(this.hash, 0x01000193)
+    }
+    return this
   }
-  return (hash >>> 0).toString(16).padStart(8, '0')
+
+  digestHex(): string {
+    return (this.hash >>> 0).toString(16).padStart(8, '0')
+  }
+}
+
+export function fingerprintText(value: string): string {
+  return new TextFingerprintAccumulator().update(value).digestHex()
 }

@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.13
+## Completed through coding checkpoint 0.14
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -39,6 +39,8 @@
 - [x] Incremental CSV row-limit enforcement and Worker report-output caps.
 - [x] Row-by-row production CSV tokenizer that avoids a full-file `string[][]`, preserves quoted/BOM/CRLF/Unicode row semantics, accepts exactly 4,096 fields in one logical row, and returns fixed `csv_too_many_fields` at 4,097.
 - [x] Selective parser materialization: retain records only for consumed sections; scan FII separately so unused alias conflicts still fail globally while mapping/source retention is limited to needed aliases; pressure-test exact-5-MiB/100,000-row inputs with 20,000 alias-and-description-unique unused FII rows in both orders and 10,000 cross-section FII/Trades mapping candidates, plus a separate 25,001-duplicate-Trades case.
+- [x] Two-pass Blob streaming in the production Worker without whole-file `Blob.text()` or `arrayBuffer()`: bounded incremental UTF-8 decoding, shared row collectors, incremental UTF-16 fingerprint and normalized SHA-256 identity, exact synchronous/streaming result equivalence, and fixed full-read prohibition tests.
+- [x] Filename-free Worker boundary enforced below the UI: clone every accepted input to a native Blob, reject `File` in the protocol, and prevent timeout overrides from extending or disabling the hard 12-second maximum.
 - [x] Worker lifecycle contract tests included in `npm run check`.
 - [x] Versioned Worker request/response protocol with strict runtime, reconciliation-semantics, fixed parser-fact, and deterministic-warning validation; capacity caps are aligned to the current unpaginated UI (500 underlyings, 1,000 events, 256 distinct exact section strings after known-code mapping, 20,000 total references, 501 per rendered reference collection, 25,000 total array items, and 1,000,000 actual string characters).
 - [x] Structured parser/import diagnostics rendered in English, Simplified Chinese, and Traditional Chinese without interpolating unvalidated free-form statement text; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
@@ -84,7 +86,8 @@
 - [x] Reject unterminated fields, payloads over 10 million characters, fields over 250,000 characters, rows above 4,096 fields, and files over 100,000 rows in regression tests; retain the exact accepted 4,096-field boundary.
 - [x] Add a production-Chrome main-thread responsiveness/time gate for a fully fictional file at the exact byte/row/symbol/event caps.
 - [x] Add parser-stage report-capacity exits for adversarial files at or below the byte/row ceilings, including separate known-code smoke coverage, direct post-mapping 256/257 exact-section boundaries, parser/Worker alignment for actual aggregate item/string budgets, and exact-5-MiB/100,000-row 501-symbol and 1,001-event production-Worker cases that preserve the prior report.
-- [ ] **Partially complete:** reduce pre-capacity parser work. Consumed-section materialization and needed-only FII mapping/source retention are implemented, with a same-machine Node `maxRSS` proxy improving from roughly 48 MiB to roughly 10 MiB for the ordinary exact-capacity fixture. The Worker still uses `Blob.text()`, the parser scans the decoded text twice, and true Blob streaming, incremental hashing, browser-Worker/iPhone peak-memory measurement, and a real-device threshold remain open. The proxy is not a hard gate.
+- [x] Remove application-owned whole-file decoding and hashing buffers from the production Worker. The parser now reopens the Blob for two bounded-chunk passes, retains only selective section/FII state, and preserves all tested accounting/diagnostic results. This is intentionally not a single-pass parser.
+- [ ] Measure browser-Worker peak allocation and establish a supported real-iPhone/Safari memory threshold. Node process proxies and desktop Chrome are directional evidence only; they are not a hard release gate.
 - [ ] Verify real iPhone Safari file import, cancellation, timeout and PNG download using only fictional data.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
 - [ ] Run VoiceOver and real-device accessibility checks on the supported iPhone Safari baseline.

@@ -1,4 +1,4 @@
-import { parseIbkrActivityStatement } from '../lib/ibkr'
+import { parseIbkrActivityStatementBlob } from '../lib/ibkr'
 import {
   IBKR_PARSER_WORKER_PROTOCOL_VERSION,
   isIbkrParserWorkerRequest,
@@ -45,8 +45,7 @@ workerScope.onmessage = async (event) => {
 
   let result: ParseResult
   try {
-    const text = await event.data.statement.text()
-    result = parseIbkrActivityStatement(text, {
+    result = await parseIbkrActivityStatementBlob(event.data.statement, {
       accountComparisonSalt: event.data.accountComparisonSalt,
       currentDate: new Date(event.data.referenceTimeMs),
     })

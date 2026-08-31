@@ -1,5 +1,7 @@
 # Parser selective-materialization evidence — 2026-08-31
 
+Historical note: this records checkpoint 0.13. Checkpoint 0.14 subsequently replaced the whole-file Worker boundary with two bounded-chunk Blob passes; see `PARSER_STREAMING_EVIDENCE_2026-08-31.md` for the current implementation and non-claims.
+
 ## Scope
 
 Checkpoint 0.13 reduces parser-side retained input for a valid IBKR-shaped CSV while preserving the existing fail-closed accounting, scope, alias-conflict, provenance, and report-capacity rules. This record covers direct Node 22 parser regressions and one same-machine memory proxy. It is not a browser, iPhone, accessibility, authenticity, or deployment approval record.
@@ -34,7 +36,7 @@ The 10,000-candidate case pressures global FII/Trades candidate comparison and r
 
 ## Same-machine memory proxy
 
-The diagnostic script runs one generated fixture in a fresh Node 22 process with explicit garbage collection available and records `process.resourceUsage().maxRSS` before and after the real parser call.
+At checkpoint 0.13, the diagnostic script ran one generated fixture in a fresh Node 22 process with explicit garbage collection available and recorded `process.resourceUsage().maxRSS` before and after the synchronous parser call.
 
 For the ordinary exact-capacity fixture on this Mac:
 
@@ -42,6 +44,8 @@ For the ordinary exact-capacity fixture on this Mac:
 - checkpoint 0.13: approximately 10 MiB `maxRSS` increase.
 
 This is useful directional evidence that the parser no longer retains the previous full row table and broad section store. It is not an automated hard limit. `maxRSS` is a process high-water measure, and the delta can change with the operating system, allocator, V8 JIT state, module caches, process baseline, test order, and other activity. The comparison must not be presented as a guaranteed 38 MiB saving, a browser Worker allocation count, an iPhone memory budget, or a production service-level objective.
+
+Those figures belong to checkpoint 0.13 commit `386c670`. The current `measure-parser-memory.mjs` was intentionally changed in checkpoint 0.14 to exercise the Blob-streaming entry with a different baseline, so running it now cannot reproduce or be compared directly with the historical 48/10 MiB observations.
 
 ## Explicit non-claims and remaining work
 
@@ -60,7 +64,6 @@ Use the repository's supported Node 22 runtime:
 
 ```bash
 npm run test:materialization
-node --expose-gc scripts/measure-parser-memory.mjs capacity
 ```
 
-The materialization regression is part of `npm run check`. The memory command is diagnostic only and intentionally is not a pass/fail gate.
+The materialization regression remains part of `npm run check`. For the current diagnostic memory command and its different baseline/non-claims, use `PARSER_STREAMING_EVIDENCE_2026-08-31.md`. Reproducing the historical memory proxy requires the checkpoint 0.13 source, not the current script.

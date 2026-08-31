@@ -55,16 +55,20 @@ const fixture = fixtures[fixtureName]
 assert(fixture, `Unknown memory fixture: ${fixtureName}`)
 
 try {
-  const { parseIbkrActivityStatement } = await vite.ssrLoadModule(
+  const { parseIbkrActivityStatementBlob } = await vite.ssrLoadModule(
     '/src/lib/ibkr.ts',
   )
   const { events, symbols } = fixture
-  const statement = fixture.generate()
+  let statement = fixture.generate()
+  const rows = statement.rowCount
+  const bytes = statement.byteLength
+  const statementBlob = new Blob([statement.text], { type: 'text/csv' })
+  statement = undefined
   global.gc()
   const before = process.memoryUsage()
   const maxRssBefore = process.resourceUsage().maxRSS
   const startedAt = performance.now()
-  const result = parseIbkrActivityStatement(statement.text, {
+  const result = await parseIbkrActivityStatementBlob(statementBlob, {
     accountComparisonSalt: 'parser-memory-diagnostic',
     currentDate: new Date(Date.UTC(2026, 7, 30, 12)),
   })
@@ -90,8 +94,8 @@ try {
     maxRssBefore,
     maxRssAfter,
     maxRssDelta: maxRssAfter - maxRssBefore,
-    rows: statement.rowCount,
-    bytes: statement.byteLength,
+    rows,
+    bytes,
     symbols: result.report.symbols.length,
     events: result.report.events.length,
   })

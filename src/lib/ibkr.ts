@@ -10,7 +10,9 @@ import type {
   SymbolPnl,
 } from '../types'
 import {
+  CsvRowTokenizer,
   CsvParseFailure,
+  TextFingerprintAccumulator,
   fingerprintText,
   normalizeKey,
   parseDateFlexible,
@@ -19,6 +21,7 @@ import {
   parsePercent,
   sumExactNumbers,
   toIsoDate,
+  visitBlobTextChunks,
   visitCsvRows,
 } from './csv'
 import {
@@ -29,7 +32,7 @@ import {
   MAX_SOURCE_REFS_PER_COLLECTION,
   parseResultFitsReportResourceBudget,
 } from './reportCapacity'
-import { sha256Hex } from './sha256'
+import { Sha256TextAccumulator, sha256Hex } from './sha256'
 
 interface SectionRecord {
   section: string
@@ -321,6 +324,60 @@ function knownSyntheticIdentity(text: string): string {
   return sha256Hex(normalized)
 }
 
+class SyntheticIdentityAccumulator {
+  private readonly hash = new Sha256TextAccumulator()
+  private atStart = true
+  private pendingCarriageReturn = false
+  private finalized = false
+
+  update(chunk: string): void {
+    if (this.finalized) {
+      throw new Error('Synthetic identity accumulator is already finalized')
+    }
+    if (!chunk) return
+
+    let index = 0
+    if (this.atStart) {
+      this.atStart = false
+      if (chunk[0] === '\uFEFF') index = 1
+    }
+
+    let normalized = ''
+    if (this.pendingCarriageReturn) {
+      normalized = '\n'
+      this.pendingCarriageReturn = false
+      if (chunk[index] === '\n') index += 1
+    }
+
+    for (; index < chunk.length; index += 1) {
+      const char = chunk[index]
+      if (char !== '\r') {
+        normalized += char
+        continue
+      }
+      if (index + 1 >= chunk.length) {
+        this.pendingCarriageReturn = true
+      } else {
+        normalized += '\n'
+        if (chunk[index + 1] === '\n') index += 1
+      }
+    }
+    if (normalized) this.hash.update(normalized)
+  }
+
+  digestHex(): string {
+    if (this.finalized) {
+      throw new Error('Synthetic identity accumulator is already finalized')
+    }
+    this.finalized = true
+    if (this.pendingCarriageReturn) {
+      this.hash.update('\n')
+      this.pendingCarriageReturn = false
+    }
+    return this.hash.digestHex()
+  }
+}
+
 export interface ParseIbkrActivityStatementOptions {
   accountComparisonSalt?: string
   currentDate?: Date
@@ -421,7 +478,12 @@ for (const alias of MATERIALIZED_SECTION_ALIASES) {
 const MATERIALIZED_SECTION_KEYS = new Set(MATERIALIZED_SECTION_NAMES.keys())
 const CONTROL_RECORD_SECTIONS = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
 
-function buildStatementIndex(text: string): StatementIndex {
+interface StatementIndexBuilder {
+  finish(rowCount: number): StatementIndex
+  visit(row: string[], rowNumber: number): void
+}
+
+function createStatementIndexBuilder(): StatementIndexBuilder {
   const store = new Map<string, SectionRecord[]>()
   const headersBySection = new Map<string, HeaderState>()
   const sectionNames = new Set<string>()
@@ -433,7 +495,7 @@ function buildStatementIndex(text: string): StatementIndex {
   let firstBofPeriod: StatementIndex['firstBofPeriod']
   let sectionOverflow = false
 
-  const rowCount = visitCsvRows(text, (row, rowNumber) => {
+  const visit = (row: string[], rowNumber: number): void => {
     const rawSection = row[0]?.trim() ?? ''
     const rawSectionUpper = rawSection.toUpperCase()
 
@@ -552,20 +614,29 @@ function buildStatementIndex(text: string): StatementIndex {
         headerState?.signature ?? fingerprintText(Object.keys(fields).join('\u001f')),
     })
     store.set(sourceIdentity, records)
-  }, MAX_CSV_ROWS)
+  }
 
   return {
-    bofAccountIds: [...bofAccountIds],
-    bofPeriodConflict,
-    bofPeriodInvalid,
-    bofPeriodKeys,
-    firstBofPeriod,
-    headerBlockStates,
-    rowCount,
-    sectionNames: [...sectionNames],
-    sectionOverflow,
-    store,
+    visit,
+    finish: (rowCount) => ({
+      bofAccountIds: [...bofAccountIds],
+      bofPeriodConflict,
+      bofPeriodInvalid,
+      bofPeriodKeys,
+      firstBofPeriod,
+      headerBlockStates,
+      rowCount,
+      sectionNames: [...sectionNames],
+      sectionOverflow,
+      store,
+    }),
   }
+}
+
+function buildStatementIndex(text: string): StatementIndex {
+  const builder = createStatementIndexBuilder()
+  const rowCount = visitCsvRows(text, builder.visit, MAX_CSV_ROWS)
+  return builder.finish(rowCount)
 }
 
 function assertMaterializedSectionAliases(aliases: readonly string[]): void {
@@ -2127,11 +2198,15 @@ function collectInstrumentLookupAliases(
   return aliases
 }
 
-function scanFinancialInstrumentIndex(
-  text: string,
+interface FinancialInstrumentIndexBuilder {
+  finish(): FinancialInstrumentScanResult
+  visit(row: string[], rowNumber: number): void
+}
+
+function createFinancialInstrumentIndexBuilder(
   neededAliases: Set<string>,
   expectedAccountId: string | undefined,
-): FinancialInstrumentScanResult {
+): FinancialInstrumentIndexBuilder {
   const aliasStates = new Map<string, string | null>()
   const requestedSourceRefs = new Map<string, BoundedSourceRefs>()
   const contractAliases = new Set<string>()
@@ -2268,7 +2343,7 @@ function scanFinancialInstrumentIndex(
     }
   }
 
-  visitCsvRows(text, (row, rowNumber) => {
+  const visit = (row: string[], rowNumber: number): void => {
     if (row.length < 2) return
 
     const rawSection = row[0].trim()
@@ -2318,31 +2393,49 @@ function scanFinancialInstrumentIndex(
         headerState?.signature ??
         fingerprintText(Object.keys(fields).join('\u001f')),
     })
-  }, MAX_CSV_ROWS)
-
-  for (const alias of neededAliases) {
-    const underlying = aliasStates.get(alias)
-    if (!underlying) continue
-    mapping.set(alias, {
-      underlying,
-      sourceRefs: requestedSourceRefs.get(alias)?.refs ?? [],
-    })
   }
 
   return {
-    aliasStates,
-    contractAliases,
-    conflictingAliases,
-    fullAccountScopeValid:
-      (!accountFieldExposed ||
-        (!accountFieldMissing && !accountFieldInvalid)) &&
-      (!modelFieldExposed || (!modelFieldMissing && !modelFieldInvalid)),
-    hasConflicts,
-    mapping,
-    referenceIdentitiesValid,
-    schemaFieldsValid,
-    sectionConflict: sourceIdentities.size > 1,
+    visit,
+    finish: () => {
+      for (const alias of neededAliases) {
+        const underlying = aliasStates.get(alias)
+        if (!underlying) continue
+        mapping.set(alias, {
+          underlying,
+          sourceRefs: requestedSourceRefs.get(alias)?.refs ?? [],
+        })
+      }
+
+      return {
+        aliasStates,
+        contractAliases,
+        conflictingAliases,
+        fullAccountScopeValid:
+          (!accountFieldExposed ||
+            (!accountFieldMissing && !accountFieldInvalid)) &&
+          (!modelFieldExposed || (!modelFieldMissing && !modelFieldInvalid)),
+        hasConflicts,
+        mapping,
+        referenceIdentitiesValid,
+        schemaFieldsValid,
+        sectionConflict: sourceIdentities.size > 1,
+      }
+    },
   }
+}
+
+function scanFinancialInstrumentIndex(
+  text: string,
+  neededAliases: Set<string>,
+  expectedAccountId: string | undefined,
+): FinancialInstrumentScanResult {
+  const builder = createFinancialInstrumentIndexBuilder(
+    neededAliases,
+    expectedAccountId,
+  )
+  visitCsvRows(text, builder.visit, MAX_CSV_ROWS)
+  return builder.finish()
 }
 
 function buildInstrumentUnderlyingMap(
@@ -3877,6 +3970,101 @@ function navDiagnostic(
   }
 }
 
+interface FinancialInstrumentScanRequirements {
+  expectedAccountId?: string
+  neededAliases: Set<string>
+}
+
+function financialInstrumentScanRequirements(
+  statementIndex: StatementIndex,
+): FinancialInstrumentScanRequirements {
+  const { store } = statementIndex
+  const accountAliases = ['Account', 'Account ID', 'AccountID']
+  const accountRecords = recordsFor(store, ['Account Information'])
+  const navMetadataRecords = recordsFor(store, NAV_SECTION_ALIASES)
+  const accountIds = new Set<string>()
+
+  for (const record of accountRecords) {
+    const fieldName = valueFor(record, ['Field Name', 'Name', 'Item'])
+    const fieldValue = valueFor(record, ['Field Value', 'Value'])
+    if (
+      fieldName &&
+      matchesSchemaAlias(fieldName, accountAliases) &&
+      fieldValue?.trim()
+    ) {
+      accountIds.add(fieldValue.trim())
+    }
+    for (const match of fieldMatchesFor(record, accountAliases)) {
+      if (match.value.trim()) accountIds.add(match.value.trim())
+    }
+  }
+  for (const record of navMetadataRecords) {
+    for (const match of fieldMatchesFor(record, accountAliases)) {
+      if (match.value.trim()) accountIds.add(match.value.trim())
+    }
+  }
+  for (const bofAccountId of statementIndex.bofAccountIds) {
+    accountIds.add(bofAccountId)
+  }
+
+  const lifecycleEventRecords = recordsForExclusive(
+    store,
+    OPTION_LIFECYCLE_SECTION_ALIASES,
+  ).records.filter((record) => record.recordType === 'DATA')
+  const tradeEventRecords = recordsForExclusive(store, ['Trades']).records.filter(
+    isOptionEventRecordCandidate,
+  )
+  const selectedEventRecords =
+    lifecycleEventRecords.length > 0
+      ? lifecycleEventRecords
+      : tradeEventRecords
+  const neededAliases = collectInstrumentLookupAliases(
+    recordsForExclusive(store, MTM_PERFORMANCE_SECTION_ALIASES).records,
+  )
+  collectInstrumentLookupAliases(
+    recordsForExclusive(store, MONTH_YTD_PERFORMANCE_SECTION_ALIASES).records,
+    neededAliases,
+  )
+  collectInstrumentLookupAliases(
+    recordsForExclusive(store, REALIZED_PERFORMANCE_SECTION_ALIASES).records,
+    neededAliases,
+  )
+  collectInstrumentLookupAliases(selectedEventRecords, neededAliases)
+
+  return {
+    expectedAccountId: [...accountIds][0],
+    neededAliases,
+  }
+}
+
+function setsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  if (left.size !== right.size) return false
+  for (const value of left) {
+    if (!right.has(value)) return false
+  }
+  return true
+}
+
+interface IndexedStatementSource {
+  fingerprint(): string
+  knownSyntheticIdentity(): string
+  scanFinancialInstruments(
+    neededAliases: Set<string>,
+    expectedAccountId: string | undefined,
+  ): FinancialInstrumentScanResult
+}
+
+function csvFailureResult(error: unknown): ParseResult {
+  return {
+    errors: [
+      {
+        code: error instanceof CsvParseFailure ? error.code : 'csv_malformed',
+      },
+    ],
+    warnings: [],
+  }
+}
+
 export function parseIbkrActivityStatement(
   text: string,
   options: ParseIbkrActivityStatementOptions = {},
@@ -3888,21 +4076,105 @@ export function parseIbkrActivityStatement(
     }
   }
 
-  const errors: ParserDiagnostic[] = []
-  const warnings: ParserDiagnostic[] = []
   let statementIndex: StatementIndex
   try {
     statementIndex = buildStatementIndex(text)
   } catch (error) {
-    return {
-      errors: [
-        {
-          code: error instanceof CsvParseFailure ? error.code : 'csv_malformed',
-        },
-      ],
-      warnings,
-    }
+    return csvFailureResult(error)
   }
+
+  return parseIndexedStatement(statementIndex, options, {
+    // Blob.text() consumes a leading UTF-8 BOM. Keep the direct string entry
+    // equivalent so the same statement does not acquire two fingerprints.
+    fingerprint: () => fingerprintText(text.replace(/^\uFEFF/, '')),
+    knownSyntheticIdentity: () => knownSyntheticIdentity(text),
+    scanFinancialInstruments: (neededAliases, expectedAccountId) =>
+      scanFinancialInstrumentIndex(text, neededAliases, expectedAccountId),
+  })
+}
+
+export async function parseIbkrActivityStatementBlob(
+  blob: Blob,
+  options: ParseIbkrActivityStatementOptions = {},
+): Promise<ParseResult> {
+  const statementBuilder = createStatementIndexBuilder()
+  const statementTokenizer = new CsvRowTokenizer(
+    statementBuilder.visit,
+    MAX_CSV_ROWS,
+  )
+  const fingerprint = new TextFingerprintAccumulator()
+  const syntheticIdentity = new SyntheticIdentityAccumulator()
+  let decodedCharacters = 0
+  let statementIndex: StatementIndex
+
+  try {
+    await visitBlobTextChunks(blob, (chunk) => {
+      decodedCharacters += chunk.length
+      if (decodedCharacters > MAX_CSV_CHARACTERS) {
+        throw new CsvParseFailure('csv_too_large')
+      }
+      fingerprint.update(chunk)
+      syntheticIdentity.update(chunk)
+      statementTokenizer.write(chunk)
+    })
+    statementIndex = statementBuilder.finish(statementTokenizer.finish())
+  } catch (error) {
+    if (error instanceof CsvParseFailure) return csvFailureResult(error)
+    throw error
+  }
+
+  if (statementIndex.rowCount < 3) {
+    return { errors: [{ code: 'csv_not_enough_rows' }], warnings: [] }
+  }
+  if (statementIndex.sectionOverflow) return reportCapacityFailure()
+
+  const requirements = financialInstrumentScanRequirements(statementIndex)
+  const financialInstrumentBuilder = createFinancialInstrumentIndexBuilder(
+    requirements.neededAliases,
+    requirements.expectedAccountId,
+  )
+  const financialInstrumentTokenizer = new CsvRowTokenizer(
+    financialInstrumentBuilder.visit,
+    MAX_CSV_ROWS,
+  )
+  let financialInstrumentIndex: FinancialInstrumentScanResult
+  try {
+    await visitBlobTextChunks(blob, (chunk) => {
+      financialInstrumentTokenizer.write(chunk)
+    })
+    financialInstrumentTokenizer.finish()
+    financialInstrumentIndex = financialInstrumentBuilder.finish()
+  } catch (error) {
+    if (error instanceof CsvParseFailure) return csvFailureResult(error)
+    throw error
+  }
+
+  let syntheticIdentityHex: string | undefined
+  return parseIndexedStatement(statementIndex, options, {
+    fingerprint: () => fingerprint.digestHex(),
+    knownSyntheticIdentity: () => {
+      syntheticIdentityHex ??= syntheticIdentity.digestHex()
+      return syntheticIdentityHex
+    },
+    scanFinancialInstruments: (neededAliases, expectedAccountId) => {
+      if (
+        expectedAccountId !== requirements.expectedAccountId ||
+        !setsEqual(neededAliases, requirements.neededAliases)
+      ) {
+        throw new Error('Financial instrument scan requirements changed')
+      }
+      return financialInstrumentIndex
+    },
+  })
+}
+
+function parseIndexedStatement(
+  statementIndex: StatementIndex,
+  options: ParseIbkrActivityStatementOptions,
+  source: IndexedStatementSource,
+): ParseResult {
+  const errors: ParserDiagnostic[] = []
+  const warnings: ParserDiagnostic[] = []
 
   if (statementIndex.rowCount < 3) {
     return { errors: [{ code: 'csv_not_enough_rows' }], warnings }
@@ -4136,8 +4408,7 @@ export function parseIbkrActivityStatement(
   )
   let sharedFinancialInstruments: FinancialInstrumentScanResult
   try {
-    sharedFinancialInstruments = scanFinancialInstrumentIndex(
-      text,
+    sharedFinancialInstruments = source.scanFinancialInstruments(
       demandedInstrumentAliases,
       accountId,
     )
@@ -4999,11 +5270,11 @@ export function parseIbkrActivityStatement(
     hasIncompleteReconciliation ||
     warnings.some((warning) => !informationalWarnings.has(warning.code))
 
-  const fingerprint = fingerprintText(text)
+  const fingerprint = source.fingerprint()
   const isKnownSyntheticStatement =
     accountId !== undefined &&
     accountId.startsWith('SYNTHETIC_') &&
-    KNOWN_SYNTHETIC_STATEMENTS.has(knownSyntheticIdentity(text))
+    KNOWN_SYNTHETIC_STATEMENTS.has(source.knownSyntheticIdentity())
 
   const report: PortfolioReport = {
     source: isKnownSyntheticStatement ? 'synthetic' : 'local',

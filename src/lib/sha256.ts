@@ -26,24 +26,51 @@ function rotateRight(value: number, bits: number): number {
   return (value >>> bits) | (value << (32 - bits))
 }
 
-export function sha256Hex(input: string): string {
-  const inputBytes = new TextEncoder().encode(input)
-  const paddedLength = Math.ceil((inputBytes.length + 9) / 64) * 64
-  const bytes = new Uint8Array(paddedLength)
-  bytes.set(inputBytes)
-  bytes[inputBytes.length] = 0x80
+export class Sha256Accumulator {
+  private readonly hash = [...INITIAL_HASH]
+  private readonly block = new Uint8Array(64)
+  private readonly words = new Uint32Array(64)
+  private blockLength = 0
+  private byteLength = 0
+  private finalized = false
 
-  const bitLength = inputBytes.length * 8
-  const view = new DataView(bytes.buffer)
-  view.setUint32(paddedLength - 8, Math.floor(bitLength / 0x1_0000_0000))
-  view.setUint32(paddedLength - 4, bitLength >>> 0)
+  update(bytes: Uint8Array): this {
+    if (this.finalized) throw new Error('SHA-256 accumulator is already finalized')
+    if (bytes.length === 0) return this
+    if (!Number.isSafeInteger(this.byteLength + bytes.length)) {
+      throw new Error('SHA-256 input is too large')
+    }
+    this.byteLength += bytes.length
 
-  const hash = [...INITIAL_HASH]
-  const words = new Uint32Array(64)
+    let offset = 0
+    if (this.blockLength > 0) {
+      const copied = Math.min(64 - this.blockLength, bytes.length)
+      this.block.set(bytes.subarray(0, copied), this.blockLength)
+      this.blockLength += copied
+      offset += copied
+      if (this.blockLength === 64) {
+        this.processBlock(this.block)
+        this.blockLength = 0
+      }
+    }
 
-  for (let offset = 0; offset < paddedLength; offset += 64) {
+    while (offset + 64 <= bytes.length) {
+      this.processBlock(bytes.subarray(offset, offset + 64))
+      offset += 64
+    }
+    if (offset < bytes.length) {
+      const remainder = bytes.subarray(offset)
+      this.block.set(remainder, 0)
+      this.blockLength = remainder.length
+    }
+    return this
+  }
+
+  private processBlock(bytes: Uint8Array): void {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, 64)
+    const words = this.words
     for (let index = 0; index < 16; index += 1) {
-      words[index] = view.getUint32(offset + index * 4)
+      words[index] = view.getUint32(index * 4)
     }
     for (let index = 16; index < 64; index += 1) {
       const previous15 = words[index - 15]
@@ -55,7 +82,7 @@ export function sha256Hex(input: string): string {
       words[index] = (words[index - 16] + sigma0 + words[index - 7] + sigma1) >>> 0
     }
 
-    let [a, b, c, d, e, f, g, h] = hash
+    let [a, b, c, d, e, f, g, h] = this.hash
     for (let index = 0; index < 64; index += 1) {
       const sum1 = rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)
       const choose = (e & f) ^ (~e & g)
@@ -74,15 +101,75 @@ export function sha256Hex(input: string): string {
       a = (temporary1 + temporary2) >>> 0
     }
 
-    hash[0] = (hash[0] + a) >>> 0
-    hash[1] = (hash[1] + b) >>> 0
-    hash[2] = (hash[2] + c) >>> 0
-    hash[3] = (hash[3] + d) >>> 0
-    hash[4] = (hash[4] + e) >>> 0
-    hash[5] = (hash[5] + f) >>> 0
-    hash[6] = (hash[6] + g) >>> 0
-    hash[7] = (hash[7] + h) >>> 0
+    this.hash[0] = (this.hash[0] + a) >>> 0
+    this.hash[1] = (this.hash[1] + b) >>> 0
+    this.hash[2] = (this.hash[2] + c) >>> 0
+    this.hash[3] = (this.hash[3] + d) >>> 0
+    this.hash[4] = (this.hash[4] + e) >>> 0
+    this.hash[5] = (this.hash[5] + f) >>> 0
+    this.hash[6] = (this.hash[6] + g) >>> 0
+    this.hash[7] = (this.hash[7] + h) >>> 0
   }
 
-  return hash.map((value) => value.toString(16).padStart(8, '0')).join('')
+  digestHex(): string {
+    if (this.finalized) throw new Error('SHA-256 accumulator is already finalized')
+    this.finalized = true
+
+    const bitLength = this.byteLength * 8
+    this.block[this.blockLength] = 0x80
+    this.blockLength += 1
+    if (this.blockLength > 56) {
+      this.block.fill(0, this.blockLength)
+      this.processBlock(this.block)
+      this.block.fill(0)
+      this.blockLength = 0
+    } else {
+      this.block.fill(0, this.blockLength)
+    }
+
+    const view = new DataView(this.block.buffer)
+    view.setUint32(56, Math.floor(bitLength / 0x1_0000_0000))
+    view.setUint32(60, bitLength >>> 0)
+    this.processBlock(this.block)
+    this.blockLength = 0
+    return this.hash
+      .map((value) => value.toString(16).padStart(8, '0'))
+      .join('')
+  }
+}
+
+export class Sha256TextAccumulator {
+  private readonly accumulator = new Sha256Accumulator()
+  private readonly encoder = new TextEncoder()
+  private pendingHighSurrogate = ''
+  private finalized = false
+
+  update(chunk: string): this {
+    if (this.finalized) throw new Error('SHA-256 text accumulator is already finalized')
+    if (!chunk && !this.pendingHighSurrogate) return this
+
+    let text = this.pendingHighSurrogate + chunk
+    this.pendingHighSurrogate = ''
+    const lastCodeUnit = text.charCodeAt(text.length - 1)
+    if (lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff) {
+      this.pendingHighSurrogate = text.at(-1) ?? ''
+      text = text.slice(0, -1)
+    }
+    if (text) this.accumulator.update(this.encoder.encode(text))
+    return this
+  }
+
+  digestHex(): string {
+    if (this.finalized) throw new Error('SHA-256 text accumulator is already finalized')
+    this.finalized = true
+    if (this.pendingHighSurrogate) {
+      this.accumulator.update(this.encoder.encode(this.pendingHighSurrogate))
+      this.pendingHighSurrogate = ''
+    }
+    return this.accumulator.digestHex()
+  }
+}
+
+export function sha256Hex(input: string): string {
+  return new Sha256TextAccumulator().update(input).digestHex()
 }

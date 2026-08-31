@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 const statementPath = process.argv[2]
 if (!statementPath) {
@@ -41,9 +42,24 @@ try {
 
   writeFileSync(join(output, 'package.json'), '{"type":"commonjs"}\n')
   const require = createRequire(import.meta.url)
-  const { parseIbkrActivityStatement } = require(join(output, 'lib/ibkr.js'))
-  const statement = readFileSync(resolve(statementPath), 'utf8')
-  const result = parseIbkrActivityStatement(statement)
+  const {
+    parseIbkrActivityStatement,
+    parseIbkrActivityStatementBlob,
+  } = require(join(output, 'lib/ibkr.js'))
+  const statementBytes = readFileSync(resolve(statementPath))
+  const statementText = statementBytes.toString('utf8')
+  const currentDate = new Date()
+  const options = { currentDate }
+  const synchronousResult = parseIbkrActivityStatement(statementText, options)
+  const result = await parseIbkrActivityStatementBlob(
+    new Blob([statementBytes], { type: 'text/csv' }),
+    options,
+  )
+  if (!isDeepStrictEqual(result, synchronousResult)) {
+    throw new Error(
+      'The private statement streaming result diverged from the synchronous parser.',
+    )
+  }
 
   if (!result.report || result.errors.length > 0) {
     console.error({ errors: result.errors, warningCount: result.warnings.length })

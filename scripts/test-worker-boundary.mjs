@@ -30,6 +30,7 @@ class FakeWorker {
     this.expectedSalt = expectedSalt
     this.expectedReferenceTimeMs = expectedReferenceTimeMs
     this.listeners = new Map()
+    this.lastRequest = undefined
     this.terminateCount = 0
   }
 
@@ -44,6 +45,7 @@ class FakeWorker {
   }
 
   postMessage(request) {
+    this.lastRequest = request
     assert.deepEqual(Object.keys(request).sort(), [
       'accountComparisonSalt',
       'protocolVersion',
@@ -76,6 +78,61 @@ class FakeWorker {
 
   terminate() {
     this.terminateCount += 1
+  }
+}
+
+class StreamOnlyBlob extends Blob {
+  constructor(parts, options) {
+    super(parts, options)
+    this.arrayBufferCallCount = 0
+    this.streamByteCounts = []
+    this.textCallCount = 0
+  }
+
+  async text() {
+    this.textCallCount += 1
+    throw new Error('The production Worker must not materialize the Blob with text().')
+  }
+
+  async arrayBuffer() {
+    this.arrayBufferCallCount += 1
+    throw new Error('The production Worker must not materialize the whole Blob with arrayBuffer().')
+  }
+
+  stream() {
+    const passIndex = this.streamByteCounts.length
+    this.streamByteCounts.push(0)
+    const reader = super.stream().getReader()
+    const streamByteCounts = this.streamByteCounts
+
+    return new ReadableStream({
+      async pull(controller) {
+        try {
+          const { done, value } = await reader.read()
+          if (done) {
+            reader.releaseLock()
+            controller.close()
+            return
+          }
+          streamByteCounts[passIndex] += value.byteLength
+          controller.enqueue(value)
+        } catch (error) {
+          try {
+            reader.releaseLock()
+          } catch {
+            // Preserve the original stream error.
+          }
+          controller.error(error)
+        }
+      },
+      async cancel(reason) {
+        try {
+          await reader.cancel(reason)
+        } finally {
+          reader.releaseLock()
+        }
+      },
+    })
   }
 }
 
@@ -604,6 +661,18 @@ try {
   }
 
   assert.equal(isIbkrParserWorkerRequest(validRequest()), true)
+  if (typeof File !== 'undefined') {
+    assert.equal(
+      isIbkrParserWorkerRequest({
+        ...validRequest(),
+        statement: new File(['fully fictional statement bytes'], 'private-statement.csv', {
+          type: 'text/csv',
+        }),
+      }),
+      false,
+      'The Worker protocol accepted a File carrying an input-controlled filename.',
+    )
+  }
   for (const invalidRequest of [
     { ...validRequest(), protocolVersion: 0 },
     { ...validRequest(), accountComparisonSalt: 'x'.repeat(15) },
@@ -1533,6 +1602,25 @@ try {
   assert.deepEqual(success.errors, [])
   assert.equal(successWorker.terminateCount, 1)
 
+  if (typeof File !== 'undefined') {
+    const fileWorker = new FakeWorker('result', workerResponse())
+    const fileResult = await parseIbkrActivityStatementInWorker(
+      new File(['fully fictional statement bytes'], 'private-statement.csv', {
+        type: 'text/csv',
+      }),
+      {
+        referenceTimeMs,
+        workerFactory: () => fileWorker,
+      },
+    )
+    assert.equal(fileResult.report?.fingerprint, '0123abcd')
+    assert.deepEqual(fileResult.errors, [])
+    assert.ok(fileWorker.lastRequest?.statement instanceof Blob)
+    assert.equal(fileWorker.lastRequest.statement instanceof File, false)
+    assert.equal('name' in fileWorker.lastRequest.statement, false)
+    assert.equal(fileWorker.terminateCount, 1)
+  }
+
   const parserErrorWorker = new FakeWorker('result', {
     protocolVersion: 1,
     type: 'result',
@@ -1600,6 +1688,26 @@ try {
     clearedTimer = timer
   }
   try {
+    for (const { requestedTimeoutMs, expectedDelay } of [
+      { requestedTimeoutMs: 12_001, expectedDelay: 12_000 },
+      { requestedTimeoutMs: 0, expectedDelay: 12_000 },
+      { requestedTimeoutMs: -1, expectedDelay: 12_000 },
+      { requestedTimeoutMs: Number.NaN, expectedDelay: 12_000 },
+      { requestedTimeoutMs: 2_500, expectedDelay: 2_500 },
+    ]) {
+      scheduledDelay = undefined
+      const boundedTimeoutWorker = new FakeWorker('result', workerResponse())
+      const boundedTimeoutResult = await parseIbkrActivityStatementInWorker(statement, {
+        referenceTimeMs,
+        timeoutMs: requestedTimeoutMs,
+        workerFactory: () => boundedTimeoutWorker,
+      })
+      assert.deepEqual(boundedTimeoutResult.errors, [])
+      assert.equal(scheduledDelay, expectedDelay)
+      assert.equal(boundedTimeoutWorker.terminateCount, 1)
+    }
+
+    clearedTimer = undefined
     let settled = false
     const timeoutPromise = parseIbkrActivityStatementInWorker(statement, {
       referenceTimeMs,
@@ -1638,17 +1746,49 @@ try {
       resolve(projectRoot, 'tests/fixtures/ibkr-current-schema-synthetic.csv'),
       'utf8',
     )
+    const workerIntegrationSalt = 'worker-integration-salt'
+    const plainFixtureBlob = new Blob([fixture], { type: 'text/csv' })
+    const synchronousFixtureResult = parseIbkrActivityStatement(
+      await plainFixtureBlob.text(),
+      {
+        accountComparisonSalt: workerIntegrationSalt,
+        currentDate: new Date(referenceTimeMs),
+      },
+    )
+    const streamOnlyFixtureBlob = new StreamOnlyBlob([fixture], {
+      type: 'text/csv',
+    })
     await globalThis.onmessage({
       data: {
         ...validRequest(),
-        accountComparisonSalt: 'worker-integration-salt',
-        statement: new Blob([fixture], { type: 'text/csv' }),
+        accountComparisonSalt: workerIntegrationSalt,
+        statement: streamOnlyFixtureBlob,
       },
     })
     const integratedResponse = postedResponses.pop()
     assert.equal(isIbkrParserWorkerResponse(integratedResponse, referenceTimeMs), true)
     assert.equal(integratedResponse.result.report?.source, 'synthetic')
     assert.deepEqual(integratedResponse.result.errors, [])
+    assert.deepEqual(
+      integratedResponse.result,
+      synchronousFixtureResult,
+      'The production Blob-stream Worker path diverged from the synchronous parser.',
+    )
+    assert.equal(
+      streamOnlyFixtureBlob.textCallCount,
+      0,
+      'The production Worker called Blob.text() instead of the streaming parser.',
+    )
+    assert.equal(
+      streamOnlyFixtureBlob.arrayBufferCallCount,
+      0,
+      'The production Worker called whole-Blob arrayBuffer() instead of streaming.',
+    )
+    assert.deepEqual(
+      streamOnlyFixtureBlob.streamByteCounts,
+      [streamOnlyFixtureBlob.size, streamOnlyFixtureBlob.size],
+      'The production Worker must read two complete, repeatable Blob streams.',
+    )
 
     for (const overCapacityText of [
       generateSyntheticOverSymbolStatement().text,

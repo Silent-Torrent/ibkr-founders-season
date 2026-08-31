@@ -72,6 +72,7 @@ export function isIbkrParserWorkerRequest(
       isValidWorkerReferenceTime(value.referenceTimeMs) &&
       typeof Blob !== 'undefined' &&
       value.statement instanceof Blob &&
+      (typeof File === 'undefined' || !(value.statement instanceof File)) &&
       value.statement.size <= MAX_IBKR_WORKER_STATEMENT_BYTES
     )
   } catch {
