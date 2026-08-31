@@ -19,6 +19,7 @@ import {
   generateSyntheticCapacityStatement,
   generateSyntheticOverEventStatement,
   generateSyntheticOverSymbolStatement,
+  padSyntheticStatementToCapacity,
   SYNTHETIC_CAPACITY_EVENTS,
   SYNTHETIC_CAPACITY_MAX_BYTES,
   SYNTHETIC_CAPACITY_ROWS,
@@ -434,6 +435,7 @@ async function resolveFileInputNodeId() {
 }
 
 async function assertProductionWorkerCapacityFailure(filePath, label) {
+  const startedAt = performance.now()
   await clickPrimaryNavigation('Import')
   const nodeId = await resolveFileInputNodeId()
   const workerCountBefore = workerTargets.length
@@ -448,11 +450,16 @@ async function assertProductionWorkerCapacityFailure(filePath, label) {
       fileInput: Boolean(document.querySelector('input[type="file"]')),
     }))()`,
     (value) =>
-      value?.error.includes('could not be parsed safely in the background') &&
+      value?.error.includes('exceeds the current local capacity') &&
       value?.fileInput === true,
     label,
   )
   assert.equal(failureState.busy, 'false')
+  const durationMs = performance.now() - startedAt
+  assert(
+    durationMs < 10_000,
+    `${label} took ${durationMs.toFixed(1)} ms instead of failing within the 10 s gate.`,
+  )
   await waitForCondition(
     () => workerTargets.length > workerCountBefore,
     `${label} Worker target creation`,
@@ -480,6 +487,7 @@ async function assertProductionWorkerCapacityFailure(filePath, label) {
     `${label} preserved prior Ledger`,
   )
   assert.equal(preservedLedger.rows, SYNTHETIC_CAPACITY_SYMBOLS)
+  return durationMs
 }
 
 assert(existsSync(fixturePath), `The canonical synthetic fixture is missing: ${fixturePath}`)
@@ -550,8 +558,16 @@ try {
     'Statement,Header,Field Name,Field Value\nStatement,Data,Title,Not an Activity Statement\n',
   )
   const capacityStatement = generateSyntheticCapacityStatement()
-  const overEventStatement = generateSyntheticOverEventStatement()
-  const overSymbolStatement = generateSyntheticOverSymbolStatement()
+  const overEventBaseStatement = generateSyntheticOverEventStatement()
+  const overSymbolBaseStatement = generateSyntheticOverSymbolStatement()
+  const overEventStatement = {
+    ...overEventBaseStatement,
+    ...padSyntheticStatementToCapacity(overEventBaseStatement.text),
+  }
+  const overSymbolStatement = {
+    ...overSymbolBaseStatement,
+    ...padSyntheticStatementToCapacity(overSymbolBaseStatement.text),
+  }
   writeFileSync(capacityFixturePath, capacityStatement.text)
   writeFileSync(overEventFixturePath, overEventStatement.text)
   writeFileSync(overSymbolFixturePath, overSymbolStatement.text)
@@ -562,6 +578,10 @@ try {
   assert.equal(statSync(capacityFixturePath).size, SYNTHETIC_CAPACITY_TARGET_BYTES)
   assert.equal(overEventStatement.eventCount, SYNTHETIC_OVER_CAP_EVENTS)
   assert.equal(overSymbolStatement.symbolCount, SYNTHETIC_OVER_CAP_SYMBOLS)
+  assert.equal(overEventStatement.byteLength, SYNTHETIC_CAPACITY_TARGET_BYTES)
+  assert.equal(overSymbolStatement.byteLength, SYNTHETIC_CAPACITY_TARGET_BYTES)
+  assert.equal(overEventStatement.rowCount, SYNTHETIC_CAPACITY_ROWS)
+  assert.equal(overSymbolStatement.rowCount, SYNTHETIC_CAPACITY_ROWS)
   assert.equal(statSync(oversizedFixturePath).size, SYNTHETIC_CAPACITY_MAX_BYTES + 1)
   const chrome = trackedSpawn(chromePath, [
     '--headless=new',
@@ -1292,11 +1312,11 @@ try {
     'Capacity drawer close',
   )
 
-  await assertProductionWorkerCapacityFailure(
+  const overSymbolFailureMs = await assertProductionWorkerCapacityFailure(
     overSymbolFixturePath,
     '501-symbol production Worker rejection',
   )
-  await assertProductionWorkerCapacityFailure(
+  const overEventFailureMs = await assertProductionWorkerCapacityFailure(
     overEventFixturePath,
     '1,001-event production Worker rejection',
   )
@@ -1385,7 +1405,11 @@ try {
     capacitySearchMs: Number(searchDurationMs.toFixed(1)),
     capacitySha256: createHash('sha256').update(capacityStatement.text).digest('hex'),
     capacitySymbols: SYNTHETIC_CAPACITY_SYMBOLS,
+    overCapBytes: SYNTHETIC_CAPACITY_TARGET_BYTES,
+    overCapEventFailureMs: Number(overEventFailureMs.toFixed(1)),
     overCapEventsRejected: SYNTHETIC_OVER_CAP_EVENTS,
+    overCapRows: SYNTHETIC_CAPACITY_ROWS,
+    overCapSymbolFailureMs: Number(overSymbolFailureMs.toFixed(1)),
     overCapSymbolsRejected: SYNTHETIC_OVER_CAP_SYMBOLS,
     chrome: basename(chromePath),
     downloadedPngBytes: downloadedPng.length,

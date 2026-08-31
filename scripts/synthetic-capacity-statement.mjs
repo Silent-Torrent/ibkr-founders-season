@@ -10,6 +10,52 @@ export const SYNTHETIC_CAPACITY_EVENTS = 1_000
 export const SYNTHETIC_OVER_CAP_SYMBOLS = SYNTHETIC_CAPACITY_SYMBOLS + 1
 export const SYNTHETIC_OVER_CAP_EVENTS = SYNTHETIC_CAPACITY_EVENTS + 1
 
+export function padSyntheticStatementToCapacity(
+  statement,
+  {
+    targetBytes = SYNTHETIC_CAPACITY_TARGET_BYTES,
+    targetRows = SYNTHETIC_CAPACITY_ROWS,
+  } = {},
+) {
+  assert(Number.isSafeInteger(targetBytes) && targetBytes > 0)
+  assert(Number.isSafeInteger(targetRows) && targetRows > 0)
+  assert(targetBytes <= SYNTHETIC_CAPACITY_MAX_BYTES)
+
+  const rows = statement.split('\n')
+  rows.push('Capacity Padding,Header,Sequence,Payload')
+  const paddingRowCount = targetRows - rows.length
+  assert(paddingRowCount > 0, 'The requested row count leaves no room for padding rows.')
+
+  const paddingPrefixes = Array.from(
+    { length: paddingRowCount },
+    (_, index) => `Capacity Padding,Data,${String(index).padStart(6, '0')},`,
+  )
+  const bytesBeforePayload =
+    rows.reduce((sum, row) => sum + Buffer.byteLength(row, 'utf8'), 0) +
+    paddingPrefixes.reduce((sum, prefix) => sum + Buffer.byteLength(prefix, 'utf8'), 0) +
+    targetRows - 1
+  const payloadBytes = targetBytes - bytesBeforePayload
+  assert(
+    payloadBytes >= paddingRowCount,
+    `Target byte size is too small for ${targetRows} non-empty rows.`,
+  )
+
+  const payloadLength = Math.floor(payloadBytes / paddingRowCount)
+  const longerPayloadRows = payloadBytes % paddingRowCount
+  for (let index = 0; index < paddingRowCount; index += 1) {
+    rows.push(
+      `${paddingPrefixes[index]}${'X'.repeat(payloadLength + (index < longerPayloadRows ? 1 : 0))}`,
+    )
+  }
+
+  const text = rows.join('\n')
+  const byteLength = Buffer.byteLength(text, 'utf8')
+  assert.equal(rows.length, targetRows)
+  assert.equal(byteLength, targetBytes)
+  assert.equal(text.length, byteLength, 'The padded statement must stay ASCII-only.')
+  return { byteLength, rowCount: rows.length, text }
+}
+
 function optionContract(underlying, index, kind) {
   const strike = index + 1
   const expiry = kind === 'assignment' ? '19JUN26' : '17JUL26'

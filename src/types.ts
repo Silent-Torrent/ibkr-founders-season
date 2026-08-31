@@ -33,6 +33,7 @@ export type ParserDiagnosticCode =
   | 'underlyings_missing'
   | 'mtm_total_missing'
   | 'instrument_alias_conflict'
+  | 'report_capacity_exceeded'
   | 'realized_section_missing'
   | 'mtm_difference'
   | 'other_pnl_included'

@@ -33,6 +33,7 @@ export const PARSER_DIAGNOSTIC_CODES = Object.freeze([
   'underlyings_missing',
   'mtm_total_missing',
   'instrument_alias_conflict',
+  'report_capacity_exceeded',
   'realized_section_missing',
   'mtm_difference',
   'other_pnl_included',
@@ -113,6 +114,8 @@ const messages: Record<
       'The IBKR all-assets YTD MTM total is missing from the performance section.',
     instrument_alias_conflict:
       'Conflicting option contract-to-underlying mappings were found across statement sections.',
+    report_capacity_exceeded:
+      'This statement exceeds the current local capacity for underlyings, option lifecycle events, report sections, or safely traceable source details.',
     realized_section_missing:
       'Current unrealized P&L could not be read because the realized/unrealized section is missing.',
     mtm_difference:
@@ -172,6 +175,8 @@ const messages: Record<
     mtm_total_missing: '业绩部分中缺少 IBKR 全部资产 YTD MTM 合计值。',
     instrument_alias_conflict:
       '报表各区块中存在相互冲突的期权合约与标的映射。',
+    report_capacity_exceeded:
+      '这份报表的标的、期权生命周期事件、报表区块或可安全追溯的来源明细超过当前本地处理上限。',
     realized_section_missing:
       '缺少已实现/未实现业绩部分，因此无法读取当前未实现盈亏。',
     mtm_difference: 'IBKR 报告的全部资产 YTD MTM 减去解析明细合计后相差 {amount}。',
@@ -222,6 +227,8 @@ const messages: Record<
     mtm_total_missing: '績效部分中缺少 IBKR 全部資產 YTD MTM 合計值。',
     instrument_alias_conflict:
       '報表各區塊中存在相互衝突的選擇權合約與標的對應。',
+    report_capacity_exceeded:
+      '這份報表的標的、選擇權生命週期事件、報表區塊或可安全追溯的來源明細超過目前本機處理上限。',
     realized_section_missing:
       '缺少已實現/未實現績效部分，因此無法讀取目前未實現損益。',
     mtm_difference: 'IBKR 報告的全部資產 YTD MTM 減去剖析明細合計後相差 {amount}。',

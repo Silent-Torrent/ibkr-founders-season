@@ -21,6 +21,14 @@ import {
   sumExactNumbers,
   toIsoDate,
 } from './csv'
+import {
+  MAX_REPORT_EVENTS,
+  MAX_REPORT_SECTIONS,
+  MAX_REPORT_SOURCE_REF_OCCURRENCES,
+  MAX_REPORT_UNDERLYINGS,
+  MAX_SOURCE_REFS_PER_COLLECTION,
+  parseResultFitsReportResourceBudget,
+} from './reportCapacity'
 import { sha256Hex } from './sha256'
 
 interface SectionRecord {
@@ -72,6 +80,16 @@ interface UnderlyingFieldResolution {
   conflict: boolean
   sourceRefs: SourceRef[]
   underlying?: string
+}
+
+class InvalidAccountingSourceRefs extends Array<SourceRef> {
+  override push(...refs: SourceRef[]): number {
+    // Invalid source references are only used as a boolean failure signal.
+    // Retaining the first one avoids attacker-controlled growth without
+    // changing any calculation or user-facing diagnostic.
+    if (this.length === 0 && refs.length > 0) super.push(refs[0])
+    return this.length
+  }
 }
 
 type InstrumentUnderlyingCandidates = Map<string, Map<string, SourceRef[]>>
@@ -265,6 +283,13 @@ function knownSyntheticIdentity(text: string): string {
 export interface ParseIbkrActivityStatementOptions {
   accountComparisonSalt?: string
   currentDate?: Date
+}
+
+function reportCapacityFailure(): ParseResult {
+  return {
+    errors: [{ code: 'report_capacity_exceeded' }],
+    warnings: [],
+  }
 }
 
 const SECTION_CODES: Record<string, string> = {
@@ -616,8 +641,19 @@ function sumAccountingValues(
   invalidNumericFields: SourceRef[],
 ): number | undefined {
   const result = sumExactNumbers(values)
-  if (result == null) invalidNumericFields.push(...sourceRefs)
+  if (result == null) markInvalidAccounting(invalidNumericFields, sourceRefs)
   return result
+}
+
+function markInvalidAccounting(
+  invalidNumericFields: SourceRef[],
+  sourceRefs: readonly SourceRef[],
+): void {
+  // Invalid references are only a boolean failure signal. Passing a large
+  // attacker-controlled collection through a spread can itself overflow the
+  // call stack before the parser returns its safe diagnostic.
+  const first = sourceRefs[0]
+  if (first) invalidNumericFields.push(first)
 }
 
 function addAccountingMatch(
@@ -804,7 +840,7 @@ function validateYtdAssetSubtotalClosure(
         ]
   const detailsByAsset = new Map<
     string,
-    Array<{ values: number[]; sourceRefs: SourceRef[] }>
+    Array<{ values: number[]; sourceRefs: BoundedSourceRefs }>
   >()
   const closedAssets = new Set<string>()
   let lastDetailAsset: string | undefined
@@ -812,8 +848,12 @@ function validateYtdAssetSubtotalClosure(
 
   const emptyMetricTotals = (): Array<{
     values: number[]
-    sourceRefs: SourceRef[]
-  }> => metricAliasGroups.map(() => ({ values: [], sourceRefs: [] }))
+    sourceRefs: BoundedSourceRefs
+  }> =>
+    metricAliasGroups.map(() => ({
+      values: [],
+      sourceRefs: createBoundedSourceRefs(),
+    }))
 
   for (const record of records) {
     if (isReturnOnlyRecord(record)) continue
@@ -861,7 +901,7 @@ function validateYtdAssetSubtotalClosure(
           return
         }
         metricTotals[index].values.push(match.value)
-        metricTotals[index].sourceRefs.push(match.sourceRef)
+        addBoundedSourceRef(metricTotals[index].sourceRefs, match.sourceRef)
       })
       detailsByAsset.set(detailAsset, metricTotals)
       lastDetailAsset = detailAsset
@@ -895,7 +935,7 @@ function validateYtdAssetSubtotalClosure(
       )
       const calculated = sumAccountingValues(
         metricTotals[index].values,
-        metricTotals[index].sourceRefs,
+        metricTotals[index].sourceRefs.refs,
         invalidNumericFields,
       )
       if (
@@ -1197,9 +1237,17 @@ function ytdSectionSnapshot(
       conflict = true
       continue
     }
+    const detailValues: number[] = []
+    const detailSourceRefs = createBoundedSourceRefs()
+    for (const detail of details.values()) {
+      detailValues.push(detail.value)
+      for (const sourceRef of detail.sourceRefs) {
+        addBoundedSourceRef(detailSourceRefs, sourceRef)
+      }
+    }
     const calculated = sumAccountingValues(
-      [...details.values()].map((detail) => detail.value),
-      [...details.values()].flatMap((detail) => detail.sourceRefs),
+      detailValues,
+      detailSourceRefs.refs,
       invalidNumericFields,
     )
     if (calculated == null) conflict = true
@@ -1265,8 +1313,10 @@ function validateYtdRealizedFallbackTotals(
   records: SectionRecord[],
   invalidNumericFields: SourceRef[],
 ): boolean {
-  const shortDetails: NumericMatch[] = []
-  const longDetails: NumericMatch[] = []
+  const shortDetailValues: number[] = []
+  const longDetailValues: number[] = []
+  const shortDetailSourceRefs = createBoundedSourceRefs()
+  const longDetailSourceRefs = createBoundedSourceRefs()
   let reportedShort: NumericMatch | undefined
   let reportedLong: NumericMatch | undefined
   let overallRows = 0
@@ -1307,18 +1357,21 @@ function validateYtdRealizedFallbackTotals(
       valid = false
       continue
     }
-    shortDetails.push(realizedShort)
-    longDetails.push(realizedLong)
+    shortDetailValues.push(realizedShort.value)
+    longDetailValues.push(realizedLong.value)
+    addBoundedSourceRef(shortDetailSourceRefs, realizedShort.sourceRef)
+    addBoundedSourceRef(longDetailSourceRefs, realizedLong.sourceRef)
   }
 
   const detailsMatch = (
-    details: NumericMatch[],
+    values: number[],
+    sourceRefs: SourceRef[],
     reported: NumericMatch | undefined,
   ): boolean => {
-    if (details.length === 0 || !reported) return false
+    if (values.length === 0 || !reported) return false
     const calculated = sumAccountingValues(
-      details.map((detail) => detail.value),
-      details.map((detail) => detail.sourceRef),
+      values,
+      sourceRefs,
       invalidNumericFields,
     )
     return (
@@ -1330,8 +1383,8 @@ function validateYtdRealizedFallbackTotals(
   return (
     valid &&
     overallRows === 1 &&
-    detailsMatch(shortDetails, reportedShort) &&
-    detailsMatch(longDetails, reportedLong)
+    detailsMatch(shortDetailValues, shortDetailSourceRefs.refs, reportedShort) &&
+    detailsMatch(longDetailValues, longDetailSourceRefs.refs, reportedLong)
   )
 }
 
@@ -1590,22 +1643,58 @@ function hasAmbiguousSchemaFields(
   )
 }
 
+interface BoundedSourceRefs {
+  refs: SourceRef[]
+  keys: Set<string>
+}
+
+function sourceRefKey(ref: SourceRef): string {
+  return [
+    ref.source,
+    ref.section,
+    ref.recordType ?? '',
+    ref.rowNumber ?? '',
+    ref.pageNumber ?? '',
+    ref.headerSignature ?? '',
+    ref.field,
+  ].join('|')
+}
+
+function createBoundedSourceRefs(): BoundedSourceRefs {
+  return { refs: [], keys: new Set() }
+}
+
+function addBoundedSourceRef(target: BoundedSourceRefs, ref: SourceRef): void {
+  // Preserve one overflow item (the 502nd unique reference) as a sticky
+  // sentinel. This lets the final capacity gate distinguish an exact-limit
+  // collection from an over-limit one without retaining unbounded input.
+  if (target.refs.length > MAX_SOURCE_REFS_PER_COLLECTION) return
+  const key = sourceRefKey(ref)
+  if (target.keys.has(key)) return
+  target.keys.add(key)
+  target.refs.push(ref)
+}
+
 function dedupeSourceRefs(refs: SourceRef[]): SourceRef[] {
-  const seen = new Set<string>()
-  return refs.filter((ref) => {
-    const key = [
-      ref.source,
-      ref.section,
-      ref.recordType ?? '',
-      ref.rowNumber ?? '',
-      ref.pageNumber ?? '',
-      ref.headerSignature ?? '',
-      ref.field,
-    ].join('|')
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  const target = createBoundedSourceRefs()
+  for (const ref of refs) {
+    addBoundedSourceRef(target, ref)
+    if (target.refs.length > MAX_SOURCE_REFS_PER_COLLECTION) break
+  }
+  return target.refs
+}
+
+function sourceRefCollectionsFitReportCapacity(
+  collections: Array<readonly SourceRef[] | undefined>,
+): boolean {
+  let occurrences = 0
+  for (const refs of collections) {
+    if (!refs) continue
+    if (refs.length > MAX_SOURCE_REFS_PER_COLLECTION) return false
+    occurrences += refs.length
+    if (occurrences > MAX_REPORT_SOURCE_REF_OCCURRENCES) return false
+  }
+  return true
 }
 
 function normalizedDifference(
@@ -2165,7 +2254,7 @@ function parseOptionEvents(
   eventRecords: SectionRecord[],
   symbols: Map<string, SymbolAccumulator>,
   instrumentIndex: InstrumentUnderlyingMapResult,
-): OptionEvent[] {
+): { capacityExceeded: boolean; events: OptionEvent[] } {
   const events: OptionEvent[] = []
   const seen = new Set<string>()
 
@@ -2207,6 +2296,9 @@ function parseOptionEvents(
     const parsedDate = toIsoDate(parseDateFlexible(dateMatch?.value.split(/[;,]/)[0]))
     const key = `${underlying}|${contract ?? ''}|${parsedDate ?? ''}|${type}`
     if (seen.has(key)) continue
+    if (events.length >= MAX_REPORT_EVENTS) {
+      return { capacityExceeded: true, events: [] }
+    }
     seen.add(key)
 
     const event: OptionEvent = {
@@ -2229,7 +2321,10 @@ function parseOptionEvents(
     if (type === 'expiration') accumulator.expirationCount += 1
   }
 
-  return events.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+  return {
+    capacityExceeded: false,
+    events: events.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
+  }
 }
 
 function isOptionEventRecordCandidate(record: SectionRecord): boolean {
@@ -2605,8 +2700,19 @@ function validateCashSourceConsistency(
   navRecords: SectionRecord[],
   invalidNumericFields: SourceRef[],
 ): boolean {
-  const navCash: NumericMatch[] = []
-  const reportCash: NumericMatch[] = []
+  let navCashCount = 0
+  let reportCashCount = 0
+  let navCashValue: number | undefined
+  let reportCashValue: number | undefined
+
+  const recordNavCash = (match: NumericMatch): void => {
+    navCashCount = Math.min(2, navCashCount + 1)
+    navCashValue ??= match.value
+  }
+  const recordReportCash = (match: NumericMatch): void => {
+    reportCashCount = Math.min(2, reportCashCount + 1)
+    reportCashValue ??= match.value
+  }
 
   for (const record of navRecords) {
     if (isWideNavRecord(record)) {
@@ -2616,7 +2722,7 @@ function validateCashSourceConsistency(
         invalidNumericFields,
         true,
       )
-      if (match) navCash.push(match)
+      if (match) recordNavCash(match)
       continue
     }
 
@@ -2629,7 +2735,7 @@ function validateCashSourceConsistency(
       invalidNumericFields,
       true,
     )
-    if (match) navCash.push(match)
+    if (match) recordNavCash(match)
   }
 
   for (const record of cashRecords) {
@@ -2637,12 +2743,12 @@ function validateCashSourceConsistency(
       record,
       invalidNumericFields,
     )
-    if (candidate.match) reportCash.push(candidate.match)
+    if (candidate.match) recordReportCash(candidate.match)
   }
 
-  if (navCash.length > 1 || reportCash.length > 1) return false
-  if (navCash.length === 0 || reportCash.length === 0) return true
-  return normalizedDifference(navCash[0].value, reportCash[0].value) === 0
+  if (navCashCount > 1 || reportCashCount > 1) return false
+  if (navCashCount === 0 || reportCashCount === 0) return true
+  return normalizedDifference(navCashValue!, reportCashValue!) === 0
 }
 
 function validateNavSection(
@@ -2676,9 +2782,12 @@ function validateNavSection(
   const requiresChange = accountingRecords.some(
     (record) => fieldMatchesFor(record, NAV_CHANGE_FIELD_ALIASES).length > 0,
   )
-  const detailCurrent: NumericMatch[] = []
-  const detailPrior: NumericMatch[] = []
-  const detailChange: NumericMatch[] = []
+  const detailCurrentValues: number[] = []
+  const detailPriorValues: number[] = []
+  const detailChangeValues: number[] = []
+  const detailCurrentSourceRefs = createBoundedSourceRefs()
+  const detailPriorSourceRefs = createBoundedSourceRefs()
+  const detailChangeSourceRefs = createBoundedSourceRefs()
   let reportedCurrent: NumericMatch | undefined
   let reportedPrior: NumericMatch | undefined
   let reportedChange: NumericMatch | undefined
@@ -2769,20 +2878,30 @@ function validateNavSection(
       if (prior) reportedPrior = prior
       if (change) reportedChange = change
     } else {
-      if (current) detailCurrent.push(current)
-      if (prior) detailPrior.push(prior)
-      if (change) detailChange.push(change)
+      if (current) {
+        detailCurrentValues.push(current.value)
+        addBoundedSourceRef(detailCurrentSourceRefs, current.sourceRef)
+      }
+      if (prior) {
+        detailPriorValues.push(prior.value)
+        addBoundedSourceRef(detailPriorSourceRefs, prior.sourceRef)
+      }
+      if (change) {
+        detailChangeValues.push(change.value)
+        addBoundedSourceRef(detailChangeSourceRefs, change.sourceRef)
+      }
     }
   }
 
   const detailsMatchReported = (
-    details: NumericMatch[],
+    values: number[],
+    sourceRefs: SourceRef[],
     reported: NumericMatch | undefined,
   ): boolean => {
-    if (!reported || details.length === 0) return false
+    if (!reported || values.length === 0) return false
     const calculated = sumAccountingValues(
-      details.map((match) => match.value),
-      details.map((match) => match.sourceRef),
+      values,
+      sourceRefs,
       invalidNumericFields,
     )
     return (
@@ -2792,11 +2911,33 @@ function validateNavSection(
   }
 
   if (overallRows !== 1) valid = false
-  if (!detailsMatchReported(detailCurrent, reportedCurrent)) valid = false
-  if (requiresPrior && !detailsMatchReported(detailPrior, reportedPrior)) {
+  if (
+    !detailsMatchReported(
+      detailCurrentValues,
+      detailCurrentSourceRefs.refs,
+      reportedCurrent,
+    )
+  ) {
     valid = false
   }
-  if (requiresChange && !detailsMatchReported(detailChange, reportedChange)) {
+  if (
+    requiresPrior &&
+    !detailsMatchReported(
+      detailPriorValues,
+      detailPriorSourceRefs.refs,
+      reportedPrior,
+    )
+  ) {
+    valid = false
+  }
+  if (
+    requiresChange &&
+    !detailsMatchReported(
+      detailChangeValues,
+      detailChangeSourceRefs.refs,
+      reportedChange,
+    )
+  ) {
     valid = false
   }
   return valid
@@ -2823,7 +2964,17 @@ function findSeasonReturn(
     'Year to Date Return',
     'YTD Return',
   ]
-  const candidates: Array<{ value: number; sourceRef: SourceRef }> = []
+  let candidateCount = 0
+  let firstValue: number | undefined
+  let conflict = false
+  const sourceRefs = createBoundedSourceRefs()
+
+  const recordCandidate = (value: number, sourceRef: SourceRef): void => {
+    if (candidateCount === 0) firstValue = value
+    else if (Math.abs(value - firstValue!) > 1e-12) conflict = true
+    candidateCount += 1
+    addBoundedSourceRef(sourceRefs, sourceRef)
+  }
 
   for (const record of allRecords) {
     const fieldName = fieldFor(record, ['Field Name', 'Name', 'Item'])
@@ -2835,7 +2986,7 @@ function findSeasonReturn(
     ) {
       const value = parseReturnValue(fieldValue.value)
       if (value != null) {
-        candidates.push({ value, sourceRef: sourceRefFor(record, fieldValue.field) })
+        recordCandidate(value, sourceRefFor(record, fieldValue.field))
       } else {
         invalidNumericFields.push(sourceRefFor(record, fieldValue.field))
       }
@@ -2844,19 +2995,17 @@ function findSeasonReturn(
     for (const match of fieldMatchesFor(record, aliases)) {
       const value = parseReturnValue(match.value)
       if (value != null) {
-        candidates.push({ value, sourceRef: sourceRefFor(record, match.field) })
+        recordCandidate(value, sourceRefFor(record, match.field))
       } else {
         invalidNumericFields.push(sourceRefFor(record, match.field))
       }
     }
   }
 
-  if (candidates.length === 0) return { sourceRefs: [], conflict: false }
-  const first = candidates[0].value
-  const conflict = candidates.some((candidate) => Math.abs(candidate.value - first) > 1e-12)
+  if (candidateCount === 0) return { sourceRefs: [], conflict: false }
   return {
-    value: conflict ? undefined : first,
-    sourceRefs: dedupeSourceRefs(candidates.map((candidate) => candidate.sourceRef)),
+    value: conflict ? undefined : firstValue,
+    sourceRefs: sourceRefs.refs,
     conflict,
   }
 }
@@ -2866,7 +3015,21 @@ function findNamedNumeric(
   names: string[],
   invalidNumericFields: SourceRef[],
 ): { value?: number; sourceRefs: SourceRef[]; conflict: boolean } {
-  const candidates: NumericMatch[] = []
+  let candidateCount = 0
+  let firstValue: number | undefined
+  let conflict = false
+  const sourceRefs = createBoundedSourceRefs()
+
+  const recordCandidate = (value: number, sourceRef: SourceRef): void => {
+    if (candidateCount === 0) firstValue = value
+    else if (
+      Math.abs(value - firstValue!) > CSV_RECONCILIATION_EPSILON
+    ) {
+      conflict = true
+    }
+    candidateCount += 1
+    addBoundedSourceRef(sourceRefs, sourceRef)
+  }
 
   for (const record of records) {
     const fieldName = fieldFor(record, ['Field Name', 'Name', 'Item'])
@@ -2878,7 +3041,7 @@ function findNamedNumeric(
     ) {
       const value = parseNumber(fieldValue.value)
       if (value != null) {
-        candidates.push({ value, sourceRef: sourceRefFor(record, fieldValue.field) })
+        recordCandidate(value, sourceRefFor(record, fieldValue.field))
       } else {
         invalidNumericFields.push(sourceRefFor(record, fieldValue.field))
       }
@@ -2887,21 +3050,17 @@ function findNamedNumeric(
     for (const match of fieldMatchesFor(record, names)) {
       const value = parseNumber(match.value)
       if (value != null) {
-        candidates.push({ value, sourceRef: sourceRefFor(record, match.field) })
+        recordCandidate(value, sourceRefFor(record, match.field))
       } else {
         invalidNumericFields.push(sourceRefFor(record, match.field))
       }
     }
   }
 
-  if (candidates.length === 0) return { sourceRefs: [], conflict: false }
-  const first = candidates[0].value
-  const conflict = candidates.some(
-    (candidate) => Math.abs(candidate.value - first) > CSV_RECONCILIATION_EPSILON,
-  )
+  if (candidateCount === 0) return { sourceRefs: [], conflict: false }
   return {
-    value: conflict ? undefined : first,
-    sourceRefs: dedupeSourceRefs(candidates.map((candidate) => candidate.sourceRef)),
+    value: conflict ? undefined : firstValue,
+    sourceRefs: sourceRefs.refs,
     conflict,
   }
 }
@@ -2919,51 +3078,59 @@ function statementPnlDiagnostic(
   check: ReconciliationCheck
 } {
   const totalPnlRecords = recordsFor(store, ['Total P/L for Statement Period'])
-  const reportedCandidates = totalPnlRecords
-    .map((record) =>
-      numericMatchFor(
-        record,
-        [
-          'Mark-to-Market P/L Total',
-          'Mark-to-Market PNL Total',
-          'Total',
-          'Field Value',
-          'Value',
-          'Amount',
-        ],
-        invalidNumericFields,
-        true,
-      ),
+  let hasReportedValue = false
+  let statementPeriodTotalPnl: number | undefined
+  let reportedValueConflict = false
+  const sourceRefCollector = createBoundedSourceRefs()
+  for (const record of totalPnlRecords) {
+    const candidate = numericMatchFor(
+      record,
+      [
+        'Mark-to-Market P/L Total',
+        'Mark-to-Market PNL Total',
+        'Total',
+        'Field Value',
+        'Value',
+        'Amount',
+      ],
+      invalidNumericFields,
+      true,
     )
-    .filter((candidate): candidate is NumericMatch => candidate != null)
-  const sourceRefs = dedupeSourceRefs(
-    reportedCandidates.map((candidate) => candidate.sourceRef),
-  )
-  const reportedValues = [...new Set(reportedCandidates.map((candidate) => candidate.value))]
+    if (!candidate) continue
+    if (!hasReportedValue) {
+      statementPeriodTotalPnl = candidate.value
+      hasReportedValue = true
+    } else if (candidate.value !== statementPeriodTotalPnl) {
+      reportedValueConflict = true
+    }
+    addBoundedSourceRef(sourceRefCollector, candidate.sourceRef)
+  }
 
-  if (reportedValues.length > 1) {
+  if (reportedValueConflict) {
     return {
-      sourceRefs,
+      sourceRefs: sourceRefCollector.refs,
       check: {
         id: 'statement_period_pnl',
         status: 'WARNING',
         reasonCode: 'ambiguous_schema',
         tolerance: CSV_RECONCILIATION_EPSILON,
-        sourceRefs,
+        sourceRefs: sourceRefCollector.refs,
       },
     }
   }
 
-  const statementPeriodTotalPnl = reportedValues[0]
   if (statementPeriodTotalPnl == null || reportedAllAssetsYtdMtm == null) {
     return {
       statementPeriodTotalPnl,
-      sourceRefs,
+      sourceRefs: sourceRefCollector.refs,
       check: {
         id: 'statement_period_pnl',
         status: 'NOT_AVAILABLE',
         reasonCode: 'source_missing',
-        sourceRefs: dedupeSourceRefs([...reportedAllAssetsSourceRefs, ...sourceRefs]),
+        sourceRefs: dedupeSourceRefs([
+          ...reportedAllAssetsSourceRefs,
+          ...sourceRefCollector.refs,
+        ]),
       },
     }
   }
@@ -2977,8 +3144,10 @@ function statementPnlDiagnostic(
     'brokerinterestpaidandreceived',
     'otherfees',
   ])
-  const components: NumericMatch[] = []
-  const unsupported: SourceRef[] = []
+  const componentValues: number[] = []
+  const componentSourceRefs = createBoundedSourceRefs()
+  const unsupportedSourceRefs = createBoundedSourceRefs()
+  let hasUnsupportedComponent = false
 
   for (const record of ytdRecords) {
     if (allAssetsSection && record.section !== allAssetsSection) continue
@@ -2994,27 +3163,29 @@ function statementPnlDiagnostic(
     )
     if (!amount || symbol?.trim()) continue
     if (recognizedComponents.has(normalizedLabel)) {
-      components.push(amount)
+      componentValues.push(amount.value)
+      addBoundedSourceRef(componentSourceRefs, amount.sourceRef)
     } else if (normalizedLabel && !normalizedLabel.startsWith('total')) {
-      unsupported.push(amount.sourceRef)
+      hasUnsupportedComponent = true
+      addBoundedSourceRef(unsupportedSourceRefs, amount.sourceRef)
     }
   }
 
   const checkSourceRefs = dedupeSourceRefs([
     ...reportedAllAssetsSourceRefs,
-    ...components.map((component) => component.sourceRef),
-    ...sourceRefs,
-    ...unsupported,
+    ...componentSourceRefs.refs,
+    ...sourceRefCollector.refs,
+    ...unsupportedSourceRefs.refs,
   ])
   const calculatedValue = sumAccountingValues(
-    [reportedAllAssetsYtdMtm, ...components.map((component) => component.value)],
+    [reportedAllAssetsYtdMtm, ...componentValues],
     checkSourceRefs,
     invalidNumericFields,
   )
   if (calculatedValue == null) {
     return {
       statementPeriodTotalPnl,
-      sourceRefs,
+      sourceRefs: sourceRefCollector.refs,
       check: {
         id: 'statement_period_pnl',
         status: 'WARNING',
@@ -3026,10 +3197,10 @@ function statementPnlDiagnostic(
   }
   const difference = normalizedDifference(statementPeriodTotalPnl, calculatedValue)
   if (difference == null) {
-    invalidNumericFields.push(...checkSourceRefs)
+    markInvalidAccounting(invalidNumericFields, checkSourceRefs)
     return {
       statementPeriodTotalPnl,
-      sourceRefs,
+      sourceRefs: sourceRefCollector.refs,
       check: {
         id: 'statement_period_pnl',
         status: 'WARNING',
@@ -3039,11 +3210,11 @@ function statementPnlDiagnostic(
       },
     }
   }
-  const status = unsupported.length > 0 || difference !== 0 ? 'WARNING' : 'PASS_EXACT'
+  const status = hasUnsupportedComponent || difference !== 0 ? 'WARNING' : 'PASS_EXACT'
 
   return {
     statementPeriodTotalPnl,
-    sourceRefs,
+    sourceRefs: sourceRefCollector.refs,
     check: {
       id: 'statement_period_pnl',
       status,
@@ -3052,7 +3223,7 @@ function statementPnlDiagnostic(
       difference,
       tolerance: CSV_RECONCILIATION_EPSILON,
       reasonCode:
-        unsupported.length > 0
+        hasUnsupportedComponent
           ? 'unsupported_component'
           : difference === 0
             ? 'within_tolerance'
@@ -3135,7 +3306,8 @@ function navDiagnostic(
       'TWR',
     ].map(normalizeKey),
   )
-  const unsupportedSourceRefs: SourceRef[] = []
+  const unsupportedSourceRefs = createBoundedSourceRefs()
+  let hasUnsupportedComponent = false
   for (const record of changeRecords) {
     const fieldName = fieldFor(record, ['Field Name', 'Name', 'Item'])
     const normalizedFieldName = fieldName?.value
@@ -3145,7 +3317,13 @@ function navDiagnostic(
       continue
     }
     const fieldValue = fieldFor(record, ['Field Value', 'Value', 'Amount'])
-    if (fieldValue) unsupportedSourceRefs.push(sourceRefFor(record, fieldValue.field))
+    if (fieldValue) {
+      hasUnsupportedComponent = true
+      addBoundedSourceRef(
+        unsupportedSourceRefs,
+        sourceRefFor(record, fieldValue.field),
+      )
+    }
   }
 
   const beginningNav = starting.value ?? navBeginning
@@ -3171,7 +3349,7 @@ function navDiagnostic(
     ...statementPnlSourceRefs,
     ...interestAccrualChange.sourceRefs,
     ...otherFxTranslations.sourceRefs,
-    ...unsupportedSourceRefs,
+    ...unsupportedSourceRefs.refs,
   ])
 
   const startingNavDifference =
@@ -3183,7 +3361,7 @@ function navDiagnostic(
       ? normalizedDifference(ending.value, navEnding)
       : 0
   if (startingNavDifference == null || endingNavDifference == null) {
-    invalidNumericFields.push(...allSourceRefs)
+    markInvalidAccounting(invalidNumericFields, allSourceRefs)
   }
 
   const conflicts =
@@ -3234,10 +3412,10 @@ function navDiagnostic(
       endingSourceRefs,
       check: {
         id: 'nav_bridge',
-        status: conflicts || unsupportedSourceRefs.length > 0 ? 'WARNING' : 'NOT_AVAILABLE',
+        status: conflicts || hasUnsupportedComponent ? 'WARNING' : 'NOT_AVAILABLE',
         reasonCode: conflicts
           ? 'ambiguous_schema'
-          : unsupportedSourceRefs.length > 0
+          : hasUnsupportedComponent
             ? 'unsupported_component'
             : 'source_missing',
         sourceRefs: allSourceRefs,
@@ -3292,7 +3470,7 @@ function navDiagnostic(
     calculatedEndingFromChangeComponents,
   )
   if (difference == null || componentDifference == null) {
-    invalidNumericFields.push(...allSourceRefs)
+    markInvalidAccounting(invalidNumericFields, allSourceRefs)
     return {
       beginningNav,
       endingNav,
@@ -3309,7 +3487,7 @@ function navDiagnostic(
   }
   const status =
     conflicts ||
-    unsupportedSourceRefs.length > 0 ||
+    hasUnsupportedComponent ||
     difference !== 0 ||
     componentDifference !== 0
       ? 'WARNING'
@@ -3330,7 +3508,7 @@ function navDiagnostic(
       tolerance: CSV_RECONCILIATION_EPSILON,
       reasonCode: conflicts
         ? 'ambiguous_schema'
-        : unsupportedSourceRefs.length > 0
+        : hasUnsupportedComponent
           ? 'unsupported_component'
           : difference === 0 && componentDifference === 0
           ? 'within_tolerance'
@@ -3379,6 +3557,7 @@ export function parseIbkrActivityStatement(
 
   const store = buildSectionStore(rows)
   const sectionNames = listSectionNames(rows)
+  if (sectionNames.length > MAX_REPORT_SECTIONS) return reportCapacityFailure()
   const statementRecords = recordsFor(store, ['Statement'])
   const accountRecords = recordsFor(store, ['Account Information'])
   const statementMetadataRecords = [...statementRecords, ...accountRecords]
@@ -3586,7 +3765,7 @@ export function parseIbkrActivityStatement(
       commonOptionContractIndexSectionAliases,
     ),
   )
-  const invalidAccountingFields: SourceRef[] = []
+  const invalidAccountingFields: SourceRef[] = new InvalidAccountingSourceRefs()
   const mtmSection = recordsForExclusive(store, MTM_PERFORMANCE_SECTION_ALIASES)
   const monthYtdSection = recordsForExclusive(
     store,
@@ -3709,9 +3888,9 @@ export function parseIbkrActivityStatement(
   let ytdValueCount = 0
   let reportedAllAssetsYtdMtm: number | undefined
   let reportedAllAssetsSourceRefs: SourceRef[] = []
-  const stockNumericSourceRefs: SourceRef[] = []
-  const optionNumericSourceRefs: SourceRef[] = []
-  const otherNumericSourceRefs: SourceRef[] = []
+  const stockNumericSourceRefs = createBoundedSourceRefs()
+  const optionNumericSourceRefs = createBoundedSourceRefs()
+  const otherNumericSourceRefs = createBoundedSourceRefs()
   for (const record of ytdRecords) {
     const rawSymbol = valueFor(record, ['Symbol'])
     const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
@@ -3795,7 +3974,7 @@ export function parseIbkrActivityStatement(
         invalidAccountingFields,
       )
       if (ytdMtmMatch) {
-        optionNumericSourceRefs.push(ytdMtmMatch.sourceRef)
+        addBoundedSourceRef(optionNumericSourceRefs, ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'optionYtdMtm', metricRefs)
       }
     } else if (assetClass === 'STOCK') {
@@ -3805,7 +3984,7 @@ export function parseIbkrActivityStatement(
         invalidAccountingFields,
       )
       if (ytdMtmMatch) {
-        stockNumericSourceRefs.push(ytdMtmMatch.sourceRef)
+        addBoundedSourceRef(stockNumericSourceRefs, ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'stockYtdMtm', metricRefs)
       }
     } else {
@@ -3815,7 +3994,7 @@ export function parseIbkrActivityStatement(
         invalidAccountingFields,
       )
       if (ytdMtmMatch) {
-        otherNumericSourceRefs.push(ytdMtmMatch.sourceRef)
+        addBoundedSourceRef(otherNumericSourceRefs, ytdMtmMatch.sourceRef)
         addSymbolSourceRefs(accumulator, 'otherYtdMtm', metricRefs)
       }
     }
@@ -4103,83 +4282,89 @@ export function parseIbkrActivityStatement(
     ['Asset Class', 'Asset Category'],
     ['Date', 'Date/Time', 'Trade Date', 'Report Date'],
   ])
-  const events = parseOptionEvents(
+  const eventResult = parseOptionEvents(
     eventRecords,
     symbols,
     primaryYtdInstrumentMappingResult,
   )
+  if (eventResult.capacityExceeded) return reportCapacityFailure()
+  const events = eventResult.events
   if (primaryYtdInstrumentMappingResult.hasConflicts) {
     errors.push({ code: 'instrument_alias_conflict' })
   }
 
-  const normalizedSymbols: SymbolPnl[] = [...symbols.values()]
-    .map((item) => {
-      item.totalYtdMtm =
-        sumAccountingValues(
-          [item.stockYtdMtm, item.optionYtdMtm, item.otherYtdMtm],
-          [
-            ...(item.sourceRefs.stockYtdMtm ?? []),
-            ...(item.sourceRefs.optionYtdMtm ?? []),
-            ...(item.sourceRefs.otherYtdMtm ?? []),
-          ],
-          invalidAccountingFields,
-        ) ?? 0
-      item.totalRealizedYtd =
-        sumAccountingValues(
-          [
-            item.stockRealizedYtd,
-            item.optionRealizedYtd,
-            item.otherRealizedYtd,
-          ],
-          item.sourceRefs.totalRealizedYtd ?? [],
-          invalidAccountingFields,
-        ) ?? 0
-      item.totalCurrentUnrealized =
-        sumAccountingValues(
-          [
-            item.stockCurrentUnrealized,
-            item.optionCurrentUnrealized,
-            item.otherCurrentUnrealized,
-          ],
-          item.sourceRefs.totalCurrentUnrealized ?? [],
-          invalidAccountingFields,
-        ) ?? 0
-      item.sourceRefs.totalYtdMtm = dedupeSourceRefs([
-        ...(item.sourceRefs.stockYtdMtm ?? []),
-        ...(item.sourceRefs.optionYtdMtm ?? []),
-        ...(item.sourceRefs.otherYtdMtm ?? []),
-      ])
-      return {
-        symbol: item.symbol,
-        description: item.description,
-        stockYtdMtm: item.stockYtdMtm,
-        optionYtdMtm: item.optionYtdMtm,
-        otherYtdMtm: item.otherYtdMtm,
-        totalYtdMtm: item.totalYtdMtm,
-        stockRealizedYtd: item.stockRealizedYtd,
-        optionRealizedYtd: item.optionRealizedYtd,
-        otherRealizedYtd: item.otherRealizedYtd,
-        totalRealizedYtd: item.totalRealizedYtd,
-        stockCurrentUnrealized: item.stockCurrentUnrealized,
-        optionCurrentUnrealized: item.optionCurrentUnrealized,
-        otherCurrentUnrealized: item.otherCurrentUnrealized,
-        totalCurrentUnrealized: item.totalCurrentUnrealized,
-        assignmentCount: item.assignmentCount,
-        exerciseCount: item.exerciseCount,
-        expirationCount: item.expirationCount,
-        sourceRefs: item.sourceRefs,
-      }
+  const normalizedSymbols: SymbolPnl[] = []
+  for (const item of symbols.values()) {
+    item.totalYtdMtm =
+      sumAccountingValues(
+        [item.stockYtdMtm, item.optionYtdMtm, item.otherYtdMtm],
+        [
+          ...(item.sourceRefs.stockYtdMtm ?? []),
+          ...(item.sourceRefs.optionYtdMtm ?? []),
+          ...(item.sourceRefs.otherYtdMtm ?? []),
+        ],
+        invalidAccountingFields,
+      ) ?? 0
+    item.totalRealizedYtd =
+      sumAccountingValues(
+        [
+          item.stockRealizedYtd,
+          item.optionRealizedYtd,
+          item.otherRealizedYtd,
+        ],
+        item.sourceRefs.totalRealizedYtd ?? [],
+        invalidAccountingFields,
+      ) ?? 0
+    item.totalCurrentUnrealized =
+      sumAccountingValues(
+        [
+          item.stockCurrentUnrealized,
+          item.optionCurrentUnrealized,
+          item.otherCurrentUnrealized,
+        ],
+        item.sourceRefs.totalCurrentUnrealized ?? [],
+        invalidAccountingFields,
+      ) ?? 0
+    item.sourceRefs.totalYtdMtm = dedupeSourceRefs([
+      ...(item.sourceRefs.stockYtdMtm ?? []),
+      ...(item.sourceRefs.optionYtdMtm ?? []),
+      ...(item.sourceRefs.otherYtdMtm ?? []),
+    ])
+
+    const retained =
+      item.totalYtdMtm !== 0 ||
+      item.totalRealizedYtd !== 0 ||
+      item.totalCurrentUnrealized !== 0 ||
+      item.assignmentCount > 0 ||
+      item.exerciseCount > 0 ||
+      item.expirationCount > 0
+    if (!retained) continue
+    if (normalizedSymbols.length >= MAX_REPORT_UNDERLYINGS) {
+      return reportCapacityFailure()
+    }
+
+    normalizedSymbols.push({
+      symbol: item.symbol,
+      description: item.description,
+      stockYtdMtm: item.stockYtdMtm,
+      optionYtdMtm: item.optionYtdMtm,
+      otherYtdMtm: item.otherYtdMtm,
+      totalYtdMtm: item.totalYtdMtm,
+      stockRealizedYtd: item.stockRealizedYtd,
+      optionRealizedYtd: item.optionRealizedYtd,
+      otherRealizedYtd: item.otherRealizedYtd,
+      totalRealizedYtd: item.totalRealizedYtd,
+      stockCurrentUnrealized: item.stockCurrentUnrealized,
+      optionCurrentUnrealized: item.optionCurrentUnrealized,
+      otherCurrentUnrealized: item.otherCurrentUnrealized,
+      totalCurrentUnrealized: item.totalCurrentUnrealized,
+      assignmentCount: item.assignmentCount,
+      exerciseCount: item.exerciseCount,
+      expirationCount: item.expirationCount,
+      sourceRefs: item.sourceRefs,
     })
-    .filter(
-      (item) =>
-        item.totalYtdMtm !== 0 ||
-        item.totalRealizedYtd !== 0 ||
-        item.totalCurrentUnrealized !== 0 ||
-        item.assignmentCount > 0 ||
-        item.exerciseCount > 0 ||
-        item.expirationCount > 0,
-    )
-    .sort((a, b) => b.totalYtdMtm - a.totalYtdMtm)
+  }
+  normalizedSymbols.sort((a, b) => b.totalYtdMtm - a.totalYtdMtm)
 
   if (normalizedSymbols.length === 0) {
     errors.push({ code: 'underlyings_missing' })
@@ -4188,25 +4373,25 @@ export function parseIbkrActivityStatement(
   const stockPnl =
     sumAccountingValues(
       normalizedSymbols.map((item) => item.stockYtdMtm),
-      stockNumericSourceRefs,
+      stockNumericSourceRefs.refs,
       invalidAccountingFields,
     ) ?? 0
   const optionPnl =
     sumAccountingValues(
       normalizedSymbols.map((item) => item.optionYtdMtm),
-      optionNumericSourceRefs,
+      optionNumericSourceRefs.refs,
       invalidAccountingFields,
     ) ?? 0
   const otherPnl =
     sumAccountingValues(
       normalizedSymbols.map((item) => item.otherYtdMtm),
-      otherNumericSourceRefs,
+      otherNumericSourceRefs.refs,
       invalidAccountingFields,
     ) ?? 0
   const parsedAllAssetsSourceRefs = dedupeSourceRefs([
-    ...stockNumericSourceRefs,
-    ...optionNumericSourceRefs,
-    ...otherNumericSourceRefs,
+    ...stockNumericSourceRefs.refs,
+    ...optionNumericSourceRefs.refs,
+    ...otherNumericSourceRefs.refs,
   ])
   const parsedAllAssetsYtdMtm =
     sumAccountingValues(
@@ -4226,10 +4411,10 @@ export function parseIbkrActivityStatement(
     reportedAllAssetsYtdMtm != null &&
     mtmReconciliationDifference == null
   ) {
-    invalidAccountingFields.push(
+    markInvalidAccounting(invalidAccountingFields, [
       ...reportedAllAssetsSourceRefs,
       ...parsedAllAssetsSourceRefs,
-    )
+    ])
   }
   const mtmCheck: ReconciliationCheck = {
     id: 'mtm_all_assets',
@@ -4401,6 +4586,29 @@ export function parseIbkrActivityStatement(
     'no_option_events',
   ])
   const reconciliations = [mtmCheck, statementDiagnostic.check, nav.check]
+  const metricSourceRefs: PortfolioReport['metricSourceRefs'] = {
+    seasonPnl: reportedAllAssetsSourceRefs,
+    reportedAllAssetsYtdMtm: reportedAllAssetsSourceRefs,
+    parsedAllAssetsYtdMtm: parsedAllAssetsSourceRefs,
+    stockPnl: dedupeSourceRefs(stockNumericSourceRefs.refs),
+    optionPnl: dedupeSourceRefs(optionNumericSourceRefs.refs),
+    otherPnl: dedupeSourceRefs(otherNumericSourceRefs.refs),
+    seasonReturn: seasonReturnDiagnostic.sourceRefs,
+    netLiquidationValue: netAssetValues.netLiquidationSourceRefs,
+    cashValue: netAssetValues.cashSourceRefs,
+    statementPeriodTotalPnl: statementDiagnostic.sourceRefs,
+    beginningNav: nav.beginningSourceRefs,
+    endingNav: nav.endingSourceRefs,
+  }
+  const sourceRefCollections = [
+    ...Object.values(metricSourceRefs),
+    ...normalizedSymbols.flatMap((symbol) => Object.values(symbol.sourceRefs)),
+    ...events.map((event) => event.sourceRefs),
+    ...reconciliations.map((check) => check.sourceRefs),
+  ]
+  if (!sourceRefCollectionsFitReportCapacity(sourceRefCollections)) {
+    return reportCapacityFailure()
+  }
   const hasIncompleteReconciliation = reconciliations.some(
     (check) => check.status !== 'PASS_EXACT' && check.status !== 'PASS_ROUNDED',
   )
@@ -4443,20 +4651,7 @@ export function parseIbkrActivityStatement(
     otherPnl,
     symbols: normalizedSymbols,
     events,
-    metricSourceRefs: {
-      seasonPnl: reportedAllAssetsSourceRefs,
-      reportedAllAssetsYtdMtm: reportedAllAssetsSourceRefs,
-      parsedAllAssetsYtdMtm: parsedAllAssetsSourceRefs,
-      stockPnl: dedupeSourceRefs(stockNumericSourceRefs),
-      optionPnl: dedupeSourceRefs(optionNumericSourceRefs),
-      otherPnl: dedupeSourceRefs(otherNumericSourceRefs),
-      seasonReturn: seasonReturnDiagnostic.sourceRefs,
-      netLiquidationValue: netAssetValues.netLiquidationSourceRefs,
-      cashValue: netAssetValues.cashSourceRefs,
-      statementPeriodTotalPnl: statementDiagnostic.sourceRefs,
-      beginningNav: nav.beginningSourceRefs,
-      endingNav: nav.endingSourceRefs,
-    },
+    metricSourceRefs,
     parserFacts: {
       realizedSectionMissing,
       seasonReturnConflict: seasonReturnDiagnostic.conflict,
@@ -4467,5 +4662,9 @@ export function parseIbkrActivityStatement(
     dataQuality: hasQualityWarning ? 'warning' : 'good',
   }
 
-  return { report, errors, warnings }
+  const result = { report, errors, warnings }
+  if (!parseResultFitsReportResourceBudget(result)) {
+    return reportCapacityFailure()
+  }
+  return result
 }

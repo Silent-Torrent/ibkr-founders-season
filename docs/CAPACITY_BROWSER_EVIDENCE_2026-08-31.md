@@ -2,7 +2,7 @@
 
 ## What was tested
 
-The automated production-browser regression now creates a temporary, fully fictional English IBKR-shaped CSV at runtime. It is not copied from the private calibration statement, is not committed as a multi-megabyte fixture, is not shipped in the Web App, and is deleted with the isolated Chrome profile after the run.
+The automated production-browser regression now creates temporary, fully fictional English IBKR-shaped CSVs at runtime. They are not copied from the private calibration statement, are not committed as multi-megabyte fixtures, are not shipped in the Web App, and are deleted with the isolated Chrome profile after the run.
 
 The generated statement combines four headline exact caps in one file:
 
@@ -28,23 +28,15 @@ The automated assertions cover:
 - 500 rendered Ledger rows;
 - a search for the last underlying and opening its drawer;
 - the drawer retaining one assignment, zero exercises, one expiration, and two event records;
-- real CSVs with 501 symbols and 1,001 events producing the fixed safe failure, terminating their Workers, and preserving the prior 500-row report;
+- separate 501-symbol and 1,001-event adversarial CSVs, each padded to exactly 5 MiB and 100,000 rows, producing the fixed `report_capacity_exceeded` failure in under 10 seconds, terminating their Workers, and preserving the prior 500-row report;
 - a file of 5 MiB plus one byte being rejected before a Worker is created;
 - no external page request, no POST, and no browser/runtime/log error across the complete regression.
 
-The companion Worker contract test directly parses the same generated text and confirms exactly 500 symbols, exactly 1,000 events, one assignment plus one expiration per symbol, exact all-assets MTM reconciliation, and acceptance by the serialized Worker-output validator.
+The companion Worker contract test directly parses the same generated text and confirms exactly 500 symbols, exactly 1,000 events, one assignment plus one expiration per symbol, exact all-assets MTM reconciliation, and acceptance by the serialized Worker-output validator. Parser smoke tests separately cover known-code mapping. Code order places the unique-event and retained-symbol guards before the over-limit event append and before portfolio/report construction respectively; tests confirm the fixed no-report capacity failure at 1,001 events and 501 retained symbols. The same contract suite accepts exactly 256 distinct exact section strings at the post-mapping stage and rejects 257, accepts exactly 501 references in an event or metric collection and rejects 502, leaves an unused over-limit internal mapping bounded without rejecting the final report, and maps overlong input-derived report strings to fixed capacity failure. A dense real parser result fits both aggregate budgets; the next tested dense step crosses the string-character budget and returns fixed capacity failure. Compact constructed results independently prove exact 1,000,000/1,000,001 aggregate string-character and 20,000/20,001 total-reference boundaries. Shared parser/Worker limits, explicit canonical-key bounded collectors, spread-safe invalid-reference handling, parser-side per-collection/total-reference checks, after-assembly per-field and aggregate item/string checks, and the unchanged final Worker validator provide layered enforcement. These are direct code/contract results, not additional production-Chrome scenarios.
 
-## Recorded desktop performance
+## Enforced desktop performance gates
 
-One repeat production-Chrome run on the development Mac recorded:
-
-- file selection through completed 500-row Ledger render plus the next timer and animation frame: 857.8 ms;
-- largest animation-frame gap: 17.7 ms;
-- largest 16 ms timer gap: 72.8 ms;
-- largest Long Tasks API entry: 55.0 ms;
-- search-to-one-row update, measured from before event dispatch: 15.0 ms.
-
-The enforced gates are deliberately looser than that one measurement: total import plus render must stay below 10 seconds, and no timer gap, animation-frame gap, or observed long task may reach 250 ms. Search feedback must arrive below 500 ms. Performance numbers vary by machine, so every full verification reruns the gate instead of treating this record as a permanent benchmark.
+The exact-capacity import/render must complete below 10 seconds, no timer gap, animation-frame gap, or observed long task may reach 250 ms, and search feedback must arrive below 500 ms. Each adversarial 501-symbol and 1,001-event Worker rejection must also complete below 10 seconds. Performance varies by machine, so the verification reruns these thresholds rather than preserving one run's millisecond values as a permanent benchmark.
 
 ## What this does not prove
 
@@ -53,7 +45,8 @@ The enforced gates are deliberately looser than that one measurement: total impo
 - The capacity pass runs after a small import and cancellation in the same isolated browser. Module and filesystem caches may therefore be warm; it is a repeatable local regression gate, not a cold-start device service-level promise.
 - It does not prove the 12-second timeout through a naturally slow real Worker. Timeout and late-settlement logic still have deterministic lifecycle-contract coverage, while a real-device timeout remains open.
 - It does not prove deployed security headers, Worker MIME handling, browser Storage, or Network behavior because deployment remains deferred.
-- The output caps are still enforced after the Worker parser constructs its normalized result. An adversarial file below 5 MiB and 100,000 rows could consume extra Worker memory or CPU before an over-cap result is rejected. Parser-stage fail-fast budgets remain a separate hardening item.
+- Code order places the over-event and retained-symbol exits before the event append and portfolio/report construction respectively. After the row/section store is fully materialized and known section codes are mapped to names, exactly 256 distinct exact section strings remain allowed; a 257th returns fixed `report_capacity_exceeded` before FII/candidate aggregation or report construction. A source-reference collection retains at most 501 accepted entries plus one overflow sentinel, invalid-number evidence retains one reference, and the 501-per-collection/20,000-total-occurrence limits are checked before report construction. Per-field length/control-character limits and the aggregate 25,000-item/1,000,000-string-character check necessarily run after report assembly but before parser return, so an overlong field or long references return fixed capacity failure; the aggregate limit may trigger before the independent 20,000-reference maximum. The final Worker validator repeats every output limit.
+- This does not make input processing streaming. `Blob.text()`, `parseCsvRows()`, and `buildSectionStore()` still fully materialize an allowed file and its row/section structures, and FII or other candidate aggregation can still run before a later report-capacity exit. Those stages remain bounded by 5 MiB, 100,000 rows, and the 12-second Worker timeout. Future hardening may stream the CSV or materialize only sections actually consumed.
 - The 1,000 events are distributed as two events for each of 500 symbols. The test proves total parser/Worker/protocol carriage and one two-event drawer, not one drawer rendering 1,000 events.
 - The test does not measure peak memory, Safari Worker reclamation, or a real IBKR statement whose row distribution differs from the synthetic padding section.
 - Internal structure, arithmetic, and capacity checks do not prove that a user-supplied statement is genuine or came from IBKR.

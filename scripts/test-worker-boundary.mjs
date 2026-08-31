@@ -214,6 +214,99 @@ function synchronizePnlTotals(report) {
   mtm.difference = 0
 }
 
+function countWorkerBudgetStringCharacters(result) {
+  let total = 0
+  const add = (value) => {
+    if (value !== undefined) total += value.length
+  }
+  const addDiagnostic = (diagnostic) => {
+    add(diagnostic.code)
+    if (diagnostic.code === 'mtm_difference') add(diagnostic.params.currency)
+  }
+  const addRefs = (refs = []) => {
+    for (const ref of refs) {
+      add(ref.section)
+      add(ref.recordType)
+      add(ref.headerSignature)
+      add(ref.field)
+    }
+  }
+
+  result.errors.forEach(addDiagnostic)
+  result.warnings.forEach(addDiagnostic)
+  const report = result.report
+  if (!report) return total
+
+  add(report.fingerprint)
+  add(report.accountComparisonKey)
+  add(report.accountIdMasked)
+  add(report.baseCurrency)
+  add(report.startDate)
+  add(report.endDate)
+  add(report.importedAt)
+  for (const symbol of report.symbols) {
+    add(symbol.symbol)
+    add(symbol.description)
+    Object.values(symbol.sourceRefs).forEach(addRefs)
+  }
+  for (const event of report.events) {
+    add(event.symbol)
+    add(event.contract)
+    add(event.date)
+    addRefs(event.sourceRefs)
+  }
+  Object.values(report.metricSourceRefs).forEach(addRefs)
+  report.reconciliations.forEach((check) => addRefs(check.sourceRefs))
+  report.sections.forEach(add)
+  report.warnings.forEach(addDiagnostic)
+  return total
+}
+
+function parseResultAtExactStringBudget(targetCharacters) {
+  const report = mutateReport((candidate) => {
+    candidate.symbols = Array.from({ length: 4 }, (_, index) =>
+      symbolPnl(`L${index}`, { sourceRefs: { totalYtdMtm: [] } }),
+    )
+    synchronizePnlTotals(candidate)
+  })
+  const result = workerResponse(report).result
+  let remaining = targetCharacters - countWorkerBudgetStringCharacters(result)
+  let refIndex = 0
+
+  while (remaining > 0) {
+    const maxRefCharacters = 524
+    const minRefCharacters = 14
+    let refCharacters = Math.min(maxRefCharacters, remaining)
+    if (
+      remaining > maxRefCharacters &&
+      remaining - maxRefCharacters < minRefCharacters
+    ) {
+      refCharacters = remaining - minRefCharacters
+    }
+    assert(refCharacters >= minRefCharacters)
+
+    const variableCharacters = refCharacters - 12
+    const sectionCharacters = Math.min(256, variableCharacters - 1)
+    const fieldCharacters = variableCharacters - sectionCharacters
+    assert(sectionCharacters >= 1 && sectionCharacters <= 256)
+    assert(fieldCharacters >= 1 && fieldCharacters <= 256)
+
+    const symbolIndex = Math.floor(refIndex / 500)
+    assert(symbolIndex < report.symbols.length)
+    report.symbols[symbolIndex].sourceRefs.totalYtdMtm.push(
+      sourceRef({
+        section: 'S'.repeat(sectionCharacters),
+        field: 'F'.repeat(fieldCharacters),
+      }),
+    )
+    remaining -= refCharacters
+    refIndex += 1
+  }
+
+  assert.equal(countWorkerBudgetStringCharacters(result), targetCharacters)
+  return result
+}
+
 function mtmWarningReport() {
   return mutateReport((report) => {
     report.seasonPnl = 7
@@ -326,6 +419,14 @@ function boundaryStatement(symbolCount) {
   return rows.join('\n')
 }
 
+function boundaryStatementWithAdditionalSections(additionalSectionCount) {
+  const rows = [boundaryStatement(1)]
+  for (let index = 0; index < additionalSectionCount; index += 1) {
+    rows.push(`Synthetic Extra Section ${index},Data,Ignored`)
+  }
+  return rows.join('\n')
+}
+
 function optionBoundaryStatement(symbolCount) {
   const rows = [
     'Statement,Header,Field Name,Field Value',
@@ -353,6 +454,46 @@ function optionBoundaryStatement(symbolCount) {
     ...instruments,
   )
   return rows.join('\n')
+}
+
+function optionMappingReferenceStatement(
+  symbolCount,
+  mappingRowsPerSymbol,
+  additionalLastMappingRows = 0,
+) {
+  const rows = optionBoundaryStatement(symbolCount).split('\n')
+  const headerIndex = rows.findIndex((row) =>
+    row.startsWith('Financial Instrument Information,Header,'),
+  )
+  assert(headerIndex >= 0)
+  const prefix = rows.slice(0, headerIndex + 1)
+  const mappingRows = rows.slice(headerIndex + 1)
+  return [
+    ...prefix,
+    ...mappingRows.flatMap((row, index) =>
+      Array(
+        mappingRowsPerSymbol +
+          (index === mappingRows.length - 1 ? additionalLastMappingRows : 0),
+      ).fill(row),
+    ),
+  ].join('\n')
+}
+
+function optionEventMappingReferenceStatement(mappingRowsPerSymbol) {
+  return [
+    optionMappingReferenceStatement(1, mappingRowsPerSymbol),
+    '"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type',
+    '"Options Exercises, Assignments and Expirations",Data,Equity and Index Options,O000 19JUN26 1 C,O000,2026-06-20,Assignment',
+  ].join('\n')
+}
+
+function statementWithUnusedMappingReferences(mappingRowCount) {
+  const unusedMapping =
+    'Financial Instrument Information,Data,Equity and Index Options,UNUSED,UNUSED 19JUN26 999 C,SYNTH-CONID-UNUSED,UNUSED,100,2026-06-19,C,999,'
+  return [
+    optionBoundaryStatement(1),
+    ...Array(mappingRowCount).fill(unusedMapping),
+  ].join('\n')
 }
 
 const vite = await createServer({
@@ -386,6 +527,9 @@ try {
     isWorkerReportWithinLimits,
   } = await vite.ssrLoadModule('/src/lib/workerOutputLimits.ts')
   const { parseIbkrActivityStatement } = await vite.ssrLoadModule('/src/lib/ibkr.ts')
+  const { parseResultFitsReportResourceBudget } = await vite.ssrLoadModule(
+    '/src/lib/reportCapacity.ts',
+  )
 
   const statement = new Blob(['fully fictional statement bytes'], {
     type: 'text/csv',
@@ -410,6 +554,54 @@ try {
   assert.equal(MAX_WORKER_REPORT_SECTIONS, 256)
   assert.equal(MAX_WORKER_DIAGNOSTICS, 32)
   assert.equal(MAX_IBKR_WORKER_STATEMENT_BYTES, SYNTHETIC_CAPACITY_MAX_BYTES)
+
+  const exactSectionResult = parseIbkrActivityStatement(
+    boundaryStatementWithAdditionalSections(MAX_WORKER_REPORT_SECTIONS - 3),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(exactSectionResult.errors, [])
+  assert.equal(exactSectionResult.report?.sections.length, MAX_WORKER_REPORT_SECTIONS)
+  assert.equal(isWorkerParseResultWithinLimits(exactSectionResult, referenceTimeMs), true)
+
+  const overSectionResult = parseIbkrActivityStatement(
+    boundaryStatementWithAdditionalSections(MAX_WORKER_REPORT_SECTIONS - 2),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assertSafeError(overSectionResult, 'report_capacity_exceeded')
+  assert.equal(overSectionResult.report, undefined)
+
+  for (const overlongResult of [
+    parseIbkrActivityStatement(
+      boundaryStatement(1).replace(
+        ',S000,Boundary,',
+        `,${'A'.repeat(129)},Boundary,`,
+      ),
+      {
+        accountComparisonSalt: 'worker-boundary-salt',
+        currentDate: new Date(referenceTimeMs),
+      },
+    ),
+    parseIbkrActivityStatement(
+      `${boundaryStatement(1)}\n${'S'.repeat(257)},Data,Ignored`,
+      {
+        accountComparisonSalt: 'worker-boundary-salt',
+        currentDate: new Date(referenceTimeMs),
+      },
+    ),
+  ]) {
+    assertSafeError(overlongResult, 'report_capacity_exceeded')
+    assert.equal(
+      isWorkerParseResultWithinLimits(overlongResult, referenceTimeMs),
+      true,
+      'An input-controlled overlong output string escaped as worker_failure.',
+    )
+  }
 
   assert.equal(isIbkrParserWorkerRequest(validRequest()), true)
   for (const invalidRequest of [
@@ -560,6 +752,130 @@ try {
       `A real ${optionSymbolCount}-option parser result was rejected by the Worker boundary.`,
     )
   }
+  const exactMappingReferenceResult = parseIbkrActivityStatement(
+    optionMappingReferenceStatement(1, MAX_WORKER_SOURCE_REFS_PER_COLLECTION - 2),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(exactMappingReferenceResult.errors, [])
+  assert.equal(
+    exactMappingReferenceResult.report?.symbols[0].sourceRefs.totalRealizedYtd?.length,
+    MAX_WORKER_SOURCE_REFS_PER_COLLECTION,
+    'The parser rejected an exact-limit per-metric source-reference collection.',
+  )
+  assert.equal(
+    isWorkerParseResultWithinLimits(exactMappingReferenceResult, referenceTimeMs),
+    true,
+    'The exact-limit per-metric parser result did not fit the Worker envelope.',
+  )
+
+  const overMappingReferenceResult = parseIbkrActivityStatement(
+    optionMappingReferenceStatement(1, MAX_WORKER_SOURCE_REFS_PER_COLLECTION - 1),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assertSafeError(overMappingReferenceResult, 'report_capacity_exceeded')
+  assert.equal(overMappingReferenceResult.report, undefined)
+
+  const exactEventReferenceResult = parseIbkrActivityStatement(
+    optionEventMappingReferenceStatement(
+      MAX_WORKER_SOURCE_REFS_PER_COLLECTION - 4,
+    ),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(exactEventReferenceResult.errors, [])
+  assert.equal(
+    exactEventReferenceResult.report?.events[0]?.sourceRefs.length,
+    MAX_WORKER_SOURCE_REFS_PER_COLLECTION,
+    'The parser rejected an event at the exact source-reference boundary.',
+  )
+  assert.equal(
+    isWorkerParseResultWithinLimits(exactEventReferenceResult, referenceTimeMs),
+    true,
+    'The exact-limit event parser result did not fit the Worker envelope.',
+  )
+
+  const overEventReferenceResult = parseIbkrActivityStatement(
+    optionEventMappingReferenceStatement(
+      MAX_WORKER_SOURCE_REFS_PER_COLLECTION - 3,
+    ),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assertSafeError(overEventReferenceResult, 'report_capacity_exceeded')
+  assert.equal(overEventReferenceResult.report, undefined)
+
+  const unusedMappingReferenceResult = parseIbkrActivityStatement(
+    statementWithUnusedMappingReferences(
+      MAX_WORKER_SOURCE_REFS_PER_COLLECTION + 1,
+    ),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(unusedMappingReferenceResult.errors, [])
+  assert.equal(
+    unusedMappingReferenceResult.report?.symbols.length,
+    1,
+    'An unused over-limit internal mapping should not reject a safe final report.',
+  )
+  assert.equal(
+    isWorkerParseResultWithinLimits(unusedMappingReferenceResult, referenceTimeMs),
+    true,
+    'An unused bounded mapping produced a report outside the Worker envelope.',
+  )
+
+  const withinSerializedBudgetResult = parseIbkrActivityStatement(
+    optionMappingReferenceStatement(499, 9),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(withinSerializedBudgetResult.errors, [])
+  assert.equal(
+    isWorkerParseResultWithinLimits(
+      withinSerializedBudgetResult,
+      referenceTimeMs,
+    ),
+    true,
+    'The parser rejected a dense report that still fits every Worker resource budget.',
+  )
+
+  const overSerializedBudgetResult = parseIbkrActivityStatement(
+    optionMappingReferenceStatement(499, 10),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assertSafeError(overSerializedBudgetResult, 'report_capacity_exceeded')
+  assert.equal(overSerializedBudgetResult.report, undefined)
+  assert.equal(
+    isWorkerParseResultWithinLimits(overSerializedBudgetResult, referenceTimeMs),
+    true,
+    'A parser-side serialized-budget failure did not fit the safe Worker envelope.',
+  )
+
+  const overTotalReferenceResult = parseIbkrActivityStatement(
+    optionMappingReferenceStatement(MAX_WORKER_REPORT_SYMBOLS, 20),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assertSafeError(overTotalReferenceResult, 'report_capacity_exceeded')
+  assert.equal(overTotalReferenceResult.report, undefined)
 
   const capacityStatement = generateSyntheticCapacityStatement()
   assert.equal(capacityStatement.byteLength, SYNTHETIC_CAPACITY_TARGET_BYTES)
@@ -601,27 +917,36 @@ try {
       currentDate: new Date(referenceTimeMs),
     },
   )
-  assert.deepEqual(overSymbolResult.errors, [])
-  assert.equal(overSymbolResult.report?.symbols.length, SYNTHETIC_OVER_CAP_SYMBOLS)
-  assert.equal(
-    isWorkerParseResultWithinLimits(overSymbolResult, referenceTimeMs),
-    false,
-    'A real CSV with 501 symbols crossed the 500-symbol Worker output cap.',
-  )
+  assertSafeError(overSymbolResult, 'report_capacity_exceeded')
+  assert.equal(overSymbolResult.report, undefined)
+  assert.equal(isWorkerParseResultWithinLimits(overSymbolResult, referenceTimeMs), true)
 
+  const overEventStatement = generateSyntheticOverEventStatement()
   const overEventResult = parseIbkrActivityStatement(
-    generateSyntheticOverEventStatement().text,
+    overEventStatement.text,
     {
       accountComparisonSalt: 'worker-boundary-salt',
       currentDate: new Date(referenceTimeMs),
     },
   )
-  assert.deepEqual(overEventResult.errors, [])
-  assert.equal(overEventResult.report?.events.length, SYNTHETIC_OVER_CAP_EVENTS)
+  assertSafeError(overEventResult, 'report_capacity_exceeded')
+  assert.equal(overEventResult.report, undefined)
+  assert.equal(isWorkerParseResultWithinLimits(overEventResult, referenceTimeMs), true)
+
+  const duplicateEventRows = overEventStatement.text.split('\n')
+  duplicateEventRows[duplicateEventRows.length - 1] = duplicateEventRows[10]
+  const dedupedEventBoundaryResult = parseIbkrActivityStatement(
+    duplicateEventRows.join('\n'),
+    {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    },
+  )
+  assert.deepEqual(dedupedEventBoundaryResult.errors, [])
   assert.equal(
-    isWorkerParseResultWithinLimits(overEventResult, referenceTimeMs),
-    false,
-    'A real CSV with 1,001 events crossed the 1,000-event Worker output cap.',
+    dedupedEventBoundaryResult.report?.events.length,
+    MAX_WORKER_REPORT_EVENTS,
+    'A duplicate raw event row consumed the unique lifecycle-event capacity.',
   )
 
   const currentSchemaFixture = readFileSync(
@@ -981,8 +1306,34 @@ try {
     synchronizePnlTotals(report)
   })
   assert.equal(isWorkerReportWithinLimits(exactTotalRefLimit, referenceTimeMs), true)
+  assert.equal(
+    isWorkerParseResultWithinLimits(
+      workerResponse(exactTotalRefLimit).result,
+      referenceTimeMs,
+    ),
+    true,
+  )
+  assert.equal(
+    parseResultFitsReportResourceBudget(
+      workerResponse(exactTotalRefLimit).result,
+    ),
+    true,
+  )
   exactTotalRefLimit.symbols[39].sourceRefs.totalYtdMtm.push(compactRef)
   assert.equal(isWorkerReportWithinLimits(exactTotalRefLimit, referenceTimeMs), false)
+  assert.equal(
+    isWorkerParseResultWithinLimits(
+      workerResponse(exactTotalRefLimit).result,
+      referenceTimeMs,
+    ),
+    false,
+  )
+  assert.equal(
+    parseResultFitsReportResourceBudget(
+      workerResponse(exactTotalRefLimit).result,
+    ),
+    false,
+  )
 
   const stringBudgetOverflow = mutateReport((report) => {
     const largeRef = sourceRef({ section: 'S'.repeat(256), field: 'F'.repeat(256) })
@@ -994,6 +1345,43 @@ try {
     synchronizePnlTotals(report)
   })
   assert.equal(isWorkerReportWithinLimits(stringBudgetOverflow, referenceTimeMs), false)
+  assert.equal(
+    isWorkerParseResultWithinLimits(
+      workerResponse(stringBudgetOverflow).result,
+      referenceTimeMs,
+    ),
+    false,
+  )
+  assert.equal(
+    parseResultFitsReportResourceBudget(
+      workerResponse(stringBudgetOverflow).result,
+    ),
+    false,
+  )
+
+  const exactStringBudgetResult = parseResultAtExactStringBudget(
+    MAX_WORKER_TOTAL_STRING_CHARACTERS,
+  )
+  assert.equal(
+    isWorkerParseResultWithinLimits(exactStringBudgetResult, referenceTimeMs),
+    true,
+  )
+  assert.equal(
+    parseResultFitsReportResourceBudget(exactStringBudgetResult),
+    true,
+  )
+
+  const overStringBudgetResult = parseResultAtExactStringBudget(
+    MAX_WORKER_TOTAL_STRING_CHARACTERS + 1,
+  )
+  assert.equal(
+    isWorkerParseResultWithinLimits(overStringBudgetResult, referenceTimeMs),
+    false,
+  )
+  assert.equal(
+    parseResultFitsReportResourceBudget(overStringBudgetResult),
+    false,
+  )
 
   const denseDiagnostics = Array.from(
     { length: MAX_WORKER_DIAGNOSTICS },
@@ -1261,6 +1649,23 @@ try {
     assert.equal(isIbkrParserWorkerResponse(integratedResponse, referenceTimeMs), true)
     assert.equal(integratedResponse.result.report?.source, 'synthetic')
     assert.deepEqual(integratedResponse.result.errors, [])
+
+    for (const overCapacityText of [
+      generateSyntheticOverSymbolStatement().text,
+      generateSyntheticOverEventStatement().text,
+    ]) {
+      await globalThis.onmessage({
+        data: {
+          ...validRequest(),
+          accountComparisonSalt: 'worker-integration-salt',
+          statement: new Blob([overCapacityText], { type: 'text/csv' }),
+        },
+      })
+      const capacityResponse = postedResponses.pop()
+      assert.equal(isIbkrParserWorkerResponse(capacityResponse, referenceTimeMs), true)
+      assertSafeError(capacityResponse.result, 'report_capacity_exceeded')
+      assert.equal(capacityResponse.result.report, undefined)
+    }
   } finally {
     if (previousOnmessage === undefined) delete globalThis.onmessage
     else globalThis.onmessage = previousOnmessage
