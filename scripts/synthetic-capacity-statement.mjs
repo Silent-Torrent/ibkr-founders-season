@@ -9,6 +9,9 @@ export const SYNTHETIC_CAPACITY_SYMBOLS = 500
 export const SYNTHETIC_CAPACITY_EVENTS = 1_000
 export const SYNTHETIC_OVER_CAP_SYMBOLS = SYNTHETIC_CAPACITY_SYMBOLS + 1
 export const SYNTHETIC_OVER_CAP_EVENTS = SYNTHETIC_CAPACITY_EVENTS + 1
+export const SYNTHETIC_FII_UNUSED_OPTION_ROWS = 20_000
+export const SYNTHETIC_FII_CANDIDATE_OPTION_ROWS = 10_000
+export const SYNTHETIC_DUPLICATE_TRADE_ROWS = 25_001
 
 export function padSyntheticStatementToCapacity(
   statement,
@@ -206,5 +209,155 @@ export function generateSyntheticOverEventStatement() {
     eventCount: SYNTHETIC_OVER_CAP_EVENTS,
     rowCount: rows.length,
     text: rows.join('\n'),
+  }
+}
+
+/**
+ * Builds a fully fictional statement whose Financial Instrument Information
+ * section contains many valid, unique option rows that are not referenced by
+ * any consumed accounting or lifecycle section. The unused rows can appear on
+ * either side of the one consumed FII row so the selective scan cannot depend
+ * on favorable source order.
+ */
+export function generateSyntheticFiiMaterializationStatement({
+  noiseOrder = 'before',
+  targetBytes = SYNTHETIC_CAPACITY_TARGET_BYTES,
+  targetRows = SYNTHETIC_CAPACITY_ROWS,
+  unusedOptionRows = SYNTHETIC_FII_UNUSED_OPTION_ROWS,
+} = {}) {
+  assert(
+    noiseOrder === 'before' || noiseOrder === 'after',
+    'FII noise order must be either before or after.',
+  )
+  assert(Number.isSafeInteger(unusedOptionRows) && unusedOptionRows >= 20_000)
+
+  const rows = [
+    'Statement,Header,Field Name,Field Value',
+    'Statement,Data,Title,Activity Statement',
+    'Statement,Data,Period,"January 1, 2026 - August 28, 2026"',
+    'Account Information,Header,Field Name,Field Value',
+    'Account Information,Data,Account,SYNTHETIC_FII_MATERIALIZATION_ACCOUNT',
+    'Account Information,Data,Base Currency,USD',
+    'Month & Year to Date Performance Summary,Header,Asset Class,Symbol,Description,MTD Mark-to-Market,YTD Mark-to-Market,MTD Realized S/T,YTD Realized S/T,MTD Realized L/T,YTD Realized L/T',
+    'Month & Year to Date Performance Summary,Data,Equity and Index Options,CORE,Fictional consumed option,0,7,0,0,0,0',
+    'Month & Year to Date Performance Summary,Data,Total (All Assets),,,0,7,0,0,0,0',
+    'Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code',
+  ]
+  const consumedFiiRow =
+    'Financial Instrument Information,Data,OPT,CORE,CORE 19JUN26 1 C,CORE-CONID,CORE,100,2026-06-19,C,1,'
+  const noiseRows = Array.from({ length: unusedOptionRows }, (_, index) => {
+    const suffix = String(index).padStart(5, '0')
+    const underlying = `NF${suffix}`
+    return `Financial Instrument Information,Data,OPT,${underlying} 19JUN26 1 C,UNUSED FII DESCRIPTION ${suffix},N${suffix},${underlying},100,2026-06-19,C,1,`
+  })
+  const noiseAliases = new Set(
+    noiseRows.map((row) => row.split(',')[3]),
+  )
+  assert.equal(noiseAliases.size, unusedOptionRows)
+  assert(!noiseAliases.has('CORE'))
+
+  if (noiseOrder === 'before') {
+    rows.push(...noiseRows, consumedFiiRow)
+  } else {
+    rows.push(consumedFiiRow, ...noiseRows)
+  }
+  rows.push(
+    '"Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type',
+    '"Options Exercises, Assignments and Expirations",Data,OPT,CORE 19JUN26 1 C,CORE,2026-06-20,Assignment',
+  )
+
+  const consumedFiiRowNumber = rows.indexOf(consumedFiiRow) + 1
+  const firstNoiseRowNumber = rows.indexOf(noiseRows[0]) + 1
+  const lastNoiseRowNumber = rows.indexOf(noiseRows.at(-1)) + 1
+  const padded = padSyntheticStatementToCapacity(rows.join('\n'), {
+    targetBytes,
+    targetRows,
+  })
+
+  return {
+    ...padded,
+    consumedFiiRowNumber,
+    firstNoiseRowNumber,
+    lastNoiseRowNumber,
+    noiseOrder,
+    unusedOptionRows,
+  }
+}
+
+export function generateSyntheticDuplicateTradesStatement({
+  duplicateTradeRows = SYNTHETIC_DUPLICATE_TRADE_ROWS,
+} = {}) {
+  assert(Number.isSafeInteger(duplicateTradeRows) && duplicateTradeRows > 25_000)
+  const rows = [
+    'Statement,Header,Field Name,Field Value',
+    'Statement,Data,Title,Activity Statement',
+    'Statement,Data,Period,"January 1, 2026 - August 28, 2026"',
+    'Account Information,Header,Field Name,Field Value',
+    'Account Information,Data,Account,SYNTHETIC_DUPLICATE_TRADES_ACCOUNT',
+    'Account Information,Data,Base Currency,USD',
+    'Month & Year to Date Performance Summary,Header,Asset Class,Symbol,Description,MTD Mark-to-Market,YTD Mark-to-Market,MTD Realized S/T,YTD Realized S/T,MTD Realized L/T,YTD Realized L/T',
+    'Month & Year to Date Performance Summary,Data,Equity and Index Options,CORE,Fictional duplicate-trade option,0,7,0,0,0,0',
+    'Month & Year to Date Performance Summary,Data,Total (All Assets),,,0,7,0,0,0,0',
+    'Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code',
+    'Financial Instrument Information,Data,OPT,CORE,CORE 19JUN26 1 C,CORE-CONID,CORE,100,2026-06-19,C,1,',
+    'Trades,Header,Asset Class,Currency,Symbol,Underlying Symbol,Date/Time,Quantity,Trade Price,Proceeds,Commission,Cost Basis,Realized P/L,MTM P/L,Code',
+  ]
+  const duplicateTrade =
+    'Trades,Data,Equity and Index Options,USD,CORE 19JUN26 1 C,CORE,"2026-06-19, 16:00:00",-1,0,0,0,0,0,0,A'
+  for (let index = 0; index < duplicateTradeRows; index += 1) {
+    rows.push(duplicateTrade)
+  }
+  const text = rows.join('\n')
+  return {
+    byteLength: Buffer.byteLength(text, 'utf8'),
+    duplicateTradeRows,
+    rowCount: rows.length,
+    text,
+  }
+}
+
+export function generateSyntheticFiiCandidateMappingsStatement({
+  candidateOptionRows = SYNTHETIC_FII_CANDIDATE_OPTION_ROWS,
+  targetBytes = SYNTHETIC_CAPACITY_TARGET_BYTES,
+  targetRows = SYNTHETIC_CAPACITY_ROWS,
+} = {}) {
+  assert(Number.isSafeInteger(candidateOptionRows) && candidateOptionRows >= 10_000)
+  const rows = [
+    'Statement,Header,Field Name,Field Value',
+    'Statement,Data,Title,Activity Statement',
+    'Statement,Data,Period,"January 1, 2026 - August 28, 2026"',
+    'Account Information,Header,Field Name,Field Value',
+    'Account Information,Data,Account,SYNTHETIC_FII_CANDIDATE_ACCOUNT',
+    'Account Information,Data,Base Currency,USD',
+    'Month & Year to Date Performance Summary,Header,Asset Class,Symbol,Description,MTD Mark-to-Market,YTD Mark-to-Market,MTD Realized S/T,YTD Realized S/T,MTD Realized L/T,YTD Realized L/T',
+    'Month & Year to Date Performance Summary,Data,Equity and Index Options,CORE,Fictional candidate-mapping option,0,7,0,0,0,0',
+    'Month & Year to Date Performance Summary,Data,Total (All Assets),,,0,7,0,0,0,0',
+    'Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code',
+    'Financial Instrument Information,Data,OPT,CORE,CORE BASE CONTRACT,CORE-BASE-CONID,CORE,100,2026-06-19,C,1,',
+  ]
+  const contracts = Array.from({ length: candidateOptionRows }, (_, index) => {
+    const strike = index + 1
+    const suffix = String(index).padStart(5, '0')
+    const contract = `CORE 19JUN26 ${strike} C`
+    rows.push(
+      `Financial Instrument Information,Data,OPT,${contract},CANDIDATE FII DESCRIPTION ${suffix},M${suffix},CORE,100,2026-06-19,C,${strike},`,
+    )
+    return contract
+  })
+  rows.push(
+    'Trades,Header,Asset Class,Currency,Symbol,Underlying Symbol,Date/Time,Quantity,Trade Price,Proceeds,Commission,Cost Basis,Realized P/L,MTM P/L,Code',
+  )
+  for (const contract of contracts) {
+    rows.push(
+      `Trades,Data,Equity and Index Options,USD,${contract},CORE,,0,0,0,0,0,0,0,`,
+    )
+  }
+
+  return {
+    ...padSyntheticStatementToCapacity(rows.join('\n'), {
+      targetBytes,
+      targetRows,
+    }),
+    candidateOptionRows,
   }
 }

@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 
 const projectRoot = resolve(import.meta.dirname, '..')
 const output = mkdtempSync(join(tmpdir(), 'pnl-arena-parser-'))
@@ -53,12 +54,15 @@ try {
     ytdInstrumentMappingSectionAliases,
   } = require(join(output, 'lib/ibkr.js'))
   const {
+    CsvParseFailure,
+    MAX_CSV_FIELDS_PER_ROW,
     parseCsvRows,
     parseDateFlexible,
     parseNumber,
     parsePercent,
     sumExactNumbers,
     toIsoDate,
+    visitCsvRows,
   } = require(join(output, 'lib/csv.js'))
   const {
     PARSER_DIAGNOSTIC_CODES,
@@ -2180,6 +2184,7 @@ try {
     `${currentSchemaFixture}\nStatement,Header,Field Name,Field Value\nStatement,Data,Title,Portfolio Analyst\nStatement,Data,Period,"February 1, 2026 - August 15, 2026"\n`,
     `${currentSchemaFixture}\nAccount Information,Data,Period,"February 1, 2026 - August 15, 2026"\n`,
     `BOF,SYNTHETIC_ACCOUNT_2026_A,Activity Statement,2026-02-01,2026-08-15\n${currentSchemaFixture}`,
+    `BOF,SYNTHETIC_ACCOUNT_2026_A,Activity Statement,not-a-date,2026-08-15\n${currentSchemaFixture}`,
   ]) {
     const conflictingMetadataResult = parseIbkrActivityStatement(
       conflictingMetadataFixture,
@@ -2405,6 +2410,15 @@ try {
       'instrument_alias_conflict',
     ),
     'A later safe duplicate incorrectly cleared an earlier alias conflict.',
+  )
+
+  const unusedAliasConflict = `${currentSchemaFixture}\nFinancial Instrument Information,Data,Equity and Index Options,UNUSED-CONTRACT-ALIAS,UNUSED DESCRIPTION A,SYNTH-CONID-UNUSED-A,ZZUNUSED1,100,2026-06-19,P,1.000000,\nFinancial Instrument Information,Data,Equity and Index Options,UNUSED-CONTRACT-ALIAS,UNUSED DESCRIPTION B,SYNTH-CONID-UNUSED-B,ZZUNUSED2,100,2026-06-19,P,1.000000,\n`
+  assert(
+    hasDiagnostic(
+      parseIbkrActivityStatement(unusedAliasConflict),
+      'instrument_alias_conflict',
+    ),
+    'A conflicting unused FII alias was dropped before the global consistency check.',
   )
 
   const canonicalAssignmentRow = 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
@@ -2960,6 +2974,94 @@ try {
     'A missing account identifier was not rejected with a fixed error.',
   )
   assert(!missingAccountResult.report, 'A report was created without an account identifier.')
+
+  const collectVisitedCsvRows = (text) => {
+    const rows = []
+    const rowNumbers = []
+    const rowCount = visitCsvRows(text, (row, rowNumber) => {
+      rows.push(row)
+      rowNumbers.push(rowNumber)
+    })
+    assert(rowCount === rows.length, 'visitCsvRows returned the wrong row count.')
+    assert(
+      rowNumbers.every((rowNumber, index) => rowNumber === index + 1),
+      'visitCsvRows returned non-contiguous logical row numbers.',
+    )
+    return rows
+  }
+  const tokenizerEquivalenceFixture = [
+    '\uFEFFSection,Header,Name,Note',
+    'Statement,Data,"\u4e2d\u6587 \ud83d\ude00","line one',
+    'line two with ""quote"""',
+    '',
+    ',,,',
+    'Final,Data,\u5c3e\u884c,\ud83d\ude42',
+  ].join('\r\n')
+  const expectedTokenizerRows = [
+    ['Section', 'Header', 'Name', 'Note'],
+    ['Statement', 'Data', '\u4e2d\u6587 \ud83d\ude00', 'line one\r\nline two with "quote"'],
+    ['Final', 'Data', '\u5c3e\u884c', '\ud83d\ude42'],
+  ]
+  const parsedTokenizerRows = parseCsvRows(tokenizerEquivalenceFixture)
+  const visitedTokenizerRows = collectVisitedCsvRows(tokenizerEquivalenceFixture)
+  assert(
+    isDeepStrictEqual(parsedTokenizerRows, expectedTokenizerRows),
+    `parseCsvRows changed BOM/CRLF/quoted/Unicode behavior: ${JSON.stringify(parsedTokenizerRows)}`,
+  )
+  assert(
+    isDeepStrictEqual(visitedTokenizerRows, expectedTokenizerRows),
+    `visitCsvRows changed BOM/CRLF/quoted/Unicode behavior: ${JSON.stringify(visitedTokenizerRows)}`,
+  )
+  assert(
+    isDeepStrictEqual(visitedTokenizerRows, parsedTokenizerRows),
+    'parseCsvRows and visitCsvRows produced different logical rows.',
+  )
+
+  const exactFieldBoundaryCsv = Array.from(
+    { length: MAX_CSV_FIELDS_PER_ROW },
+    (_, index) => `F${index}`,
+  ).join(',')
+  const exactFieldRows = parseCsvRows(exactFieldBoundaryCsv)
+  const exactVisitedFieldRows = collectVisitedCsvRows(exactFieldBoundaryCsv)
+  assert(
+    exactFieldRows.length === 1 &&
+      exactFieldRows[0].length === MAX_CSV_FIELDS_PER_ROW,
+    'parseCsvRows rejected the exact 4,096-field boundary.',
+  )
+  assert(
+    isDeepStrictEqual(exactVisitedFieldRows, exactFieldRows),
+    'visitCsvRows did not match parseCsvRows at the exact 4,096-field boundary.',
+  )
+
+  const assertTooManyCsvFields = (operation, label) => {
+    let failure
+    try {
+      operation()
+    } catch (error) {
+      failure = error
+    }
+    assert(
+      failure instanceof CsvParseFailure && failure.code === 'csv_too_many_fields',
+      `${label} did not throw fixed csv_too_many_fields at 4,097 fields.`,
+    )
+  }
+  const overFieldBoundaryCsv = `${exactFieldBoundaryCsv},overflow`
+  assertTooManyCsvFields(
+    () => parseCsvRows(overFieldBoundaryCsv),
+    'parseCsvRows',
+  )
+  assertTooManyCsvFields(
+    () => visitCsvRows(overFieldBoundaryCsv, () => {}),
+    'visitCsvRows',
+  )
+  const overFieldBoundaryResult = parseIbkrActivityStatement(
+    overFieldBoundaryCsv,
+  )
+  assert(
+    hasDiagnostic(overFieldBoundaryResult, 'csv_too_many_fields') &&
+      !overFieldBoundaryResult.report,
+    'The parser did not expose the fixed csv_too_many_fields diagnostic.',
+  )
 
   const malformedResult = parseIbkrActivityStatement('Statement,Data,"unterminated')
   assert(

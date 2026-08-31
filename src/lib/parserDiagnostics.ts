@@ -13,6 +13,7 @@ export const PARSER_DIAGNOSTIC_CODES = Object.freeze([
   'csv_malformed',
   'csv_not_enough_rows',
   'csv_too_many_rows',
+  'csv_too_many_fields',
   'csv_field_too_large',
   'csv_unterminated_quote',
   'not_activity_statement',
@@ -81,6 +82,8 @@ const messages: Record<
     csv_not_enough_rows: 'The file does not contain enough CSV rows.',
     csv_too_many_rows:
       'The CSV file contains too many rows for safe local processing.',
+    csv_too_many_fields:
+      'A CSV row contains too many columns for safe local processing.',
     csv_field_too_large: 'A CSV field exceeds the parser safety limit.',
     csv_unterminated_quote: 'The CSV contains an unterminated quoted field.',
     not_activity_statement:
@@ -148,6 +151,7 @@ const messages: Record<
     csv_malformed: 'CSV 结构格式错误。',
     csv_not_enough_rows: '文件中没有足够的 CSV 数据行。',
     csv_too_many_rows: 'CSV 数据行过多，无法安全地在本地处理。',
+    csv_too_many_fields: 'CSV 中有单行的列数过多，无法安全地在本地处理。',
     csv_field_too_large: 'CSV 中有字段超过解析器的安全上限。',
     csv_unterminated_quote: 'CSV 中有未正确闭合引号的字段。',
     not_activity_statement:
@@ -200,6 +204,7 @@ const messages: Record<
     csv_malformed: 'CSV 結構格式錯誤。',
     csv_not_enough_rows: '檔案中沒有足夠的 CSV 資料列。',
     csv_too_many_rows: 'CSV 資料列過多，無法安全地在本機處理。',
+    csv_too_many_fields: 'CSV 中有單列的欄位數過多，無法安全地在本機處理。',
     csv_field_too_large: 'CSV 中有欄位超過剖析器的安全上限。',
     csv_unterminated_quote: 'CSV 中有未正確閉合引號的欄位。',
     not_activity_statement:

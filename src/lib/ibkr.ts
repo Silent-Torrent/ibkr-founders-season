@@ -13,13 +13,13 @@ import {
   CsvParseFailure,
   fingerprintText,
   normalizeKey,
-  parseCsvRows,
   parseDateFlexible,
   parseDateRange,
   parseNumber,
   parsePercent,
   sumExactNumbers,
   toIsoDate,
+  visitCsvRows,
 } from './csv'
 import {
   MAX_REPORT_EVENTS,
@@ -69,6 +69,22 @@ interface InstrumentUnderlyingMapResult {
   conflictingAliases: Set<string>
   hasConflicts: boolean
   mapping: Map<string, InstrumentUnderlying>
+  sharedFinancialInstruments: SharedFinancialInstrumentIndex
+}
+
+interface SharedFinancialInstrumentIndex {
+  aliasStates: Map<string, string | null>
+  contractAliases: Set<string>
+  conflictingAliases: Set<string>
+  hasConflicts: boolean
+  mapping: Map<string, InstrumentUnderlying>
+}
+
+interface FinancialInstrumentScanResult extends SharedFinancialInstrumentIndex {
+  fullAccountScopeValid: boolean
+  referenceIdentitiesValid: boolean
+  schemaFieldsValid: boolean
+  sectionConflict: boolean
 }
 
 interface UnderlyingResolution {
@@ -92,7 +108,16 @@ class InvalidAccountingSourceRefs extends Array<SourceRef> {
   }
 }
 
-type InstrumentUnderlyingCandidates = Map<string, Map<string, SourceRef[]>>
+interface InstrumentUnderlyingCandidate {
+  conflict: boolean
+  sourceRefs: SourceRef[]
+  underlying: string
+}
+
+type InstrumentUnderlyingCandidates = Map<
+  string,
+  InstrumentUnderlyingCandidate
+>
 
 const MAX_CSV_CHARACTERS = 10_000_000
 const MAX_CSV_ROWS = 100_000
@@ -270,6 +295,22 @@ const OPTION_LIFECYCLE_SECTION_ALIASES = [
   'Options Exercises, Assignments and Expirations',
   'Option Exercises, Assignments and Expirations',
 ]
+const FINANCIAL_INSTRUMENT_SECTION_ALIASES = [
+  'Financial Instrument Information',
+]
+const MATERIALIZED_SECTION_ALIASES = [
+  'Statement',
+  'Account Information',
+  'Trades',
+  'Cash Report',
+  'Change in NAV',
+  'Total P/L for Statement Period',
+  ...MTM_PERFORMANCE_SECTION_ALIASES,
+  ...MONTH_YTD_PERFORMANCE_SECTION_ALIASES,
+  ...REALIZED_PERFORMANCE_SECTION_ALIASES,
+  ...NAV_SECTION_ALIASES,
+  ...OPTION_LIFECYCLE_SECTION_ALIASES,
+]
 const KNOWN_SYNTHETIC_STATEMENTS = new Set([
   'a81d783777ab4bd84bf8066764425489be96d60f67270cbbc2ffebac495a0d7f',
   '80831483527003e501aa63f1691a2f155a37b8279f68e2e3e31cb244a219d7ff',
@@ -350,24 +391,111 @@ function uniqueHeaders(headers: string[]): string[] {
   })
 }
 
-function buildSectionStore(rows: string[][]): Map<string, SectionRecord[]> {
+interface HeaderBlockState {
+  hasData: boolean
+  incomplete: boolean
+  sectionKey: string
+  seenHeader: boolean
+}
+
+interface StatementIndex {
+  bofAccountIds: string[]
+  bofPeriodConflict: boolean
+  bofPeriodInvalid: boolean
+  bofPeriodKeys: Set<string>
+  firstBofPeriod?: { start?: Date; end?: Date }
+  headerBlockStates: Map<string, HeaderBlockState>
+  rowCount: number
+  sectionNames: string[]
+  sectionOverflow: boolean
+  store: Map<string, SectionRecord[]>
+}
+
+const MATERIALIZED_SECTION_NAMES = new Map<string, string>()
+for (const alias of MATERIALIZED_SECTION_ALIASES) {
+  const key = normalizeKey(alias)
+  if (!MATERIALIZED_SECTION_NAMES.has(key)) {
+    MATERIALIZED_SECTION_NAMES.set(key, alias)
+  }
+}
+const MATERIALIZED_SECTION_KEYS = new Set(MATERIALIZED_SECTION_NAMES.keys())
+const CONTROL_RECORD_SECTIONS = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
+
+function buildStatementIndex(text: string): StatementIndex {
   const store = new Map<string, SectionRecord[]>()
   const headersBySection = new Map<string, HeaderState>()
+  const sectionNames = new Set<string>()
+  const headerBlockStates = new Map<string, HeaderBlockState>()
+  const bofAccountIds = new Set<string>()
+  const bofPeriodKeys = new Set<string>()
+  let bofPeriodConflict = false
+  let bofPeriodInvalid = false
+  let firstBofPeriod: StatementIndex['firstBofPeriod']
+  let sectionOverflow = false
 
-  rows.forEach((row, rowIndex) => {
-    if (row.length < 2) return
+  const rowCount = visitCsvRows(text, (row, rowNumber) => {
+    const rawSection = row[0]?.trim() ?? ''
+    const rawSectionUpper = rawSection.toUpperCase()
 
-    const rawSection = row[0].trim()
-    const descriptor = row[1].trim().toUpperCase()
+    if (rawSectionUpper === 'BOF') {
+      const accountId = row[1]?.trim()
+      if (accountId && bofAccountIds.size < 2) bofAccountIds.add(accountId)
 
-    if (descriptor === 'BOS' && row[2]) {
-      return
+      if (row.length >= 5) {
+        const start = parseDateFlexible(row[3])
+        const end = parseDateFlexible(row[4])
+        if (!start || !end) bofPeriodInvalid = true
+        firstBofPeriod ??= { start, end }
+        const key = `${toIsoDate(start) ?? '!'}\u001f${toIsoDate(end) ?? '!'}`
+        if (!bofPeriodKeys.has(key)) {
+          if (bofPeriodKeys.size < 2) bofPeriodKeys.add(key)
+          else bofPeriodConflict = true
+        }
+      }
     }
 
+    if (rawSection && !CONTROL_RECORD_SECTIONS.has(rawSectionUpper)) {
+      const canonical = canonicalSectionName(rawSection)
+      if (normalizeSchemaKey(canonical) && !sectionNames.has(canonical)) {
+        sectionNames.add(canonical)
+        if (sectionNames.size > MAX_REPORT_SECTIONS) sectionOverflow = true
+      }
+    }
+
+    // Once the section cap is known to be exceeded, keep validating CSV syntax
+    // and the row limit but stop retaining further attacker-controlled rows.
+    if (sectionOverflow || row.length < 2) return
+
+    const descriptor = row[1].trim().toUpperCase()
     const sourceIdentity = sourceSectionIdentity(rawSection)
-    const section = canonicalSectionName(rawSection)
-    const sectionKey = normalizeSchemaKey(section)
+    const canonicalSection = canonicalSectionName(rawSection)
+    const sectionKey = normalizeSchemaKey(canonicalSection)
     if (!sourceIdentity || !sectionKey) return
+    const section = MATERIALIZED_SECTION_NAMES.get(sectionKey)
+    if (!section) return
+
+    const headerBlockState = headerBlockStates.get(sourceIdentity) ?? {
+      hasData: false,
+      incomplete: false,
+      sectionKey,
+      seenHeader: false,
+    }
+    if (descriptor === 'HEADER') {
+      if (headerBlockState.seenHeader && !headerBlockState.hasData) {
+        headerBlockState.incomplete = true
+      }
+      headerBlockState.seenHeader = true
+      headerBlockState.hasData = false
+      headerBlockStates.set(sourceIdentity, headerBlockState)
+    } else if (
+      headerBlockState.seenHeader &&
+      ['DATA', 'SUBTOTAL', 'TOTAL'].includes(descriptor)
+    ) {
+      headerBlockState.hasData = true
+      headerBlockStates.set(sourceIdentity, headerBlockState)
+    }
+
+    if (descriptor === 'BOS' && row[2]) return
 
     if (descriptor === 'HEADER') {
       const headers = uniqueHeaders(row.slice(2))
@@ -402,17 +530,16 @@ function buildSectionStore(rows: string[][]): Map<string, SectionRecord[]> {
     }
 
     const headers = headerState?.headers
-    const values = row.slice(2)
     const fields: Record<string, string> = {}
 
     if (headers) {
       headers.forEach((header, index) => {
-        fields[header] = values[index] ?? ''
+        fields[header] = row[index + 2] ?? ''
       })
     } else {
-      values.forEach((value, index) => {
-        fields[`Column ${index + 1}`] = value
-      })
+      for (let index = 2; index < row.length; index += 1) {
+        fields[`Column ${index - 1}`] = row[index]
+      }
     }
 
     const records = store.get(sourceIdentity) ?? []
@@ -420,49 +547,55 @@ function buildSectionStore(rows: string[][]): Map<string, SectionRecord[]> {
       section,
       fields,
       recordType: descriptor || 'EMPTY',
-      rowNumber: rowIndex + 1,
+      rowNumber,
       headerSignature:
         headerState?.signature ?? fingerprintText(Object.keys(fields).join('\u001f')),
     })
     store.set(sourceIdentity, records)
-  })
+  }, MAX_CSV_ROWS)
 
-  return store
+  return {
+    bofAccountIds: [...bofAccountIds],
+    bofPeriodConflict,
+    bofPeriodInvalid,
+    bofPeriodKeys,
+    firstBofPeriod,
+    headerBlockStates,
+    rowCount,
+    sectionNames: [...sectionNames],
+    sectionOverflow,
+    store,
+  }
 }
 
-function listSectionNames(rows: string[][]): string[] {
-  const controlRecords = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
-  const names = new Set<string>()
-
-  for (const row of rows) {
-    const rawSection = row[0]?.trim()
-    if (!rawSection || controlRecords.has(rawSection.toUpperCase())) continue
-    const canonical = canonicalSectionName(rawSection)
-    if (normalizeSchemaKey(canonical)) names.add(canonical)
+function assertMaterializedSectionAliases(aliases: readonly string[]): void {
+  for (const alias of aliases) {
+    if (!MATERIALIZED_SECTION_KEYS.has(normalizeKey(alias))) {
+      throw new Error(`Unregistered materialized section alias: ${alias}`)
+    }
   }
+}
 
-  return [...names].sort()
+function forEachRecordFor(
+  store: Map<string, SectionRecord[]>,
+  aliases: string[],
+  visitor: (record: SectionRecord) => void,
+): void {
+  assertMaterializedSectionAliases(aliases)
+  const normalizedAliases = schemaAliasMap(aliases)
+  for (const records of store.values()) {
+    const sectionKey = normalizeSchemaKey(records[0]?.section ?? '')
+    if (!sectionKey || !normalizedAliases.has(sectionKey)) continue
+    for (const record of records) visitor(record)
+  }
 }
 
 function recordsFor(
   store: Map<string, SectionRecord[]>,
   aliases: string[],
 ): SectionRecord[] {
-  const normalizedAliases = schemaAliasMap(aliases)
   const matches: SectionRecord[] = []
-
-  for (const records of store.values()) {
-    const sectionKey = normalizeSchemaKey(records[0]?.section ?? '')
-    const canonicalSection = sectionKey
-      ? normalizedAliases.get(sectionKey)
-      : undefined
-    if (canonicalSection) {
-      matches.push(
-        ...records.map((record) => ({ ...record, section: canonicalSection })),
-      )
-    }
-  }
-
+  forEachRecordFor(store, aliases, (record) => matches.push(record))
   return matches
 }
 
@@ -470,6 +603,7 @@ function recordsForExclusive(
   store: Map<string, SectionRecord[]>,
   aliases: string[],
 ): { records: SectionRecord[]; alternatives: SectionRecord[][]; conflict: boolean } {
+  assertMaterializedSectionAliases(aliases)
   const normalizedAliases = schemaAliasMap(aliases)
   const priority = new Map<string, number>()
   aliases.forEach((alias, index) => {
@@ -488,10 +622,7 @@ function recordsForExclusive(
       matches.push({
         priority: priority.get(sectionKey) ?? Number.MAX_SAFE_INTEGER,
         order,
-        records: records.map((record) => ({
-          ...record,
-          section: canonicalSection,
-        })),
+        records,
       })
     }
     order += 1
@@ -507,43 +638,15 @@ function recordsForExclusive(
   }
 }
 
-function hasEmptyHeaderBlock(rows: string[][], aliases: string[]): boolean {
+function hasEmptyHeaderBlock(
+  states: Map<string, HeaderBlockState>,
+  aliases: string[],
+): boolean {
   const normalizedAliases = schemaAliasMap(aliases)
-  const states = new Map<string, { hasData: boolean; seenHeader: boolean }>()
-
-  for (const row of rows) {
-    const rawSection = row[0]?.trim() ?? ''
-    const sourceIdentity = sourceSectionIdentity(rawSection)
-    const sectionKey = normalizeSchemaKey(canonicalSectionName(rawSection))
-    if (
-      !sourceIdentity ||
-      !sectionKey ||
-      !normalizedAliases.has(sectionKey)
-    ) {
-      continue
-    }
-
-    const descriptor = row[1]?.trim().toUpperCase() ?? ''
-    const state = states.get(sourceIdentity) ?? {
-      hasData: false,
-      seenHeader: false,
-    }
-    if (descriptor === 'HEADER') {
-      if (state.seenHeader && !state.hasData) return true
-      states.set(sourceIdentity, { hasData: false, seenHeader: true })
-      continue
-    }
-    if (
-      state.seenHeader &&
-      ['DATA', 'SUBTOTAL', 'TOTAL'].includes(descriptor)
-    ) {
-      state.hasData = true
-      states.set(sourceIdentity, state)
-    }
-  }
-
   return [...states.values()].some(
-    (state) => state.seenHeader && !state.hasData,
+    (state) =>
+      normalizedAliases.has(state.sectionKey) &&
+      (state.incomplete || (state.seenHeader && !state.hasData)),
   )
 }
 
@@ -1156,7 +1259,8 @@ function ytdSectionSnapshot(
     const assetClass = classifyAsset(rawAsset, rawSymbol ?? rawIdentity)
     if (
       assetClass !== 'OPTION' &&
-      (instrumentIndex.contractAliases.has(
+      (instrumentHasContractAlias(
+        instrumentIndex,
         normalizeInstrumentKey(rawIdentity),
       ) || inferOptionUnderlyingFromContract(rawIdentity) != null)
     ) {
@@ -1860,21 +1964,26 @@ function addInstrumentUnderlyingCandidate(
   aliasValue: string,
   underlyingValue: string,
   sourceRefs: SourceRef[],
-  retainAllSourceRefs: boolean,
 ): void {
   const alias = normalizeInstrumentKey(aliasValue)
   const underlying = normalizeInstrumentKey(underlyingValue)
   if (!alias || !underlying) return
 
-  const underlyingCandidates = candidates.get(alias) ?? new Map<string, SourceRef[]>()
-  const existingRefs = underlyingCandidates.get(underlying) ?? []
-  const nextRefs = retainAllSourceRefs
-    ? dedupeSourceRefs([...existingRefs, ...sourceRefs])
-    : existingRefs.length > 0
-      ? existingRefs
-      : dedupeSourceRefs(sourceRefs)
-  underlyingCandidates.set(underlying, nextRefs)
-  candidates.set(alias, underlyingCandidates)
+  const existing = candidates.get(alias)
+  if (!existing) {
+    candidates.set(alias, {
+      conflict: false,
+      sourceRefs: dedupeSourceRefs(sourceRefs),
+      underlying,
+    })
+    return
+  }
+  if (existing.conflict || existing.underlying === underlying) return
+  candidates.set(alias, {
+    conflict: true,
+    sourceRefs: [],
+    underlying: existing.underlying,
+  })
 }
 
 function underlyingFieldsFor(record: SectionRecord): UnderlyingFieldResolution {
@@ -1910,6 +2019,36 @@ function markInstrumentAliasConflict(
   instrumentIndex.hasConflicts = true
 }
 
+function instrumentHasContractAlias(
+  instrumentIndex: InstrumentUnderlyingMapResult,
+  aliasKey: string,
+): boolean {
+  return (
+    instrumentIndex.contractAliases.has(aliasKey) ||
+    instrumentIndex.sharedFinancialInstruments.contractAliases.has(aliasKey)
+  )
+}
+
+function instrumentHasConflictingAlias(
+  instrumentIndex: InstrumentUnderlyingMapResult,
+  aliasKey: string,
+): boolean {
+  return (
+    instrumentIndex.conflictingAliases.has(aliasKey) ||
+    instrumentIndex.sharedFinancialInstruments.conflictingAliases.has(aliasKey)
+  )
+}
+
+function instrumentMappingFor(
+  instrumentIndex: InstrumentUnderlyingMapResult,
+  aliasKey: string,
+): InstrumentUnderlying | undefined {
+  return (
+    instrumentIndex.mapping.get(aliasKey) ??
+    instrumentIndex.sharedFinancialInstruments.mapping.get(aliasKey)
+  )
+}
+
 function resolveUnderlying(
   record: SectionRecord,
   symbolValue: string | undefined,
@@ -1930,12 +2069,12 @@ function resolveUnderlying(
       : { sourceRefs: [], underlying: symbol }
   }
 
-  if (explicit.conflict || instrumentIndex.conflictingAliases.has(aliasKey)) {
+  if (explicit.conflict || instrumentHasConflictingAlias(instrumentIndex, aliasKey)) {
     markInstrumentAliasConflict(instrumentIndex, aliasKey)
     return { sourceRefs: [], underlying: '' }
   }
 
-  const mapped = instrumentIndex.mapping.get(aliasKey)
+  const mapped = instrumentMappingFor(instrumentIndex, aliasKey)
   if (explicit.underlying) {
     if (mapped && mapped.underlying !== explicit.underlying) {
       markInstrumentAliasConflict(instrumentIndex, aliasKey)
@@ -1970,18 +2109,130 @@ function optionUnderlyingResolutionIsOpaque(
   )
 }
 
-function buildInstrumentUnderlyingMap(
-  store: Map<string, SectionRecord[]>,
-  contractIndexSectionAliases: string[],
-): InstrumentUnderlyingMapResult {
-  const authoritativeCandidates: InstrumentUnderlyingCandidates = new Map()
-  const inferredCandidates: InstrumentUnderlyingCandidates = new Map()
+function collectInstrumentLookupAliases(
+  records: readonly SectionRecord[],
+  aliases: Set<string> = new Set(),
+): Set<string> {
+  for (const record of records) {
+    for (const match of fieldMatchesFor(record, [
+      'Symbol',
+      'Contract',
+      'Underlying',
+      'Underlying Symbol',
+    ])) {
+      const alias = normalizeInstrumentKey(match.value)
+      if (alias) aliases.add(alias)
+    }
+  }
+  return aliases
+}
+
+function scanFinancialInstrumentIndex(
+  text: string,
+  neededAliases: Set<string>,
+  expectedAccountId: string | undefined,
+): FinancialInstrumentScanResult {
+  const aliasStates = new Map<string, string | null>()
+  const requestedSourceRefs = new Map<string, BoundedSourceRefs>()
   const contractAliases = new Set<string>()
   const conflictingAliases = new Set<string>()
   const mapping = new Map<string, InstrumentUnderlying>()
+  const headersBySection = new Map<string, HeaderState>()
+  const sourceIdentities = new Set<string>()
+  const financialInstrumentSectionKeys = schemaAliasMap(
+    FINANCIAL_INSTRUMENT_SECTION_ALIASES,
+  )
+  const canonicalSection = FINANCIAL_INSTRUMENT_SECTION_ALIASES[0]
+  let accountFieldExposed = false
+  let accountFieldMissing = false
+  let accountFieldInvalid = false
+  let modelFieldExposed = false
+  let modelFieldMissing = false
+  let modelFieldInvalid = false
+  let referenceIdentitiesValid = true
+  let schemaFieldsValid = true
   let hasConflicts = false
 
-  for (const record of recordsFor(store, ['Financial Instrument Information'])) {
+  const markConflict = (alias: string): void => {
+    hasConflicts = true
+    if (!alias) return
+    aliasStates.set(alias, null)
+    requestedSourceRefs.delete(alias)
+    if (neededAliases.has(alias)) conflictingAliases.add(alias)
+  }
+
+  const addCandidate = (
+    aliasValue: string,
+    underlying: string,
+    sourceRefs: SourceRef[],
+  ): void => {
+    const alias = normalizeInstrumentKey(aliasValue)
+    if (!alias) return
+    const existing = aliasStates.get(alias)
+    if (existing === null) return
+    if (existing !== undefined && existing !== underlying) {
+      markConflict(alias)
+      return
+    }
+    aliasStates.set(alias, underlying)
+    if (!neededAliases.has(alias)) return
+    if (alias !== underlying) contractAliases.add(alias)
+    const collector = requestedSourceRefs.get(alias) ?? createBoundedSourceRefs()
+    for (const sourceRef of sourceRefs) addBoundedSourceRef(collector, sourceRef)
+    requestedSourceRefs.set(alias, collector)
+  }
+
+  const inspectRecord = (record: SectionRecord): void => {
+    if (!isReturnOnlyRecord(record)) {
+      const accountMatches = fieldMatchesFor(record, ['Account ID', 'AccountID'])
+      if (accountMatches.length > 0) accountFieldExposed = true
+      else accountFieldMissing = true
+      if (
+        accountMatches.length > 0 &&
+        (accountMatches.length !== 1 ||
+          !accountMatches[0].value.trim() ||
+          (expectedAccountId != null &&
+            accountMatches[0].value.trim() !== expectedAccountId))
+      ) {
+        accountFieldInvalid = true
+      }
+
+      const modelMatches = fieldMatchesFor(record, ['Model'])
+      if (modelMatches.length > 0) modelFieldExposed = true
+      else modelFieldMissing = true
+      if (
+        modelMatches.length > 0 &&
+        (modelMatches.length !== 1 || Boolean(modelMatches[0].value.trim()))
+      ) {
+        modelFieldInvalid = true
+      }
+    }
+
+    const assetMatches = fieldMatchesFor(
+      record,
+      ASSET_IDENTITY_FIELD_ALIASES,
+    )
+    const symbolMatches = fieldMatchesFor(
+      record,
+      SYMBOL_IDENTITY_FIELD_ALIASES,
+    )
+    if (
+      assetMatches.length !== 1 ||
+      !assetMatches[0]?.value.trim() ||
+      !normalizeSchemaKey(assetMatches[0]?.value ?? '') ||
+      symbolMatches.length !== 1 ||
+      !symbolMatches[0]?.value.trim()
+    ) {
+      referenceIdentitiesValid = false
+    }
+    if (
+      assetMatches.length > 1 ||
+      symbolMatches.length > 1 ||
+      fieldMatchesFor(record, ['Description']).length > 1
+    ) {
+      schemaFieldsValid = false
+    }
+
     const symbol = valueFor(record, ['Symbol'])
     const description = valueFor(record, ['Description'])
     const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
@@ -1992,7 +2243,7 @@ function buildInstrumentUnderlyingMap(
         normalizeSchemaKey(symbol ?? '') ?? '',
       )
     ) {
-      continue
+      return
     }
     const assetClass = classifyAsset(
       rawAsset,
@@ -2001,35 +2252,116 @@ function buildInstrumentUnderlyingMap(
     const explicit = underlyingFieldsFor(record)
     const underlying = explicit.underlying
 
-    if (assetClass !== 'OPTION') continue
+    if (assetClass !== 'OPTION') return
     if (explicit.conflict) {
       hasConflicts = true
       for (const alias of [symbol, description]) {
-        if (alias?.trim()) conflictingAliases.add(normalizeInstrumentKey(alias))
+        if (alias?.trim()) markConflict(normalizeInstrumentKey(alias))
       }
-      continue
+      return
     }
-    if (!underlying) continue
+    if (!underlying) return
     for (const alias of [symbol, description]) {
       if (alias?.trim()) {
-        if (normalizeInstrumentKey(alias) !== underlying) {
-          contractAliases.add(normalizeInstrumentKey(alias))
-        }
-        addInstrumentUnderlyingCandidate(
-          authoritativeCandidates,
-          alias,
-          underlying,
-          explicit.sourceRefs,
-          true,
-        )
+        addCandidate(alias, underlying, explicit.sourceRefs)
       }
     }
   }
 
-  for (const record of recordsFor(store, contractIndexSectionAliases)) {
+  visitCsvRows(text, (row, rowNumber) => {
+    if (row.length < 2) return
+
+    const rawSection = row[0].trim()
+    const descriptor = row[1].trim().toUpperCase()
+    if (descriptor === 'BOS' && row[2]) return
+
+    const sourceIdentity = sourceSectionIdentity(rawSection)
+    const sectionKey = normalizeSchemaKey(canonicalSectionName(rawSection))
+    if (
+      !sourceIdentity ||
+      !sectionKey ||
+      !financialInstrumentSectionKeys.has(sectionKey)
+    ) {
+      return
+    }
+
+    if (descriptor === 'HEADER') {
+      const headers = uniqueHeaders(row.slice(2))
+      headersBySection.set(sourceIdentity, {
+        headers,
+        signature: fingerprintText(headers.join('\u001f')),
+        section: canonicalSection,
+      })
+      return
+    }
+    if (!['DATA', 'SUBTOTAL', 'TOTAL'].includes(descriptor)) return
+
+    const headerState = headersBySection.get(sourceIdentity)
+    const fields: Record<string, string> = {}
+    if (headerState) {
+      headerState.headers.forEach((header, index) => {
+        fields[header] = row[index + 2] ?? ''
+      })
+    } else {
+      for (let index = 2; index < row.length; index += 1) {
+        fields[`Column ${index - 1}`] = row[index]
+      }
+    }
+
+    sourceIdentities.add(sourceIdentity)
+    inspectRecord({
+      section: canonicalSection,
+      fields,
+      recordType: descriptor,
+      rowNumber,
+      headerSignature:
+        headerState?.signature ??
+        fingerprintText(Object.keys(fields).join('\u001f')),
+    })
+  }, MAX_CSV_ROWS)
+
+  for (const alias of neededAliases) {
+    const underlying = aliasStates.get(alias)
+    if (!underlying) continue
+    mapping.set(alias, {
+      underlying,
+      sourceRefs: requestedSourceRefs.get(alias)?.refs ?? [],
+    })
+  }
+
+  return {
+    aliasStates,
+    contractAliases,
+    conflictingAliases,
+    fullAccountScopeValid:
+      (!accountFieldExposed ||
+        (!accountFieldMissing && !accountFieldInvalid)) &&
+      (!modelFieldExposed || (!modelFieldMissing && !modelFieldInvalid)),
+    hasConflicts,
+    mapping,
+    referenceIdentitiesValid,
+    schemaFieldsValid,
+    sectionConflict: sourceIdentities.size > 1,
+  }
+}
+
+function buildInstrumentUnderlyingMap(
+  store: Map<string, SectionRecord[]>,
+  contractIndexSectionAliases: string[],
+  sharedFinancialInstruments: SharedFinancialInstrumentIndex,
+  demandedAliases: ReadonlySet<string>,
+): InstrumentUnderlyingMapResult {
+  const authoritativeCandidates: InstrumentUnderlyingCandidates = new Map()
+  const inferredCandidates: InstrumentUnderlyingCandidates = new Map()
+  const contractAliases = new Set<string>()
+  const conflictingAliases = new Set<string>()
+  const mapping = new Map<string, InstrumentUnderlying>()
+  let hasConflicts = sharedFinancialInstruments.hasConflicts
+
+  forEachRecordFor(store, contractIndexSectionAliases, (record) => {
     const contractMatch = fieldFor(record, ['Symbol', 'Contract'])
     const contract = contractMatch?.value.trim()
-    if (!contract) continue
+    if (!contract) return
 
     const rawAsset = valueFor(record, ['Asset Class', 'Asset Category'])
     if (
@@ -2039,64 +2371,98 @@ function buildInstrumentUnderlyingMap(
         normalizeSchemaKey(contract) ?? '',
       )
     ) {
-      continue
+      return
     }
 
     const assetClass = classifyAsset(
       rawAsset,
       contract,
     )
-    if (assetClass !== 'OPTION') continue
+    if (assetClass !== 'OPTION') return
 
     const inferred = inferOptionUnderlyingFromContract(contract)
-    if (isTotalRow(inferred ?? contract)) continue
+    if (isTotalRow(inferred ?? contract)) return
 
     const aliasKey = normalizeInstrumentKey(contract)
     const explicit = underlyingFieldsFor(record)
     if (explicit.conflict) {
-      conflictingAliases.add(aliasKey)
+      if (demandedAliases.has(aliasKey)) conflictingAliases.add(aliasKey)
       hasConflicts = true
-      continue
+      return
     }
 
     if (explicit.underlying) {
-      if (aliasKey !== explicit.underlying) contractAliases.add(aliasKey)
+      if (
+        demandedAliases.has(aliasKey) &&
+        aliasKey !== explicit.underlying
+      ) {
+        contractAliases.add(aliasKey)
+      }
       addInstrumentUnderlyingCandidate(
         authoritativeCandidates,
         contract,
         explicit.underlying,
         explicit.sourceRefs,
-        false,
       )
     }
     if (inferred) {
-      contractAliases.add(aliasKey)
+      if (demandedAliases.has(aliasKey)) contractAliases.add(aliasKey)
       addInstrumentUnderlyingCandidate(
         inferredCandidates,
         contract,
         inferred,
         [],
-        false,
       )
     }
-  }
+  })
 
-  const aliases = new Set([
-    ...authoritativeCandidates.keys(),
-    ...inferredCandidates.keys(),
-  ])
-  for (const alias of aliases) {
-    const underlyingCandidates =
-      authoritativeCandidates.get(alias) ?? inferredCandidates.get(alias)
-    if (!underlyingCandidates) continue
-
-    if (conflictingAliases.has(alias) || underlyingCandidates.size !== 1) {
-      conflictingAliases.add(alias)
+  for (const [alias, authoritative] of authoritativeCandidates) {
+    const sharedState = sharedFinancialInstruments.aliasStates.get(alias)
+    if (sharedState === null) {
+      if (demandedAliases.has(alias)) conflictingAliases.add(alias)
       hasConflicts = true
       continue
     }
-    const [[underlying, sourceRefs]] = underlyingCandidates
-    mapping.set(alias, { underlying, sourceRefs })
+
+    if (conflictingAliases.has(alias) || authoritative.conflict) {
+      if (demandedAliases.has(alias)) conflictingAliases.add(alias)
+      hasConflicts = true
+      continue
+    }
+    if (
+      sharedState !== undefined &&
+      sharedState !== authoritative.underlying
+    ) {
+      if (demandedAliases.has(alias)) conflictingAliases.add(alias)
+      hasConflicts = true
+    } else if (sharedState === undefined && demandedAliases.has(alias)) {
+      mapping.set(alias, {
+        underlying: authoritative.underlying,
+        sourceRefs: authoritative.sourceRefs,
+      })
+    }
+  }
+
+  for (const [alias, inferred] of inferredCandidates) {
+    if (authoritativeCandidates.has(alias)) continue
+    const sharedState = sharedFinancialInstruments.aliasStates.get(alias)
+    if (sharedState === null) {
+      if (demandedAliases.has(alias)) conflictingAliases.add(alias)
+      hasConflicts = true
+      continue
+    }
+    if (sharedState !== undefined) continue
+    if (conflictingAliases.has(alias) || inferred.conflict) {
+      if (demandedAliases.has(alias)) conflictingAliases.add(alias)
+      hasConflicts = true
+      continue
+    }
+    if (demandedAliases.has(alias)) {
+      mapping.set(alias, {
+        underlying: inferred.underlying,
+        sourceRefs: inferred.sourceRefs,
+      })
+    }
   }
 
   return {
@@ -2104,6 +2470,7 @@ function buildInstrumentUnderlyingMap(
     conflictingAliases,
     hasConflicts,
     mapping,
+    sharedFinancialInstruments,
   }
 }
 
@@ -2198,8 +2565,8 @@ function parseReturnValue(value: string | undefined): number | undefined {
 }
 
 function findStatementPeriod(
-  rows: string[][],
   store: Map<string, SectionRecord[]>,
+  firstBofPeriod: StatementIndex['firstBofPeriod'],
 ): { start?: Date; end?: Date } {
   const infoRecords = [
     ...recordsFor(store, ['Statement']),
@@ -2215,16 +2582,7 @@ function findStatementPeriod(
     return { start: parseDateFlexible(fromDate), end: parseDateFlexible(toDate) }
   }
 
-  for (const row of rows) {
-    if (row[0]?.trim().toUpperCase() === 'BOF' && row.length >= 5) {
-      return {
-        start: parseDateFlexible(row[3]),
-        end: parseDateFlexible(row[4]),
-      }
-    }
-  }
-
-  return {}
+  return firstBofPeriod ?? {}
 }
 
 function inferEventType(value: string | undefined): OptionEvent['type'] | undefined {
@@ -2269,7 +2627,8 @@ function parseOptionEvents(
     const asset = classifyAsset(valueFor(record, ['Asset Class', 'Asset Category']), contract ?? '')
     if (
       asset !== 'OPTION' &&
-      (instrumentIndex.contractAliases.has(
+      (instrumentHasContractAlias(
+        instrumentIndex,
         normalizeInstrumentKey(contract ?? ''),
       ) || inferOptionUnderlyingFromContract(contract ?? '') != null)
     ) {
@@ -3531,9 +3890,9 @@ export function parseIbkrActivityStatement(
 
   const errors: ParserDiagnostic[] = []
   const warnings: ParserDiagnostic[] = []
-  let rows: string[][]
+  let statementIndex: StatementIndex
   try {
-    rows = parseCsvRows(text, MAX_CSV_ROWS)
+    statementIndex = buildStatementIndex(text)
   } catch (error) {
     return {
       errors: [
@@ -3545,19 +3904,12 @@ export function parseIbkrActivityStatement(
     }
   }
 
-  if (rows.length < 3) {
+  if (statementIndex.rowCount < 3) {
     return { errors: [{ code: 'csv_not_enough_rows' }], warnings }
   }
-  if (rows.length > MAX_CSV_ROWS) {
-    return {
-      errors: [{ code: 'csv_too_many_rows' }],
-      warnings,
-    }
-  }
+  if (statementIndex.sectionOverflow) return reportCapacityFailure()
 
-  const store = buildSectionStore(rows)
-  const sectionNames = listSectionNames(rows)
-  if (sectionNames.length > MAX_REPORT_SECTIONS) return reportCapacityFailure()
+  const { sectionNames, store } = statementIndex
   const statementRecords = recordsFor(store, ['Statement'])
   const accountRecords = recordsFor(store, ['Account Information'])
   const statementMetadataRecords = [...statementRecords, ...accountRecords]
@@ -3582,7 +3934,10 @@ export function parseIbkrActivityStatement(
       'ToDate',
       'End Date',
     ])
-  const { start, end } = findStatementPeriod(rows, store)
+  const { start, end } = findStatementPeriod(
+    store,
+    statementIndex.firstBofPeriod,
+  )
   const statementTitle = findNamedValue(statementRecords, ['Title', 'Report'])
   const normalizedStatementTitle = statementTitle
     ? normalizeSchemaKey(statementTitle)
@@ -3617,18 +3972,15 @@ export function parseIbkrActivityStatement(
       }
     }
   }
-  for (const row of rows) {
-    if (row[0]?.trim().toUpperCase() !== 'BOF' || row.length < 5) continue
-    const bofStart = toIsoDate(parseDateFlexible(row[3]))
-    const bofEnd = toIsoDate(parseDateFlexible(row[4]))
-    if (
-      !bofStart ||
-      !bofEnd ||
-      (startIso != null && bofStart !== startIso) ||
-      (endIso != null && bofEnd !== endIso)
-    ) {
-      statementSchemaConflict = true
-    }
+  const expectedBofPeriodKey = `${startIso ?? '!'}\u001f${endIso ?? '!'}`
+  if (
+    statementIndex.bofPeriodConflict ||
+    statementIndex.bofPeriodInvalid ||
+    [...statementIndex.bofPeriodKeys].some(
+      (periodKey) => periodKey !== expectedBofPeriodKey,
+    )
+  ) {
+    statementSchemaConflict = true
   }
   const seasonYear = end?.getFullYear() ?? currentYear
   const isYtd = Boolean(
@@ -3677,10 +4029,8 @@ export function parseIbkrActivityStatement(
   }
 
   // Flex files with head/trailer records can carry one BOF record per account.
-  for (const row of rows) {
-    if (row[0]?.trim().toUpperCase() === 'BOF' && row[1]?.trim()) {
-      accountIds.add(row[1].trim())
-    }
+  for (const bofAccountId of statementIndex.bofAccountIds) {
+    accountIds.add(bofAccountId)
   }
 
   if (accountIds.size === 0) {
@@ -3723,9 +4073,6 @@ export function parseIbkrActivityStatement(
   }
 
   const symbols = new Map<string, SymbolAccumulator>()
-  const financialInstrumentSection = recordsForExclusive(store, [
-    'Financial Instrument Information',
-  ])
   const lifecycleEventSection = recordsForExclusive(
     store,
     OPTION_LIFECYCLE_SECTION_ALIASES,
@@ -3740,32 +4087,10 @@ export function parseIbkrActivityStatement(
   const tradeEventRecords = tradeEventSection.records.filter(
     isOptionEventRecordCandidate,
   )
-  const selectedEventMappingSectionAliases =
+  const selectedEventRecords =
     lifecycleEventRecords.length > 0
-      ? OPTION_LIFECYCLE_SECTION_ALIASES
-      : ['Trades']
-  const commonOptionContractIndexSectionAliases = [
-    ...REALIZED_PERFORMANCE_SECTION_ALIASES,
-    ...selectedEventMappingSectionAliases,
-  ]
-  // Mixed-family equivalence must resolve each source independently. Letting
-  // one YTD family contribute aliases to the other would allow a wrong
-  // Underlying value to make both snapshots repeat the same error.
-  const mtmInstrumentMappingResult = buildInstrumentUnderlyingMap(
-    store,
-    ytdInstrumentMappingSectionAliases(
-      'MTM',
-      commonOptionContractIndexSectionAliases,
-    ),
-  )
-  const monthYtdInstrumentMappingResult = buildInstrumentUnderlyingMap(
-    store,
-    ytdInstrumentMappingSectionAliases(
-      'MONTH_YTD',
-      commonOptionContractIndexSectionAliases,
-    ),
-  )
-  const invalidAccountingFields: SourceRef[] = new InvalidAccountingSourceRefs()
+      ? lifecycleEventRecords
+      : tradeEventRecords
   const mtmSection = recordsForExclusive(store, MTM_PERFORMANCE_SECTION_ALIASES)
   const monthYtdSection = recordsForExclusive(
     store,
@@ -3778,6 +4103,73 @@ export function parseIbkrActivityStatement(
     REALIZED_PERFORMANCE_SECTION_ALIASES,
   )
   const realizedRecords = realizedSection.records
+  const selectedEventMappingSectionAliases =
+    lifecycleEventRecords.length > 0
+      ? OPTION_LIFECYCLE_SECTION_ALIASES
+      : ['Trades']
+  const commonOptionContractIndexSectionAliases = [
+    ...REALIZED_PERFORMANCE_SECTION_ALIASES,
+    ...selectedEventMappingSectionAliases,
+  ]
+  const mtmInstrumentMappingSectionAliases =
+    ytdInstrumentMappingSectionAliases(
+      'MTM',
+      commonOptionContractIndexSectionAliases,
+    )
+  const monthYtdInstrumentMappingSectionAliases =
+    ytdInstrumentMappingSectionAliases(
+      'MONTH_YTD',
+      commonOptionContractIndexSectionAliases,
+    )
+  const demandedInstrumentAliases = collectInstrumentLookupAliases(mtmRecords)
+  collectInstrumentLookupAliases(
+    monthYtdRecords,
+    demandedInstrumentAliases,
+  )
+  collectInstrumentLookupAliases(
+    realizedRecords,
+    demandedInstrumentAliases,
+  )
+  collectInstrumentLookupAliases(
+    selectedEventRecords,
+    demandedInstrumentAliases,
+  )
+  let sharedFinancialInstruments: FinancialInstrumentScanResult
+  try {
+    sharedFinancialInstruments = scanFinancialInstrumentIndex(
+      text,
+      demandedInstrumentAliases,
+      accountId,
+    )
+  } catch (error) {
+    return {
+      errors: [
+        {
+          code: error instanceof CsvParseFailure ? error.code : 'csv_malformed',
+        },
+      ],
+      warnings,
+    }
+  }
+  // Mixed-family equivalence must resolve each source independently. Letting
+  // one YTD family contribute aliases to the other would allow a wrong
+  // Underlying value to make both snapshots repeat the same error.
+  const mtmInstrumentMappingResult = buildInstrumentUnderlyingMap(
+    store,
+    mtmInstrumentMappingSectionAliases,
+    sharedFinancialInstruments,
+    demandedInstrumentAliases,
+  )
+  const monthYtdInstrumentMappingResult = buildInstrumentUnderlyingMap(
+    store,
+    monthYtdInstrumentMappingSectionAliases,
+    sharedFinancialInstruments,
+    demandedInstrumentAliases,
+  )
+  // Global FII aliases are needed only while both isolated family maps are
+  // checked. Release attacker-controlled unused keys before report assembly.
+  sharedFinancialInstruments.aliasStates.clear()
+  const invalidAccountingFields: SourceRef[] = new InvalidAccountingSourceRefs()
   const useYtdRealizedFallback = realizedRecords.length === 0
   // MTM is the richer accounting source and stays authoritative when both
   // official families coexist. Month/YTD is then a cross-check, never a
@@ -3825,11 +4217,13 @@ export function parseIbkrActivityStatement(
     NAV_SECTION_ALIASES,
     ['Cash Report'],
     ['Change in NAV'],
-  ].some((aliases) => hasEmptyHeaderBlock(rows, aliases))
+  ].some((aliases) =>
+    hasEmptyHeaderBlock(statementIndex.headerBlockStates, aliases),
+  )
   let accountingSectionConflict =
     statementSchemaConflict ||
     hasIncompleteCriticalHeaderBlock ||
-    financialInstrumentSection.conflict ||
+    sharedFinancialInstruments.sectionConflict ||
     mtmSection.conflict ||
     monthYtdSection.conflict ||
     mtmInstrumentMappingResult.hasConflicts ||
@@ -3861,18 +4255,9 @@ export function parseIbkrActivityStatement(
       invalidAccountingFields,
     )
   accountingSectionConflict ||=
-    !validateFullAccountSectionScope(
-      financialInstrumentSection.records,
-      accountId,
-    ) ||
-    !validateInstrumentReferenceIdentities(
-      financialInstrumentSection.records,
-    ) ||
-    hasAmbiguousSchemaFields(financialInstrumentSection.records, [
-      ['Asset Class', 'Asset Category'],
-      ['Symbol'],
-      ['Description'],
-    ])
+    !sharedFinancialInstruments.fullAccountScopeValid ||
+    !sharedFinancialInstruments.referenceIdentitiesValid ||
+    !sharedFinancialInstruments.schemaFieldsValid
   accountingSectionConflict ||=
     mtmSnapshot != null &&
     monthYtdSnapshot != null &&
@@ -4130,7 +4515,8 @@ export function parseIbkrActivityStatement(
     )
     if (
       assetClass !== 'OPTION' &&
-      (primaryYtdInstrumentMappingResult.contractAliases.has(
+      (instrumentHasContractAlias(
+        primaryYtdInstrumentMappingResult,
         normalizeInstrumentKey(rawSymbol ?? ''),
       ) || inferOptionUnderlyingFromContract(rawSymbol ?? '') != null)
     ) {
@@ -4252,10 +4638,7 @@ export function parseIbkrActivityStatement(
   // Dedicated lifecycle rows are authoritative when present. Trades are a
   // fallback only; combining both can count the same broker event twice with
   // different trade/settlement dates.
-  const eventRecords =
-    lifecycleEventRecords.length > 0
-      ? lifecycleEventRecords
-      : tradeEventRecords
+  const eventRecords = selectedEventRecords
   const optionMappingEventRecords = [
     ...lifecycleEventSection.records,
     ...tradeEventSection.records,

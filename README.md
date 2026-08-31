@@ -2,7 +2,7 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current coded checkpoint 0.12
+## Current coded checkpoint 0.13
 
 The repository already contains:
 
@@ -13,8 +13,10 @@ The repository already contains:
 - Local-only CSV reading; no server or database. File reading and parsing run in a dedicated Web Worker rather than on the UI thread.
 - A 12-second total import timeout covers worker-side file reading, parsing and result return. A replacement that passes the filename, non-empty and size preflight, an explicit cancel, a Demo switch or page unmount terminates the old worker before the replacement is parsed.
 - A versioned Worker protocol validates both requests and complete returned reports on both sides. It rejects malformed objects, unknown fields, sparse arrays, invalid dates/currencies/hashes/numbers, unsafe diagnostics, or parser facts that disagree with the returned TWR evidence and deterministic warnings. It also rejects files above 5 MiB, salts outside 16–128 characters, and reports above the unpaginated-UI budgets. Shared `reportCapacity` constants keep the parser and final Worker validator aligned at 500 retained underlyings, 1,000 deduplicated lifecycle events, 256 distinct section strings after known IBKR codes are mapped to names, 20,000 total source-reference occurrences, 501 references in one rendered collection (500 detail references plus one broker-total reference), 25,000 total array items, 1,000,000 actual string characters, and the same per-field length/control-character limits for input-derived report strings.
-- The parser returns the fixed `report_capacity_exceeded` diagnostic before constructing or appending the 1,001st deduplicated final event, and before portfolio aggregation or `PortfolioReport` construction when a 501st symbol satisfies the existing retained-output predicate. After the allowed row/section structures have been materialized and known section codes mapped to names, exactly 256 distinct exact section strings remain allowed; a 257th returns the same fixed diagnostic before FII/candidate aggregation or report construction. During parsing, explicit canonical-key collectors retain at most 501 accepted source references plus one overflow sentinel; repeated references do not consume the boundary, invalid-number evidence retains only its first reference, and large invalid-reference arrays are never spread into function arguments. Per-collection and 20,000-total-occurrence checks run before report construction. After the report is assembled, its input-derived strings and actual item/string footprint must also fit the shared Worker budgets, so an overlong field or long-reference report returns the fixed capacity error instead of degrading to `worker_failure`; the aggregate string budget may fail earlier than the independent 20,000-reference maximum. The final Worker schema validator repeats every output boundary.
+- The production IBKR parser now tokenizes CSV one logical row at a time instead of first constructing a full-file `string[][]`. It materializes records only for the registered sections consumed by the parser. Financial Instrument Information (FII) is handled by a second row-by-row scan: scope, schema, identity, and alias conflicts are still checked globally, including unused aliases, while underlying mappings and source references are retained only for aliases the accounting/event sections actually need. A CSV row may contain at most 4,096 fields; a 4,097th field returns the fixed `csv_too_many_fields` diagnostic.
+- The parser returns the fixed `report_capacity_exceeded` diagnostic before constructing or appending the 1,001st deduplicated final event, and before portfolio aggregation or `PortfolioReport` construction when a 501st symbol satisfies the existing retained-output predicate. Known section codes are mapped to names during the selective first scan; exactly 256 distinct exact section strings remain allowed, and a 257th returns the same fixed diagnostic before the FII second pass or report construction. During parsing, explicit canonical-key collectors retain at most 501 accepted source references plus one overflow sentinel; repeated references do not consume the boundary, invalid-number evidence retains only its first reference, and large invalid-reference arrays are never spread into function arguments. Per-collection and 20,000-total-occurrence checks run before report construction. After the report is assembled, its input-derived strings and actual item/string footprint must also fit the shared Worker budgets, so an overlong field or long-reference report returns the fixed capacity error instead of degrading to `worker_failure`; the aggregate string budget may fail earlier than the independent 20,000-reference maximum. The final Worker schema validator repeats every output boundary.
 - A runtime-only fully fictional capacity generator combines four headline exact caps: 5,242,880 bytes (5 MiB), 100,000 rows, 500 underlyings, and 1,000 assignment/expiration events. The production-Chrome gate imports and renders it through the real Worker, measures main-thread gaps, searches the last underlying, opens its event drawer, exercises the visible cancel control and confirms Worker termination. Separate 501-symbol and 1,001-event adversarial CSVs are each padded to exactly 5 MiB and 100,000 rows; both return the fixed capacity error through the production Worker in under 10 seconds, terminate that Worker, and preserve the prior 500-row report. A 5 MiB plus one-byte file is rejected before a Worker starts. Every generated CSV is deleted with the isolated browser profile and is not shipped or committed as a large fixture.
+- A dedicated selective-materialization regression adds two more exact-5-MiB/100,000-row statements with 20,000 valid, alias-and-description-unique option FII rows that are never referenced, placing that noise both before and after the consumed FII block. Both orders preserve the same core symbol, event, P&L, and source references. Separate cases scan and cross-check 10,000 distinct FII/Trades mapping candidates while retaining one final symbol, and deduplicate 25,001 identical valid Trades rows into one final event. The 10,000 candidates are not claimed as 10,000 final demanded mappings. A Node 22 same-machine process measurement reduced the ordinary exact-capacity fixture's observed `maxRSS` increase from roughly 48 MiB before this change to roughly 10 MiB now. That comparison is a diagnostic proxy, not an automated threshold, browser-Worker measurement, real-iPhone peak-memory result, or release claim.
 - Strict current-year YTD validation that rejects nonexistent dates, reversed periods, future period ends, and non-current seasons.
 - Consistent three-letter base-currency validation with a crash-safe display fallback.
 - Heterogeneous IBKR CSV parser with section-scoped repeated headers and explicit source-selection rules.
@@ -81,7 +83,7 @@ npm run dev -- --host 127.0.0.1
 npm run check
 ```
 
-This runs TypeScript checking, the parser smoke suite, the strict Worker protocol suite, the accessibility structure/keyboard contract suite, the frozen browser-compatibility contract, the product-policy/privacy suite, the macOS launcher static role/syntax contract, and a real local Chrome import/PNG regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install, vulnerability audit, and a final production build. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
+This runs TypeScript checking, the parser smoke and selective-materialization suites, the strict Worker protocol suite, the accessibility structure/keyboard contract suite, the frozen browser-compatibility contract, the product-policy/privacy suite, the macOS launcher static role/syntax contract, and a real local Chrome import/PNG regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install, vulnerability audit, and a final production build. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
 
 ```text
 Season P&L:  $20,040
@@ -138,7 +140,7 @@ src/
   components/       reusable UI, including the Privacy & Data dialog
   data/             synthetic demo report
   lib/
-    csv.ts          RFC-style CSV reader and primitive parsing
+    csv.ts          row-by-row RFC-style CSV tokenizer and primitive parsing
     ibkr.ts         IBKR section parser and season aggregation
     parserDiagnostics.ts fixed diagnostic schema and three-locale presentation
     parseInWorker.ts  worker lifecycle, cancellation and timeout boundary
@@ -168,13 +170,16 @@ tests/
     README.md       fixture privacy statement, schema coverage, and expected equations
 scripts/
   smoke-parser.mjs
+  measure-parser-memory.mjs diagnostic same-machine parser-memory proxy
   synthetic-capacity-statement.mjs runtime-only fictional boundary generator
+  test-parser-materialization.mjs deterministic selective-materialization pressure regression
   test-browser-import.mjs
   test-mac-launchers.mjs
   test-product-policy.mjs
   test-worker-boundary.mjs
 docs/
   CAPACITY_BROWSER_EVIDENCE_2026-08-31.md  production-Chrome exact-capacity and cancellation evidence
+  PARSER_MATERIALIZATION_EVIDENCE_2026-08-31.md  row-tokenizer, selective-materialization, and memory-proxy evidence
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
   OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required
   PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md  A + C private-host comparison, proposed gates and stop conditions
@@ -182,14 +187,14 @@ docs/
 
 ## Known MVP limitations
 
-- The checkpoint 0.12 codebase retains the read-only calibration against one private English single-account 2026 YTD Activity Statement; all three reconciliation checks passed exactly and its source hash remained unchanged. The private source remains outside the repository; the committed current-schema fixture, mixed-YTD cases, and runtime capacity input are fully synthetic, not transformed or anonymized private data.
+- The checkpoint 0.13 codebase retains the read-only calibration against one private English single-account 2026 YTD Activity Statement; all three reconciliation checks passed exactly and its source hash remained unchanged. The private source remains outside the repository; the committed current-schema fixture, mixed-YTD cases, and runtime capacity inputs are fully synthetic, not transformed or anonymized private data.
 - The matching PDF has been manually cross-reconciled, but the Web App does not yet automate PDF checks.
 - Other IBKR report variants, locales, account structures and future template changes still require fixtures and aliases.
 - Custom wide Flex NAV queries that omit any registered asset field, or contain a non-empty `Model`, deliberately fail closed; checkpoint 0.9 supports only the full-account, full-field wide NAV contract.
 - A file containing both MTM and Month/YTD is accepted only when the two independently valid sections match exactly by all-assets YTD MTM and by every normalized broker-asset-category + underlying bucket. Missing keys, raw category changes, bucket swaps, Model slices, account mismatch, structural drift, or even a one-micro-unit cross-source difference fail closed. This compatibility gate is arithmetic consistency, not proof that the statement is genuine.
 - The Worker boundary prevents parser work from blocking the UI thread, enforces a total timeout, and validates its serialized protocol. A fully fictional file at the exact byte/row/symbol/event caps passed the automated macOS production-Chrome responsiveness gate, but boundary performance still needs confirmation on the supported iPhone/Safari 16.4+ baseline. Protected-host testing remains deferred with all deployment work.
 - The parser now rejects the 1,001st deduplicated final event before constructing or appending it, rejects the 501st retained normalized symbol before portfolio aggregation and `PortfolioReport` construction, and prechecks source-reference collection/occurrence limits before building the report. It then checks the assembled result's actual aggregate item/string footprint before returning it. The Worker repeats the complete serialized-output validation as defense in depth.
-- This is not streaming input validation. An allowed file is still fully materialized by `Blob.text()`, `parseCsvRows()`, and `buildSectionStore()` before the later report-capacity exits, and Financial Instrument Information or other candidate aggregation can still do work first. The 5 MiB, 100,000-row, and 12-second limits remain the outer resource bounds. Peak memory has not been measured; a future optimization may stream CSV input or materialize only sections consumed by the parser.
+- This is not streaming input validation. The Worker still calls `Blob.text()`, so every accepted Blob is fully decoded into one JavaScript string before parsing. The parser no longer constructs a full-file `string[][]` and retains records only for consumed sections, but it scans the text twice because FII uses a separate row-by-row pass. True `Blob.stream()` ingestion, incremental hashing, and a single-pass streaming parser are not implemented. The 5 MiB, 100,000-row, and 12-second limits remain the outer resource bounds. The roughly 10 MiB current-versus-48 MiB previous same-machine `maxRSS` increase is only a Node process proxy; real browser-Worker and iPhone/Safari peak-memory headroom remains unmeasured.
 - The Worker protocol checks the structure and internal consistency of the trusted same-origin parser result. It is not cryptographic proof that an uploaded statement came from IBKR, so local imports remain Self-Reported.
 - A structurally valid report above the current UI capacity caps fails closed with the fixed capacity diagnostic. A future larger-account workflow still needs pagination/virtualization before raising those limits.
 - Desktop keyboard/focus behavior and the principal narrow-screen surfaces have been checked, including at a simulated 320 px width. VoiceOver and real iPhone Safari have not been tested.
@@ -207,5 +212,5 @@ docs/
 
 1. Obtain a qualified exercise-event fixture, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
 2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only.
-3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later for real iPhone Safari/VoiceOver and boundary-capacity checks with developer-certified fictional data only; the new desktop-Chrome capacity pass and simulated widths are not substitutes. A public or Production release remains outside the approved current scope.
+3. Follow `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` later for real iPhone Safari/VoiceOver and boundary-capacity checks with developer-certified fictional data only; the desktop-Chrome capacity pass, selective-materialization Node regressions, memory proxy, and simulated widths are not substitutes. A public or Production release remains outside the approved current scope.
 4. Treat visual refinement and original trophy artwork as a later workstream after calculation, privacy, and supported-device gates are stable.

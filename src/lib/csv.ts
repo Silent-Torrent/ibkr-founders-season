@@ -1,10 +1,14 @@
 import type { ParserDiagnosticCode } from '../types'
 
 const MAX_FIELD_CHARACTERS = 250_000
+export const MAX_CSV_FIELDS_PER_ROW = 4_096
 
 type CsvParseFailureCode = Extract<
   ParserDiagnosticCode,
-  'csv_too_many_rows' | 'csv_field_too_large' | 'csv_unterminated_quote'
+  | 'csv_too_many_rows'
+  | 'csv_too_many_fields'
+  | 'csv_field_too_large'
+  | 'csv_unterminated_quote'
 >
 
 export class CsvParseFailure extends Error {
@@ -17,19 +21,32 @@ export class CsvParseFailure extends Error {
   }
 }
 
-export function parseCsvRows(input: string, maxRows?: number): string[][] {
+export function visitCsvRows(
+  input: string,
+  visitor: (row: string[], rowNumber: number) => void,
+  maxRows?: number,
+): number {
   const text = input.replace(/^\uFEFF/, '')
-  const rows: string[][] = []
   let row: string[] = []
   let field = ''
   let inQuotes = false
+  let rowCount = 0
+
+  const appendField = () => {
+    row.push(field.trim())
+    field = ''
+    if (row.length > MAX_CSV_FIELDS_PER_ROW) {
+      throw new CsvParseFailure('csv_too_many_fields')
+    }
+  }
 
   const appendNonEmptyRow = () => {
     if (!row.some((value) => value !== '')) return
-    rows.push(row)
-    if (maxRows !== undefined && rows.length > maxRows) {
+    rowCount += 1
+    if (maxRows !== undefined && rowCount > maxRows) {
       throw new CsvParseFailure('csv_too_many_rows')
     }
+    visitor(row, rowCount)
   }
 
   for (let index = 0; index < text.length; index += 1) {
@@ -58,13 +75,11 @@ export function parseCsvRows(input: string, maxRows?: number): string[][] {
     if (char === '"') {
       inQuotes = true
     } else if (char === ',') {
-      row.push(field.trim())
-      field = ''
+      appendField()
     } else if (char === '\n') {
-      row.push(field.trim())
+      appendField()
       appendNonEmptyRow()
       row = []
-      field = ''
     } else if (char !== '\r') {
       field += char
       if (field.length > MAX_FIELD_CHARACTERS) {
@@ -78,10 +93,16 @@ export function parseCsvRows(input: string, maxRows?: number): string[][] {
   }
 
   if (field !== '' || row.length > 0) {
-    row.push(field.trim())
+    appendField()
     appendNonEmptyRow()
   }
 
+  return rowCount
+}
+
+export function parseCsvRows(input: string, maxRows?: number): string[][] {
+  const rows: string[][] = []
+  visitCsvRows(input, (row) => rows.push(row), maxRows)
   return rows
 }
 

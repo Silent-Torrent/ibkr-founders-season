@@ -13,6 +13,7 @@ export type ParserDiagnosticCode =
   | 'csv_malformed'
   | 'csv_not_enough_rows'
   | 'csv_too_many_rows'
+  | 'csv_too_many_fields'
   | 'csv_field_too_large'
   | 'csv_unterminated_quote'
   | 'not_activity_statement'

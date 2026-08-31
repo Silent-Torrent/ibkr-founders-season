@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.12
+## Completed through coding checkpoint 0.13
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -37,13 +37,15 @@
 - [x] Dedicated Web Worker for filename-free CSV reading and parsing.
 - [x] Twelve-second total Worker timeout, explicit cancellation and stale-result protection.
 - [x] Incremental CSV row-limit enforcement and Worker report-output caps.
+- [x] Row-by-row production CSV tokenizer that avoids a full-file `string[][]`, preserves quoted/BOM/CRLF/Unicode row semantics, accepts exactly 4,096 fields in one logical row, and returns fixed `csv_too_many_fields` at 4,097.
+- [x] Selective parser materialization: retain records only for consumed sections; scan FII separately so unused alias conflicts still fail globally while mapping/source retention is limited to needed aliases; pressure-test exact-5-MiB/100,000-row inputs with 20,000 alias-and-description-unique unused FII rows in both orders and 10,000 cross-section FII/Trades mapping candidates, plus a separate 25,001-duplicate-Trades case.
 - [x] Worker lifecycle contract tests included in `npm run check`.
 - [x] Versioned Worker request/response protocol with strict runtime, reconciliation-semantics, fixed parser-fact, and deterministic-warning validation; capacity caps are aligned to the current unpaginated UI (500 underlyings, 1,000 events, 256 distinct exact section strings after known-code mapping, 20,000 total references, 501 per rendered reference collection, 25,000 total array items, and 1,000,000 actual string characters).
 - [x] Structured parser/import diagnostics rendered in English, Simplified Chinese, and Traditional Chinese without interpolating unvalidated free-form statement text; dynamic fields are limited to the validated current year and normalized signed MTM difference/currency.
 - [x] Deterministic option-underlying alias candidates: retain agreeing duplicate provenance and reject the whole report on any conflicting Symbol/Description alias, independent of row order.
 - [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, a real downloaded/decoded 1200×1500 PNG with privacy canaries, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
 - [x] Runtime-only fully fictional exact-capacity input: 5,242,880 bytes, 100,000 rows, 500 underlyings, and 1,000 assignment/expiration events; production Chrome verifies complete Worker import/render, bounded main-thread gaps, Ledger search/drawer behavior, visible cancellation with Worker termination, exact-5-MiB/100,000-row 501-symbol/1,001-event fail-closed paths, and 5 MiB plus one-byte preflight rejection.
-- [x] Shared parser/Worker report-capacity constants and parser-side fixed capacity exits: reject the 1,001st deduplicated final event before construction/push, reject the 501st retained normalized symbol before portfolio aggregation/report construction, accept exactly 256 distinct exact section strings at the post-known-code-mapping stage and reject a 257th after row/section materialization but before FII/candidate aggregation or report construction, bound retained invalid/source-reference evidence with explicit canonical-key overflow sentinels and spread-safe failure marking, reject overlong input-derived output fields or an assembled result above the actual shared item/string footprint instead of allowing a later `worker_failure`, directly test exact 501/502 collections, overlong fields, dense parser string-budget crossing, exact 1,000,000/1,000,001 string-character results, compact 20,000/20,001 reference boundaries, and unused bounded internal mappings, and keep final Worker validation as defense in depth.
+- [x] Shared parser/Worker report-capacity constants and parser-side fixed capacity exits: reject the 1,001st deduplicated final event before construction/push, reject the 501st retained normalized symbol before portfolio aggregation/report construction, accept exactly 256 distinct exact section strings at the post-known-code-mapping stage and reject a 257th during the selective first scan before the FII second pass or report construction, bound retained invalid/source-reference evidence with explicit canonical-key overflow sentinels and spread-safe failure marking, reject overlong input-derived output fields or an assembled result above the actual shared item/string footprint instead of allowing a later `worker_failure`, directly test exact 501/502 collections, overlong fields, dense parser string-budget crossing, exact 1,000,000/1,000,001 string-character results, compact 20,000/20,001 reference boundaries, and unused bounded internal mappings, and keep final Worker validation as defense in depth.
 - [x] Three-locale Privacy & Data dialog with the approved local-processing, storage, authenticity, PDF, disclaimer, and clearing boundaries.
 - [x] Accessible privacy-dialog focus behavior: initial focus, Tab/Shift+Tab containment, Escape/backdrop close, background lock, and focus return.
 - [x] Matching modal focus behavior for the symbol drawer, including native source-row summaries.
@@ -79,10 +81,10 @@
 - [x] Add CSP/security-header configuration and confirm the local page has no resulting console errors.
 - [x] Verify with a synthetic import that refresh returns to Demo instead of restoring the report.
 - [ ] Verify the complete deployed browser Network/Storage boundary.
-- [x] Reject unterminated fields, payloads over 10 million characters, fields over 250,000 characters, and files over 100,000 rows in regression tests.
+- [x] Reject unterminated fields, payloads over 10 million characters, fields over 250,000 characters, rows above 4,096 fields, and files over 100,000 rows in regression tests; retain the exact accepted 4,096-field boundary.
 - [x] Add a production-Chrome main-thread responsiveness/time gate for a fully fictional file at the exact byte/row/symbol/event caps.
 - [x] Add parser-stage report-capacity exits for adversarial files at or below the byte/row ceilings, including separate known-code smoke coverage, direct post-mapping 256/257 exact-section boundaries, parser/Worker alignment for actual aggregate item/string budgets, and exact-5-MiB/100,000-row 501-symbol and 1,001-event production-Worker cases that preserve the prior report.
-- [ ] Reduce pre-capacity parser work by streaming CSV input or materializing only consumed sections; `Blob.text()`, `parseCsvRows()`, `buildSectionStore()`, and FII/candidate aggregation still materialize or process allowed input before some capacity exits, and real-device peak-memory headroom remains unmeasured.
+- [ ] **Partially complete:** reduce pre-capacity parser work. Consumed-section materialization and needed-only FII mapping/source retention are implemented, with a same-machine Node `maxRSS` proxy improving from roughly 48 MiB to roughly 10 MiB for the ordinary exact-capacity fixture. The Worker still uses `Blob.text()`, the parser scans the decoded text twice, and true Blob streaming, incremental hashing, browser-Worker/iPhone peak-memory measurement, and a real-device threshold remain open. The proxy is not a hard gate.
 - [ ] Verify real iPhone Safari file import, cancellation, timeout and PNG download using only fictional data.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
 - [ ] Run VoiceOver and real-device accessibility checks on the supported iPhone Safari baseline.
