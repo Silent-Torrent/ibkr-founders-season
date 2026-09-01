@@ -4,8 +4,74 @@ import { getDivision } from './season'
 import { t } from '../i18n'
 import { reportTrustLabelKey } from './reportSource'
 
+export type SeasonCardDelivery =
+  | { kind: 'cancelled' | 'downloaded' | 'shared'; filename: string }
+  | { kind: 'preview'; filename: string; previewUrl: string }
+
 export function getShareSourceLabel(report: PortfolioReport, locale: Locale): string {
   return t(locale, reportTrustLabelKey(report.source))
+}
+
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const separator = dataUrl.indexOf(',')
+  if (separator < 0) throw new Error('Invalid PNG data URL')
+  const header = dataUrl.slice(0, separator)
+  const payload = dataUrl.slice(separator + 1)
+  if (!header.includes(';base64')) throw new Error('PNG data URL is not base64 encoded')
+
+  const binary = atob(payload)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return new File([bytes], filename, { type: 'image/png' })
+}
+
+function triggerBrowserDownload(dataUrl: string, filename: string): void {
+  const link = document.createElement('a')
+  link.download = filename
+  link.href = dataUrl
+  link.click()
+}
+
+function supportsFileShare(file: File): boolean {
+  if (
+    typeof navigator === 'undefined' ||
+    typeof navigator.share !== 'function' ||
+    typeof navigator.canShare !== 'function'
+  ) {
+    return false
+  }
+
+  try {
+    return navigator.canShare({ files: [file] })
+  } catch {
+    return false
+  }
+}
+
+function errorName(error: unknown): string {
+  return typeof error === 'object' && error !== null && 'name' in error
+    ? String((error as { name?: unknown }).name)
+    : ''
+}
+
+function needsExplicitPreviewFallback(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return (
+    /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
+function createLocalPreview(file: File, filename: string): SeasonCardDelivery | null {
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return null
+
+  try {
+    return { filename, kind: 'preview', previewUrl: URL.createObjectURL(file) }
+  } catch {
+    return null
+  }
 }
 
 function roundedRect(
@@ -20,12 +86,15 @@ function roundedRect(
   context.roundRect(x, y, width, height, radius)
 }
 
-export function downloadSeasonCard(report: PortfolioReport, locale: Locale): void {
+export async function downloadSeasonCard(
+  report: PortfolioReport,
+  locale: Locale,
+): Promise<SeasonCardDelivery | null> {
   const canvas = document.createElement('canvas')
   canvas.width = 1200
   canvas.height = 1500
   const context = canvas.getContext('2d')
-  if (!context) return
+  if (!context) return null
 
   const currency = report.baseCurrency
   const divisionKey = getDivision(report.netLiquidationValue, report.baseCurrency)
@@ -113,10 +182,36 @@ export function downloadSeasonCard(report: PortfolioReport, locale: Locale): voi
   context.fillText('P&L ARENA', 1080, 1320)
   context.textAlign = 'left'
 
-  const link = document.createElement('a')
-  link.download = `pnl-arena-${report.seasonYear}-season.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
+  const filename = `pnl-arena-${report.seasonYear}-season.png`
+  const dataUrl = canvas.toDataURL('image/png')
+  let file: File | null = null
+  try {
+    if (typeof File === 'function') file = dataUrlToFile(dataUrl, filename)
+  } catch {
+    file = null
+  }
+
+  const useAppleMobileDelivery = needsExplicitPreviewFallback()
+
+  if (file && useAppleMobileDelivery && supportsFileShare(file)) {
+    try {
+      await navigator.share({ files: [file], title: t(locale, 'shareCard') })
+      return { filename, kind: 'shared' }
+    } catch (error: unknown) {
+      if (errorName(error) === 'AbortError') return { filename, kind: 'cancelled' }
+
+      const preview = createLocalPreview(file, filename)
+      if (preview) return preview
+    }
+  }
+
+  if (file && useAppleMobileDelivery) {
+    const preview = createLocalPreview(file, filename)
+    if (preview) return preview
+  }
+
+  triggerBrowserDownload(dataUrl, filename)
+  return { filename, kind: 'downloaded' }
 }
 
 export function buildSeasonSummary(report: PortfolioReport, locale: Locale): string {

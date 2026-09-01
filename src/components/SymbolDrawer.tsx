@@ -5,6 +5,12 @@ import { t } from '../i18n'
 import { formatCurrency, formatDate, pnlClass } from '../lib/format'
 import { SourceRows } from './SourceRows'
 
+const eventLabelKeys = {
+  assignment: 'assignmentEvent',
+  exercise: 'exerciseEvent',
+  expiration: 'expirationEvent',
+} as const
+
 interface SymbolDrawerProps {
   symbol: SymbolPnl | null
   report: PortfolioReport
@@ -246,7 +252,9 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
               {events.map((event, index) => (
                 <article key={`${event.symbol}-${event.date}-${event.type}-${index}`}>
                   <div className="event-item-main">
-                    <span className={`event-type ${event.type}`}>{event.type}</span>
+                    <span className={`event-type ${event.type}`}>
+                      {t(locale, eventLabelKeys[event.type])}
+                    </span>
                     <div>
                       <strong>{event.contract ?? event.symbol}</strong>
                       <small>{event.date ? formatDate(event.date, locale) : '—'}</small>

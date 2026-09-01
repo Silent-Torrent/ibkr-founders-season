@@ -262,15 +262,21 @@ try {
     roundRect() {},
     stroke() {},
   }
-  const downloadLink = { click() {}, download: '', href: '' }
+  let downloadClickCount = 0
+  const downloadLink = {
+    click() { downloadClickCount += 1 },
+    download: '',
+    href: '',
+  }
   const originalDocument = globalThis.document
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
   globalThis.document = {
     createElement(tagName) {
       if (tagName === 'canvas') {
         return {
           getContext() { return context },
           height: 0,
-          toDataURL() { return 'data:image/png;base64,synthetic' },
+          toDataURL() { return 'data:image/png;base64,AAECAw==' },
           width: 0,
         }
       }
@@ -279,9 +285,72 @@ try {
     },
   }
   try {
-    downloadSeasonCard(canaryReport, 'en')
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {},
+    })
+    const fallbackResult = await downloadSeasonCard(canaryReport, 'en')
+
+    assert.equal(fallbackResult.kind, 'downloaded')
+    assert.equal(downloadClickCount, 1, 'PNG download fallback did not click the download link.')
+    assert.equal(downloadLink.download, 'pnl-arena-2026-season.png')
+    assert.equal(downloadLink.href, 'data:image/png;base64,AAECAw==')
+
+    let canSharePayload
+    let sharePayload
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        canShare(payload) {
+          canSharePayload = payload
+          return true
+        },
+        maxTouchPoints: 5,
+        platform: 'iPhone',
+        share(payload) {
+          sharePayload = payload
+          return Promise.resolve()
+        },
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)',
+      },
+    })
+    const shareResult = await downloadSeasonCard(canaryReport, 'en')
+
+    assert.equal(shareResult.kind, 'shared')
+    assert.equal(canSharePayload.files.length, 1)
+    assert.equal(sharePayload.files.length, 1)
+    assert.equal(sharePayload.files[0], canSharePayload.files[0])
+    assert.equal(sharePayload.files[0].name, 'pnl-arena-2026-season.png')
+    assert.equal(sharePayload.files[0].type, 'image/png')
+    assert.deepEqual(
+      new Uint8Array(await sharePayload.files[0].arrayBuffer()),
+      new Uint8Array([0, 1, 2, 3]),
+      'File sharing received corrupted PNG bytes.',
+    )
+    assert.equal(downloadClickCount, 1, 'File sharing unexpectedly also triggered a browser download.')
+
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        maxTouchPoints: 5,
+        platform: 'iPhone',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)',
+      },
+    })
+    const iosResult = await downloadSeasonCard(canaryReport, 'en')
+
+    assert.equal(iosResult.kind, 'preview')
+    assert.equal(iosResult.filename, 'pnl-arena-2026-season.png')
+    assert.ok(iosResult.previewUrl.startsWith('blob:'), 'iOS fallback did not create a local Blob preview.')
+    assert.equal(downloadClickCount, 1, 'iOS preview fallback unexpectedly triggered a hidden download.')
+    URL.revokeObjectURL(iosResult.previewUrl)
   } finally {
     globalThis.document = originalDocument
+    if (originalNavigator) {
+      Object.defineProperty(globalThis, 'navigator', originalNavigator)
+    } else {
+      delete globalThis.navigator
+    }
   }
   const pngText = drawnText.join('\n')
   for (const forbidden of ['DO_NOT_SHARE', 'SECRET_ACCOUNT', 'SECRET_COMPARISON_KEY', '987654321']) {

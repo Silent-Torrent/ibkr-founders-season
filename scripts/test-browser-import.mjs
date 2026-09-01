@@ -974,6 +974,182 @@ try {
     )
   }
 
+  const previewClearLifecycle = await evaluate(`(async () => {
+    const navigatorKeys = ['canShare', 'maxTouchPoints', 'platform', 'share', 'userAgent'];
+    const navigatorDescriptors = Object.fromEntries(
+      navigatorKeys.map((key) => [key, Object.getOwnPropertyDescriptor(navigator, key)]),
+    );
+    const nativeConfirm = window.confirm;
+    const nativeCreateObjectURL = URL.createObjectURL;
+    const nativeRevokeObjectURL = URL.revokeObjectURL;
+    const createdUrls = [];
+    const revokedUrls = [];
+    const waitUntil = async (predicate, label) => {
+      const deadline = performance.now() + 5_000;
+      while (performance.now() < deadline) {
+        if (predicate()) return;
+        await new Promise((resolveWait) => setTimeout(resolveWait, 25));
+      }
+      throw new Error(label + ' timed out.');
+    };
+
+    try {
+      Object.defineProperties(navigator, {
+        canShare: { configurable: true, value: undefined },
+        maxTouchPoints: { configurable: true, value: 5 },
+        platform: { configurable: true, value: 'iPhone' },
+        share: { configurable: true, value: undefined },
+        userAgent: {
+          configurable: true,
+          value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)',
+        },
+      });
+      URL.createObjectURL = function (value) {
+        const url = Reflect.apply(nativeCreateObjectURL, URL, [value]);
+        createdUrls.push(url);
+        return url;
+      };
+      URL.revokeObjectURL = function (url) {
+        revokedUrls.push(url);
+        return Reflect.apply(nativeRevokeObjectURL, URL, [url]);
+      };
+
+      const downloadButton = [...document.querySelectorAll('button')]
+        .find((candidate) => candidate.textContent?.trim() === 'Download PNG');
+      if (!downloadButton) throw new Error('Download PNG button not found.');
+      downloadButton.click();
+      await waitUntil(
+        () => {
+          const panel = document.querySelector('.png-fallback-panel');
+          return Boolean(panel?.querySelector('img') && document.activeElement === panel);
+        },
+        'iOS local PNG preview',
+      );
+      const initialPanel = document.querySelector('.png-fallback-panel');
+      const initialPreviewAccessible =
+        initialPanel?.getAttribute('role') === 'region' &&
+        initialPanel?.tabIndex === -1 &&
+        document.activeElement === initialPanel &&
+        Boolean(initialPanel?.querySelector('button')) &&
+        Boolean(initialPanel?.querySelector('a[target="_blank"]'));
+      const closePreviewUrl = document.querySelector('.png-fallback-panel img')?.src ?? '';
+      const closeButton = initialPanel?.querySelector('button');
+      if (!closeButton) throw new Error('Local PNG preview close button not found.');
+      closeButton.click();
+      await waitUntil(
+        () =>
+          !document.querySelector('.png-fallback-panel') &&
+          revokedUrls.includes(closePreviewUrl) &&
+          document.activeElement === downloadButton,
+        'closed iOS local PNG preview',
+      );
+      const closeFocusReturned = document.activeElement === downloadButton;
+
+      downloadButton.click();
+      await waitUntil(
+        () => {
+          const panel = document.querySelector('.png-fallback-panel');
+          return Boolean(panel?.querySelector('img') && document.activeElement === panel);
+        },
+        'language-switch PNG preview',
+      );
+      const localePreviewUrl = document.querySelector('.png-fallback-panel img')?.src ?? '';
+
+      const languageSelect = document.querySelector('select.language-select');
+      if (!languageSelect) throw new Error('Language selector not found.');
+      languageSelect.value = 'zh-CN';
+      languageSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitUntil(
+        () =>
+          !document.querySelector('.png-fallback-panel') &&
+          revokedUrls.includes(localePreviewUrl),
+        'language-switched iOS local PNG preview',
+      );
+      languageSelect.value = 'en';
+      languageSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      await waitUntil(
+        () => [...document.querySelectorAll('button')]
+          .some((candidate) => candidate.textContent?.trim() === 'Download PNG'),
+        'restored English language',
+      );
+
+      const secondDownloadButton = [...document.querySelectorAll('button')]
+        .find((candidate) => candidate.textContent?.trim() === 'Download PNG');
+      if (!secondDownloadButton) throw new Error('Restored Download PNG button not found.');
+      secondDownloadButton.click();
+      await waitUntil(
+        () => Boolean(document.querySelector('.png-fallback-panel img')),
+        'second iOS local PNG preview',
+      );
+      const clearPreviewUrl = document.querySelector('.png-fallback-panel img')?.src ?? '';
+
+      window.confirm = () => true;
+      const clearButton = document.querySelector('button.text-button.danger');
+      if (!clearButton) throw new Error('Clear current statement button not found.');
+      clearButton.click();
+      await waitUntil(
+        () =>
+          Boolean(document.querySelector('.source-pill.demo')) &&
+          !document.querySelector('.png-fallback-panel') &&
+          revokedUrls.includes(clearPreviewUrl),
+        'cleared iOS local PNG preview',
+      );
+
+      return {
+        createdCount: createdUrls.length,
+        closeFocusReturned,
+        closePreviewUrl,
+        closeRevoked: revokedUrls.includes(closePreviewUrl),
+        clearPreviewUrl,
+        clearRevoked: revokedUrls.includes(clearPreviewUrl),
+        initialPreviewAccessible,
+        localePreviewUrl,
+        localeRevoked: revokedUrls.includes(localePreviewUrl),
+        previewRemoved: !document.querySelector('.png-fallback-panel'),
+        reportReset: Boolean(document.querySelector('.source-pill.demo')),
+      };
+    } finally {
+      window.confirm = nativeConfirm;
+      URL.createObjectURL = nativeCreateObjectURL;
+      URL.revokeObjectURL = nativeRevokeObjectURL;
+      for (const url of createdUrls) {
+        if (!revokedUrls.includes(url)) Reflect.apply(nativeRevokeObjectURL, URL, [url]);
+      }
+      for (const key of navigatorKeys) {
+        const descriptor = navigatorDescriptors[key];
+        if (descriptor) Object.defineProperty(navigator, key, descriptor);
+        else delete navigator[key];
+      }
+    }
+  })()`)
+  assert.equal(previewClearLifecycle.createdCount, 3, 'iOS fallback created an unexpected number of Blob URLs.')
+  assert.equal(previewClearLifecycle.initialPreviewAccessible, true, 'iOS preview did not receive an operable focused region.')
+  assert.ok(previewClearLifecycle.closePreviewUrl.startsWith('blob:'), 'The close-path iOS fallback did not expose a Blob preview URL.')
+  assert.equal(previewClearLifecycle.closeRevoked, true, 'Closing the PNG preview did not release its Blob URL.')
+  assert.equal(previewClearLifecycle.closeFocusReturned, true, 'Closing the PNG preview did not restore Download PNG focus.')
+  assert.ok(previewClearLifecycle.localePreviewUrl.startsWith('blob:'), 'iOS fallback did not expose a Blob preview URL.')
+  assert.equal(previewClearLifecycle.localeRevoked, true, 'Changing language did not release the old PNG Blob URL.')
+  assert.ok(previewClearLifecycle.clearPreviewUrl.startsWith('blob:'), 'The second iOS fallback did not expose a Blob preview URL.')
+  assert.equal(previewClearLifecycle.previewRemoved, true, 'Clearing the report left the old PNG visible.')
+  assert.equal(previewClearLifecycle.reportReset, true, 'Clearing the report did not restore Demo data.')
+  assert.equal(previewClearLifecycle.clearRevoked, true, 'Clearing the report did not release the old PNG Blob URL.')
+
+  await clickPrimaryNavigation('Import')
+  const reimportNodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [fixturePath],
+    nodeId: reimportNodeId,
+  })
+  await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.source === 'Fully synthetic test',
+    'Synthetic re-import after PNG lifecycle check',
+    20_000,
+  )
+
   await clickPrimaryNavigation('Arena')
   const arenaState = await waitForPageValue(
     `(() => ({
@@ -1228,6 +1404,14 @@ try {
   const capacityProbe = capacityLedgerState.probe
   const capacityDurationMs = capacityProbe.ledgerAt - capacityProbe.started
   const maxLongTaskMs = Math.max(0, ...capacityProbe.longTasks)
+  console.log('Exact-capacity responsiveness:', {
+    durationMs: Number(capacityDurationMs.toFixed(1)),
+    maxLongTaskMs: Number(maxLongTaskMs.toFixed(1)),
+    maxRafGapMs: Number(capacityProbe.maxRafGap.toFixed(1)),
+    maxTimerGapMs: Number(capacityProbe.maxTimerGap.toFixed(1)),
+    rafTicks: capacityProbe.rafTicks,
+    timerTicks: capacityProbe.timerTicks,
+  })
   assert.equal(capacityLedgerState.source, 'Self-reported')
   assert.equal(capacityLedgerState.quality, 'Review internal checks')
   assert.notEqual(capacityProbe.busyAt, null, 'The capacity import never exposed its busy state.')

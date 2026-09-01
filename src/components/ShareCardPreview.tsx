@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
-import { buildSeasonSummary, downloadSeasonCard, getShareSourceLabel } from '../lib/shareCard'
+import {
+  buildSeasonSummary,
+  downloadSeasonCard,
+  getShareSourceLabel,
+  type SeasonCardDelivery,
+} from '../lib/shareCard'
 import { getDivision } from '../lib/season'
 
 interface ShareCardPreviewProps {
@@ -10,15 +15,77 @@ interface ShareCardPreviewProps {
   locale: Locale
 }
 
+type PngPreviewState = Extract<SeasonCardDelivery, { kind: 'preview' }> & {
+  locale: Locale
+  report: PortfolioReport
+}
+
 export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
   const copyResetTimerRef = useRef<number | null>(null)
+  const downloadButtonRef = useRef<HTMLButtonElement>(null)
+  const pngPreviewPanelRef = useRef<HTMLDivElement>(null)
+  const pngPreviewUrlRef = useRef<string | null>(null)
+  const mountedRef = useRef(true)
+  const activeRequestRef = useRef({ locale, report })
+  activeRequestRef.current = { locale, report }
   const sourceLabel = getShareSourceLabel(report, locale)
   const division = getDivision(report.netLiquidationValue, report.baseCurrency)
+  const visiblePngPreview = pngPreview?.report === report && pngPreview.locale === locale
+    ? pngPreview
+    : null
 
-  useEffect(() => () => {
-    if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
-  }, [])
+  useEffect(
+    () => {
+      mountedRef.current = true
+      return () => {
+        mountedRef.current = false
+        if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
+        if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    closePngPreview()
+  }, [locale, report])
+
+  useEffect(() => {
+    if (visiblePngPreview) pngPreviewPanelRef.current?.focus()
+  }, [visiblePngPreview])
+
+  function closePngPreview(restoreFocus = false) {
+    if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
+    pngPreviewUrlRef.current = null
+    if (restoreFocus) downloadButtonRef.current?.focus()
+    setPngPreview(null)
+  }
+
+  async function handleDownloadCard() {
+    const requestedLocale = locale
+    const requestedReport = report
+    const result = await downloadSeasonCard(report, locale)
+
+    if (
+      !mountedRef.current ||
+      activeRequestRef.current.report !== requestedReport ||
+      activeRequestRef.current.locale !== requestedLocale
+    ) {
+      if (result?.kind === 'preview') URL.revokeObjectURL(result.previewUrl)
+      return
+    }
+
+    if (!result || result.kind !== 'preview') {
+      closePngPreview()
+      return
+    }
+
+    if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
+    pngPreviewUrlRef.current = result.previewUrl
+    setPngPreview({ ...result, locale: requestedLocale, report: requestedReport })
+  }
 
   async function copySummary() {
     let nextStatus: 'copied' | 'failed'
@@ -52,7 +119,12 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
                 ? t(locale, 'copyFailed')
                 : t(locale, 'copySummary')}
           </button>
-          <button className="primary-button" onClick={() => downloadSeasonCard(report, locale)} type="button">
+          <button
+            className="primary-button"
+            onClick={handleDownloadCard}
+            ref={downloadButtonRef}
+            type="button"
+          >
             {t(locale, 'downloadCard')}
           </button>
         </div>
@@ -64,6 +136,42 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
               : ''}
         </span>
       </div>
+
+      {visiblePngPreview ? (
+        <div
+          aria-label={t(locale, 'pngPreviewTitle')}
+          className="png-fallback-panel"
+          ref={pngPreviewPanelRef}
+          role="region"
+          tabIndex={-1}
+        >
+          <div className="png-fallback-heading">
+            <div>
+              <span className="eyebrow">PNG · LOCAL</span>
+              <strong>{t(locale, 'pngPreviewTitle')}</strong>
+            </div>
+            <button
+              className="secondary-button"
+              onClick={() => closePngPreview(true)}
+              type="button"
+            >
+              {t(locale, 'close')}
+            </button>
+          </div>
+          <img alt={t(locale, 'pngPreviewTitle')} src={visiblePngPreview.previewUrl} />
+          <p>{t(locale, 'pngPreviewHint')}</p>
+          <p className="png-filename-hint">
+            {t(locale, 'pngFilenameHint')} <code>{visiblePngPreview.filename}</code>
+          </p>
+          <a
+            className="primary-button png-open-link"
+            href={visiblePngPreview.previewUrl}
+            target="_blank"
+          >
+            {t(locale, 'openPngInSafari')}
+          </a>
+        </div>
+      ) : null}
 
       <div className="share-card-preview">
         <div className="share-card-top">
