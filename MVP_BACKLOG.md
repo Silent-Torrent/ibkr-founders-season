@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through checkpoint 0.14 plus the 2026-09-01 iPhone Safari fix and 2026-09-02 fictional device pack
+## Completed through checkpoint 0.15 — 2026-09-02 iPhone 17 Pro Max / iOS 27.0 fictional-device evidence
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -50,6 +50,7 @@
 - [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, a real downloaded/decoded 1200×1500 PNG with privacy canaries, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
 - [x] Runtime-only fully fictional exact-capacity input: 5,242,880 bytes, 100,000 rows, 500 underlyings, and 1,000 assignment/expiration events; production Chrome verifies complete Worker import/render, bounded main-thread gaps, Ledger search/drawer behavior, visible cancellation with Worker termination, exact-5-MiB/100,000-row 501-symbol/1,001-event fail-closed paths, and 5 MiB plus one-byte preflight rejection.
 - [x] Repository-external, fully fictional iPhone stress pack with five fixed-hash CSVs, a manifest, SHA-256 list, beginner-safe instructions and a device result template that starts entirely at `NOT_RUN`.
+- [x] Checkpoint 0.15 real-device observation on iPhone 17 Pro Max / iOS 27.0 system Safari using only the repository-external fictional pack; preserve the result separately from the immutable `NOT_RUN` template and do not treat iOS 27.0 as evidence for the iOS/Safari 16.4 floor.
 - [x] Independent stress-pack verification for output-path safety, no overwrite, exact bytes/rows/hashes, supported parser outcomes, support-file integrity, tamper rejection and automatic test cleanup; keep the product trust allowlist unchanged.
 - [x] Shared parser/Worker report-capacity constants and parser-side fixed capacity exits: reject the 1,001st deduplicated final event before construction/push, reject the 501st retained normalized symbol before portfolio aggregation/report construction, accept exactly 256 distinct exact section strings at the post-known-code-mapping stage and reject a 257th during the selective first scan before the FII second pass or report construction, bound retained invalid/source-reference evidence with explicit canonical-key overflow sentinels and spread-safe failure marking, reject overlong input-derived output fields or an assembled result above the actual shared item/string footprint instead of allowing a later `worker_failure`, directly test exact 501/502 collections, overlong fields, dense parser string-budget crossing, exact 1,000,000/1,000,001 string-character results, compact 20,000/20,001 reference boundaries, and unused bounded internal mappings, and keep final Worker validation as defense in depth.
 - [x] Three-locale Privacy & Data dialog with the approved local-processing, storage, authenticity, PDF, disclaimer, and clearing boundaries.
@@ -93,12 +94,21 @@
 - [x] Remove application-owned whole-file decoding and hashing buffers from the production Worker. The parser now reopens the Blob for two bounded-chunk passes, retains only selective section/FII state, and preserves all tested accounting/diagnostic results. This is intentionally not a single-pass parser.
 - [ ] Measure browser-Worker peak allocation and establish a supported real-iPhone/Safari memory threshold. Node process proxies and desktop Chrome are directional evidence only; they are not a hard release gate.
 - [x] Verify on iPhone 17 Pro Max / iOS 27.0 Safari: production-page loading, the system file picker, fully fictional small-file Worker import, refresh clearing, and synthetic no-rank/no-trophy behavior.
-- [x] Verify an imported-report PNG preview and a Demo-card local-HTTP Safari share/save/reopen round trip to “On My iPhone”; record the Safari-generated filename limitation.
-- [ ] Verify an imported-report PNG save/reopen round trip, HTTPS native file sharing, and preservation of `pnl-arena-2026-season.png`.
-- [ ] Verify real-iPhone cancellation, the 12-second timeout, Worker recovery, and exact-capacity behavior using developer-generated fictional boundary files with recorded SHA-256 values.
+- [ ] Verify the actual supported floor on iOS 16.4 / Safari 16.4; the iOS 27.0 observation and production-target configuration do not establish this compatibility gate.
+- [x] Verify an imported-report local-HTTP PNG preview and save/reopen round trip through Photos to Files on “On My iPhone”; system Info reported PNG, approximately 2 MB, 1200×1500 and alpha. The resulting name was `pnl-arena-2026-season.png.PNG`, so exact requested-filename preservation did not pass.
+- [ ] Verify HTTPS native file sharing and exact preservation of `pnl-arena-2026-season.png` after deployment is explicitly reopened.
+- [x] Verify visible real-iPhone cancellation after approximately 3.5 seconds and no late report during approximately 27 seconds of further observation. This does not claim Web Inspector evidence of Worker termination.
+- [x] Verify the real-iPhone natural 12-second timeout message and no late result during more than 12.25 seconds of further observation.
+- [x] Verify real-iPhone acceptance at the exact 5 MiB / 100,000-row / 500-underlying / 1,000-event caps; the report rendered within approximately 9.6 seconds and the final underlying and lifecycle drawer remained usable.
+- [x] Verify real-iPhone fail-closed rejection at 501 underlyings and at 1,001 events; each preserved the prior accepted 500-underlying report.
+- [ ] Directly verify Worker recovery with a successful fresh import after cancellation and after natural timeout; visible cancellation/timeout and absence of late results do not by themselves prove Worker termination or recovery.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
-- [ ] Run VoiceOver and real-device accessibility checks on the supported iPhone Safari baseline.
-- [ ] Verify real-device rotation, three-locale privacy-dialog scrolling/closing, symbol-drawer/source-card interaction, and close-tab/reopen clearing.
+- [x] Verify that an import can be visibly cancelled with VoiceOver enabled and remains idle without a late report; VoiceOver was turned off and visually rechecked after the test.
+- [ ] Complete VoiceOver speech/focus-order and real-device accessibility checks on the supported iPhone Safari baseline; the test tooling could not capture spoken announcements.
+- [ ] Verify real-device rotation on the supported iPhone Safari baseline.
+- [x] Verify three-locale privacy-dialog opening, scrolling and closing by the bottom acknowledgement button, top close button and backdrop on iPhone 17 Pro Max / iOS 27.0 system Safari.
+- [x] Verify exact-capacity Ledger search and lifecycle-drawer interaction on iPhone 17 Pro Max / iOS 27.0 system Safari.
+- [x] Verify close-tab/reopen clearing: the closed imported report did not persist and the newly opened tab returned to Demo data.
 - [x] Add a three-locale privacy notice and disclaimer modal.
 - [x] Initialize local Git history with the approved GitHub `noreply` identity.
 - [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
@@ -109,7 +119,7 @@
 - [x] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
 - [x] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
 - [x] Add an automated local-browser import regression for the synthetic fixture.
-- [x] Add an automated desktop-Chrome PNG download regression that verifies filename, file count, PNG structure, dimensions, decoding and privacy canaries; keep the remaining imported-report save/reopen, HTTPS native-share, and specified-filename real-iPhone gates open.
+- [x] Add an automated desktop-Chrome PNG download regression that verifies filename, file count, PNG structure, dimensions, decoding and privacy canaries; keep the remaining HTTPS native-share and exact specified-filename real-iPhone gates open.
 - [x] Localize remaining parser rejection messages in all three interface languages.
 
 ## P1 — after first testers
