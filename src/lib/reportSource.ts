@@ -18,5 +18,5 @@ export function reportSourceStatusKey(source: ReportSource): MessageKey {
 export function reportTrustLabelKey(source: ReportSource): MessageKey {
   if (source === 'demo') return 'syntheticDemo'
   if (source === 'synthetic') return 'syntheticTest'
-  return 'selfReported'
+  return 'selfReportedUnverified'
 }

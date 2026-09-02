@@ -1,10 +1,20 @@
 # MVP backlog
 
-## Completed through checkpoint 0.15 — 2026-09-02 iPhone 17 Pro Max / iOS 27.0 fictional-device evidence
+## Completed through checkpoint 0.16 — first-user experience and recovery
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
 - [x] Three-locale UI framework.
+- [x] One-time first-use choice screen with fully fictional Demo and supported-statement paths; save the seen-guide preference only after an explicit choice and keep the guide reopenable without replacing the current report.
+- [x] Limit persistent browser state to two non-financial preferences: interface language and whether the introductory guide was seen; continue keeping the complete report and raw CSV out of persistent browser storage.
+- [x] Show all five IBKR export requirements before file selection: Activity Statement, Year to Date, CSV, English, and one account.
+- [x] Add a plain-language summary and a uniquely named expandable explanation for Season P&L, Season return/TWR, net liquidation value, and Options P&L.
+- [x] Present Data source and Internal calculation check as independent statuses, and label ordinary user data `Self-reported · not broker-verified` in the Ledger, Arena and every default share output.
+- [x] Map all 42 fixed parser/import diagnostics to localized, bounded recovery actions; explain that a failed or cancelled import preserves the current-tab report.
+- [x] Replace duplicate, same-date and older-file blocking alerts with dismissible in-page notices, and carry successful-import feedback onto the Ledger.
+- [x] Require explicit English, Simplified Chinese, and Traditional Chinese keys with matching placeholders; render the first-user surfaces in every locale and reject functional hard-coded English regressions.
+- [x] Preserve natural keyboard order on a fresh document; reset scroll and restore main-region focus across in-app guide/application transitions and after notice dismissal; give each metric disclosure a unique accessible name; announce cancellation through one polite live region rather than two.
+- [x] Expand the no-upload/no-persistence gate across the full functional source tree and real Chrome: only the two preference keys may use localStorage; alternate browser stores, service workers, WebSockets, external/non-GET requests, query payloads and unlisted same-origin paths must remain absent.
 - [x] Demo mode.
 - [x] CSV drag-and-drop and file picker.
 - [x] Local-only parser.
@@ -61,7 +71,7 @@
 - [x] Desktop browser keyboard/focus check and simulated 320 px checks for bottom navigation, Ledger table/share card, Arena scrolling, privacy dialog, and symbol drawer.
 - [x] Beginner-safe real-iPhone Safari checklist that uses only the fully fictional CSV fixture.
 - [x] Explicit production build target for iOS/Safari 16.4+, Safari-prefixed visual effects, and an automated compatibility contract check.
-- [x] Separate Synthetic Demo, SHA-256-matched Fully Synthetic Test, Self-Reported, and Internal Checks Passed labels; remove fake local ranking and prevent synthetic data from unlocking local achievements.
+- [x] Separate Synthetic Demo, SHA-256-matched Fully Synthetic Test, Self-reported · not broker-verified, and Internal Checks Passed labels; remove fake local ranking and prevent synthetic data from unlocking local achievements.
 - [x] Show imported user results as a local, unranked snapshot; do not infer a capital division when NAV is unavailable or the base currency is not USD.
 - [x] Restrict fixed monetary achievement thresholds to USD until an exchange-rate policy exists.
 - [x] Treat unavailable or warning reconciliation checks as Review, not Internal Checks Passed.

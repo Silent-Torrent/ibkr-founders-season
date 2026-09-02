@@ -5,12 +5,14 @@ import { isImportedSource, reportSourceStatusKey } from '../lib/reportSource'
 
 interface AppShellProps {
   children: ReactNode
+  focusOnMount: boolean
   locale: Locale
   onLocaleChange: (locale: Locale) => void
   page: PageId
   onPageChange: (page: PageId) => void
   report: PortfolioReport
   onClearLocal: () => void
+  onOpenGuide: () => void
   onOpenPrivacy: () => void
 }
 
@@ -23,17 +25,25 @@ const navItems: Array<{ id: PageId; label: 'navLedger' | 'navArena' | 'navTrophi
 
 export function AppShell({
   children,
+  focusOnMount,
   locale,
   onLocaleChange,
   page,
   onPageChange,
   report,
   onClearLocal,
+  onOpenGuide,
   onOpenPrivacy,
 }: AppShellProps) {
   const mainRef = useRef<HTMLElement>(null)
   const previousPageRef = useRef(page)
   const previousReportSourceRef = useRef(report.source)
+
+  useEffect(() => {
+    if (!focusOnMount) return
+    window.scrollTo({ left: 0, top: 0 })
+    mainRef.current?.focus({ preventScroll: true })
+  }, [focusOnMount])
 
   useEffect(() => {
     const pageChanged = previousPageRef.current !== page
@@ -43,7 +53,10 @@ export function AppShell({
     previousPageRef.current = page
     previousReportSourceRef.current = report.source
 
-    if (pageChanged || reportWasCleared) mainRef.current?.focus()
+    if (pageChanged || reportWasCleared) {
+      window.scrollTo({ left: 0, top: 0 })
+      mainRef.current?.focus({ preventScroll: true })
+    }
   }, [page, report.source])
 
   return (
@@ -72,6 +85,7 @@ export function AppShell({
             <button
               className={page === item.id ? 'nav-item active' : 'nav-item'}
               aria-current={page === item.id ? 'page' : undefined}
+              data-page={item.id}
               key={item.id}
               onClick={() => onPageChange(item.id)}
               type="button"
@@ -86,9 +100,19 @@ export function AppShell({
           <span aria-hidden="true" className="privacy-dot" />
           <strong>{t(locale, 'privateByDesign')}</strong>
           <p>{t(locale, 'privateDetail')}</p>
-          <button className="privacy-card-action" onClick={onOpenPrivacy} type="button">
-            {t(locale, 'privacyNoticeOpen')}
-          </button>
+          <div className="sidebar-help-actions">
+            <button
+              className="privacy-card-action"
+              data-action="open-guide"
+              onClick={onOpenGuide}
+              type="button"
+            >
+              {t(locale, 'guideButton')}
+            </button>
+            <button className="privacy-card-action" onClick={onOpenPrivacy} type="button">
+              {t(locale, 'privacyNoticeOpen')}
+            </button>
+          </div>
         </div>
 
         <div className="sidebar-footer">
@@ -99,7 +123,12 @@ export function AppShell({
             <span aria-hidden="true" className={`quality-dot ${report.dataQuality}`} />
           </div>
           {isImportedSource(report.source) && (
-            <button className="text-button danger" onClick={onClearLocal} type="button">
+            <button
+              className="text-button danger"
+              data-action="clear-report"
+              onClick={onClearLocal}
+              type="button"
+            >
               {t(locale, 'clearLocal')}
             </button>
           )}
@@ -109,7 +138,9 @@ export function AppShell({
       <main className="main-column" id="main-content" ref={mainRef} tabIndex={-1}>
         <header className="topbar">
           <div>
-            <span className="eyebrow">{report.seasonYear} SEASON</span>
+            <span className="eyebrow">
+              {t(locale, 'seasonEyebrow').replace('{year}', String(report.seasonYear))}
+            </span>
             <strong>{report.accountIdMasked}</strong>
           </div>
           <div className="topbar-actions">
@@ -119,6 +150,7 @@ export function AppShell({
             <select
               aria-label={t(locale, 'languageLabel')}
               className="language-select"
+              data-action="change-language"
               onChange={(event) => onLocaleChange(event.target.value as Locale)}
               value={locale}
             >
@@ -132,6 +164,14 @@ export function AppShell({
         <div className="page-content">{children}</div>
         <footer className="site-footer">
           <span>{t(locale, 'footerDisclaimer')}</span>
+          <button
+            className="footer-privacy-button"
+            data-action="open-guide"
+            onClick={onOpenGuide}
+            type="button"
+          >
+            {t(locale, 'guideButton')}
+          </button>
           <button className="footer-privacy-button" onClick={onOpenPrivacy} type="button">
             {t(locale, 'privacyNoticeOpen')}
           </button>
@@ -143,6 +183,7 @@ export function AppShell({
           <button
             className={page === item.id ? 'bottom-nav-item active' : 'bottom-nav-item'}
             aria-current={page === item.id ? 'page' : undefined}
+            data-page={item.id}
             key={item.id}
             onClick={() => onPageChange(item.id)}
             type="button"

@@ -10,11 +10,11 @@ import { t } from '../i18n'
 import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
 import { diagnosticKey, formatParserDiagnostic } from '../lib/parserDiagnostics'
 import { getDivision } from '../lib/season'
-import { reportTrustLabelKey } from '../lib/reportSource'
 import { MetricCard } from '../components/MetricCard'
 import { ShareCardPreview } from '../components/ShareCardPreview'
 import { SymbolDrawer } from '../components/SymbolDrawer'
 import { SourceRows } from '../components/SourceRows'
+import { TrustStatusPanel } from '../components/TrustStatusPanel'
 
 interface LedgerPageProps {
   report: PortfolioReport
@@ -75,13 +75,6 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
       )
   }, [filter, query, report.symbols, sort])
 
-  const qualityLabel =
-    report.dataQuality === 'good'
-      ? t(locale, 'qualityGood')
-      : report.dataQuality === 'warning'
-        ? t(locale, 'qualityWarning')
-        : t(locale, 'qualityError')
-
   return (
     <>
       <section className="hero-row">
@@ -93,42 +86,49 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
             {divisionLabel}
           </p>
         </div>
-        <div className="hero-statuses">
-          <div className={`trust-badge ${report.source}`}>
-            {t(locale, reportTrustLabelKey(report.source))}
-          </div>
-          <div className={`quality-badge ${report.dataQuality}`}>
-            <span />
-            {qualityLabel}
-          </div>
-        </div>
       </section>
+
+      <TrustStatusPanel locale={locale} report={report} />
 
       <section className="metrics-grid">
         <MetricCard
+          explanation={t(locale, 'seasonPnlExplanation')}
+          helpLabel={t(locale, 'learnMore')}
           label={t(locale, 'seasonPnl')}
           value={formatCurrency(report.seasonPnl, report.baseCurrency, locale)}
           hint={`${t(locale, 'dataThrough')} ${formatDate(report.endDate, locale)}`}
+          summary={t(locale, 'seasonPnlSummary')}
           tone={pnlClass(report.seasonPnl) as 'positive' | 'negative' | 'neutral'}
           icon="∑"
         />
         <MetricCard
+          explanation={t(locale, 'seasonReturnExplanation')}
+          helpLabel={t(locale, 'learnMore')}
           label={t(locale, 'seasonReturn')}
           value={formatPercent(report.seasonReturn, locale)}
-          hint={report.seasonReturn == null ? 'IBKR TWR not found' : `${report.seasonYear} YTD`}
+          hint={report.seasonReturn == null
+            ? t(locale, 'seasonReturnMissingHint')
+            : t(locale, 'seasonYtdHint').replace('{year}', String(report.seasonYear))}
+          summary={t(locale, 'seasonReturnSummary')}
           tone={pnlClass(report.seasonReturn) as 'positive' | 'negative' | 'neutral'}
           icon="%"
         />
         <MetricCard
+          explanation={t(locale, 'netLiquidationExplanation')}
+          helpLabel={t(locale, 'learnMore')}
           label={t(locale, 'netLiquidation')}
           value={formatCurrency(report.netLiquidationValue, report.baseCurrency, locale, true)}
           hint={divisionLabel}
+          summary={t(locale, 'netLiquidationSummary')}
           icon="◇"
         />
         <MetricCard
+          explanation={t(locale, 'optionsPnlExplanation')}
+          helpLabel={t(locale, 'learnMore')}
           label={t(locale, 'optionsPnl')}
           value={formatCurrency(report.optionPnl, report.baseCurrency, locale)}
           hint={`${formatPercent(report.seasonPnl === 0 ? undefined : report.optionPnl / report.seasonPnl, locale)} ${t(locale, 'contribution')}`}
+          summary={t(locale, 'optionsPnlSummary')}
           tone={pnlClass(report.optionPnl) as 'positive' | 'negative' | 'neutral'}
           icon="Θ"
         />
@@ -138,7 +138,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
         <div className="panel table-panel">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">UNDERLYING LEDGER</span>
+              <span className="eyebrow">{t(locale, 'underlyingLedgerEyebrow')}</span>
               <h2>{t(locale, 'symbolBreakdown')}</h2>
             </div>
             <span className="count-pill">{report.symbols.length}</span>

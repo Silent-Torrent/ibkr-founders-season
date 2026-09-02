@@ -7,15 +7,24 @@ import {
   formatParserDiagnostic,
 } from '../lib/parserDiagnostics'
 import { MAX_IBKR_WORKER_STATEMENT_BYTES } from '../lib/workerOutputLimits'
+import { importRecoveryKeys } from '../lib/importRecovery'
+import type { SnapshotImportDecision } from '../lib/snapshot'
 
 interface ImportPageProps {
   accountComparisonSalt: string
   locale: Locale
-  onImport: (report: PortfolioReport) => void
+  onImport: (report: PortfolioReport) => SnapshotImportDecision
+  onImportStart: () => void
   onUseDemo: () => void
 }
 
-export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo }: ImportPageProps) {
+export function ImportPage({
+  accountComparisonSalt,
+  locale,
+  onImport,
+  onImportStart,
+  onUseDemo,
+}: ImportPageProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const activeTaskRef = useRef<{
     controller: AbortController
@@ -39,25 +48,22 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
   }, [])
 
   async function processFile(file: File) {
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setErrors([{ code: 'file_not_csv' }])
-      setWarnings([])
-      setImportCancelled(false)
-      return
-    }
-    if (file.size === 0) {
-      setErrors([{ code: 'file_empty' }])
-      setWarnings([])
-      setImportCancelled(false)
-      return
-    }
-    if (file.size > MAX_IBKR_WORKER_STATEMENT_BYTES) {
-      setErrors([{ code: 'file_too_large' }])
+    let preflightError: ParserDiagnostic | null = null
+    if (!file.name.toLowerCase().endsWith('.csv')) preflightError = { code: 'file_not_csv' }
+    else if (file.size === 0) preflightError = { code: 'file_empty' }
+    else if (file.size > MAX_IBKR_WORKER_STATEMENT_BYTES) preflightError = { code: 'file_too_large' }
+
+    if (preflightError) {
+      // An invalid second drop cannot replace or visually contradict work already in progress.
+      if (activeTaskRef.current) return
+      onImportStart()
+      setErrors([preflightError])
       setWarnings([])
       setImportCancelled(false)
       return
     }
 
+    onImportStart()
     activeTaskRef.current?.controller.abort()
     activeTaskRef.current = null
     const taskId = ++taskSequenceRef.current
@@ -105,6 +111,8 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
     }
   }
 
+  const recoveryKeys = importRecoveryKeys(errors)
+
   function cancelImport(announce = true) {
     activeTaskRef.current?.controller.abort()
     activeTaskRef.current = null
@@ -116,7 +124,6 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
   }
 
   function useDemo() {
-    cancelImport(false)
     onUseDemo()
   }
 
@@ -130,7 +137,7 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
   return (
     <section className="import-layout">
       <div className="import-main">
-        <span className="eyebrow" lang="en">LOCAL-FIRST IMPORT</span>
+        <span className="eyebrow">{t(locale, 'localFirstImportEyebrow')}</span>
         <h1>{t(locale, 'importTitle')}</h1>
         <p className="lead-copy">{t(locale, 'importSubtitle')}</p>
 
@@ -144,7 +151,7 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
         >
           <div className="upload-orbit"><span>CSV</span></div>
           <h2>{busy ? t(locale, 'importing') : t(locale, 'dropFile')}</h2>
-          <p lang="en">IBKR Activity Statement · English · YTD</p>
+          <p>{t(locale, 'importFileSpec')}</p>
           <input
             accept=".csv,text/csv"
             hidden
@@ -157,20 +164,46 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
             type="file"
           />
           {busy ? (
-            <button className="secondary-button" onClick={() => cancelImport()} type="button">
+            <button
+              className="secondary-button"
+              data-action="cancel-import"
+              onClick={() => cancelImport()}
+              type="button"
+            >
               {t(locale, 'cancelImport')}
             </button>
           ) : (
-            <button className="primary-button" onClick={() => inputRef.current?.click()} type="button">
+            <button
+              className="primary-button"
+              data-action="choose-file"
+              onClick={() => inputRef.current?.click()}
+              type="button"
+            >
               {t(locale, 'chooseFile')}
             </button>
           )}
+          {busy && <p className="import-processing-detail">{t(locale, 'importProcessingDetail')}</p>}
           <span className="local-only-note"><i /> {t(locale, 'privateDetail')}</span>
         </div>
 
         <span aria-atomic="true" aria-live="polite" className="sr-only import-live-status" role="status">
-          {busy ? t(locale, 'importing') : importCancelled ? t(locale, 'importCancelled') : ''}
+          {busy ? t(locale, 'importing') : ''}
         </span>
+
+        {importCancelled && (
+          <div aria-atomic="true" className="import-cancelled-message" role="status">
+            <strong>{t(locale, 'importCancelled')}</strong>
+            <p>{t(locale, 'importCancelledDetail')}</p>
+            <button
+              className="secondary-button"
+              data-action="choose-file-after-cancel"
+              onClick={() => inputRef.current?.click()}
+              type="button"
+            >
+              {t(locale, 'chooseAnotherFile')}
+            </button>
+          </div>
+        )}
 
         {(errors.length > 0 || warnings.length > 0) && (
           <div className="import-messages">
@@ -195,16 +228,40 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
           </div>
         )}
 
+        {errors.length > 0 && (
+          <section aria-labelledby="import-recovery-title" className="import-recovery-panel">
+            <h2 id="import-recovery-title">{t(locale, 'importRecoveryTitle')}</h2>
+            <ul>
+              {recoveryKeys.map((key) => <li key={key}>{t(locale, key)}</li>)}
+            </ul>
+            <p>{t(locale, 'importFailurePreserved')}</p>
+            <div className="import-recovery-actions">
+              <button
+                className="primary-button"
+                data-action="choose-file-after-error"
+                onClick={() => inputRef.current?.click()}
+                type="button"
+              >
+                {t(locale, 'chooseAnotherFile')}
+              </button>
+              <a className="secondary-button" href="#export-settings">
+                {t(locale, 'viewExportSettings')}
+              </a>
+            </div>
+          </section>
+        )}
+
         <div className="import-actions">
-          <button className="secondary-button" onClick={useDemo} type="button">{t(locale, 'useDemo')}</button>
+          <button className="secondary-button" data-action="use-demo" onClick={useDemo} type="button">{t(locale, 'useDemo')}</button>
           <a className="text-link" download href="/sample-ibkr-ytd.csv">{t(locale, 'downloadSample')} →</a>
         </div>
       </div>
 
       <aside className="import-side">
-        <article className="panel requirements-card">
+        <article className="panel requirements-card" id="export-settings">
           <span className="step-label">01</span>
           <h2>{t(locale, 'importRequirements')}</h2>
+          <p>{t(locale, 'exportGuideIntro')}</p>
           <ul>
             <li><span>✓</span>{t(locale, 'reqType')}</li>
             <li><span>✓</span>{t(locale, 'reqPeriod')}</li>
@@ -215,7 +272,7 @@ export function ImportPage({ accountComparisonSalt, locale, onImport, onUseDemo 
         </article>
         <article className="panel import-rule-card">
           <span className="step-label">02</span>
-          <h2 lang="en">Season snapshot</h2>
+          <h2>{t(locale, 'seasonSnapshotTitle')}</h2>
           <p>{t(locale, 'replaceRule')}</p>
         </article>
         <article className="panel privacy-detail-card">

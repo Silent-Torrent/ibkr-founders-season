@@ -45,5 +45,9 @@ for (const command of [
 ]) {
   assert(verify.includes(command), `Full verification lost required command: ${command}`)
 }
+assert(
+  verify.includes('if [[ -t 0 ]]'),
+  'Full verification must not return failure merely because an automated run has no interactive terminal.',
+)
 
 console.log('macOS launcher roles and shell syntax passed.')

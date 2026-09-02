@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
@@ -10,6 +10,15 @@ const vite = await createServer({
   logLevel: 'silent',
   server: { middlewareMode: true },
 })
+
+function readFunctionalSourceTree(directoryUrl) {
+  return readdirSync(directoryUrl, { withFileTypes: true }).flatMap((entry) => {
+    const childUrl = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directoryUrl)
+    if (entry.isDirectory()) return readFunctionalSourceTree(childUrl)
+    if (!/\.[cm]?[jt]sx?$/.test(entry.name)) return []
+    return [{ name: childUrl.pathname, source: readFileSync(childUrl, 'utf8') }]
+  })
+}
 
 try {
   const [
@@ -26,6 +35,9 @@ try {
     { decideSnapshotImport },
     { sha256Hex },
     { createSessionComparisonSalt },
+    { importRecoveryKey },
+    { PARSER_DIAGNOSTIC_CODES },
+    { t },
   ] = await Promise.all([
     vite.ssrLoadModule('/src/pages/ArenaPage.tsx'),
     vite.ssrLoadModule('/src/pages/LedgerPage.tsx'),
@@ -40,6 +52,9 @@ try {
     vite.ssrLoadModule('/src/lib/snapshot.ts'),
     vite.ssrLoadModule('/src/lib/sha256.ts'),
     vite.ssrLoadModule('/src/lib/sessionIdentity.ts'),
+    vite.ssrLoadModule('/src/lib/importRecovery.ts'),
+    vite.ssrLoadModule('/src/lib/parserDiagnostics.ts'),
+    vite.ssrLoadModule('/src/i18n.ts'),
   ])
 
   const cloneReport = () => JSON.parse(JSON.stringify(demoReport))
@@ -208,8 +223,101 @@ try {
   )
   assert.ok(arenaLocalMarkup.includes('Your local snapshot'), 'A local report lacks its local snapshot panel.')
   assert.ok(arenaLocalMarkup.includes('Not ranked'), 'A local report is not explicitly labelled unranked.')
-  assert.ok(arenaLocalMarkup.includes('Self-reported'), 'A local report lacks its authenticity tier.')
+  assert.ok(
+    arenaLocalMarkup.includes('Self-reported · not broker-verified'),
+    'A local report lacks the explicit non-broker-verified boundary.',
+  )
   assert.ok(!arenaLocalMarkup.includes('#17'), 'A local report received a fictional leaderboard placement.')
+
+  const localLedgerMarkup = renderToStaticMarkup(
+    createElement(LedgerPage, { locale: 'en', report: localReport }),
+  )
+  for (const required of [
+    'Data source',
+    'Internal calculation check',
+    'Self-reported · not broker-verified',
+    'do not prove that a file was issued by IBKR',
+  ]) {
+    assert.ok(localLedgerMarkup.includes(required), `The Ledger trust boundary is missing: ${required}`)
+  }
+  for (const [locale, sourceBoundary, checkBoundary] of [
+    ['en', 'Self-reported · not broker-verified', 'Internal calculation check'],
+    ['zh-CN', '用户自报 · 非券商验证', '内部算术检查'],
+    ['zh-TW', '使用者自報 · 非券商驗證', '內部算術檢查'],
+  ]) {
+    const markup = renderToStaticMarkup(
+      createElement(LedgerPage, { locale, report: localReport }),
+    )
+    assert.ok(markup.includes(sourceBoundary), `${locale} lost the self-reported boundary.`)
+    assert.ok(markup.includes(checkBoundary), `${locale} lost the separate calculation-check label.`)
+  }
+
+  assert.equal(PARSER_DIAGNOSTIC_CODES.length, 42)
+  for (const code of PARSER_DIAGNOSTIC_CODES) {
+    const recoveryKey = importRecoveryKey(code)
+    assert.equal(typeof recoveryKey, 'string', `No recovery category exists for ${code}.`)
+    for (const locale of ['en', 'zh-CN', 'zh-TW']) {
+      assert.ok(t(locale, recoveryKey).trim(), `${locale} recovery copy is empty for ${code}.`)
+    }
+  }
+  for (const [locale, refreshBoundary] of [
+    ['en', 'refresh the page, which clears the current report'],
+    ['zh-CN', '刷新会清除当前报表'],
+    ['zh-TW', '重新整理會清除目前報表'],
+  ]) {
+    assert.ok(
+      t(locale, 'recoveryBrowser').includes(refreshBoundary),
+      `${locale} browser recovery contradicts the refresh-clears-report boundary.`,
+    )
+  }
+  for (const [locale, sharedCopyBoundary] of [
+    ['en', 'shared a PNG to another app'],
+    ['zh-CN', 'PNG 已分享到其他应用'],
+    ['zh-TW', 'PNG 已分享到其他應用'],
+  ]) {
+    assert.ok(
+      t(locale, 'privacyClearBody').includes(sharedCopyBoundary),
+      `${locale} clearing copy omits the separately shared PNG boundary.`,
+    )
+  }
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const functionalSourceFiles = readFunctionalSourceTree(new URL('../src/', import.meta.url))
+  const functionalSource = functionalSourceFiles.map(({ source }) => source).join('\n')
+  const preferenceKeys = [...new Set(functionalSource.match(/pnl-arena\.[a-z.-]+\.v1/g) ?? [])].sort()
+  assert.deepEqual(
+    preferenceKeys,
+    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1'],
+    'App persistence expanded beyond the two approved non-financial preferences.',
+  )
+  for (const [label, pattern] of [
+    ['sessionStorage API', /\b(?:window\s*\.\s*|globalThis\s*\.\s*)?sessionStorage\s*(?:\.|\[)/],
+    ['IndexedDB API', /\b(?:window\s*\.\s*|globalThis\s*\.\s*)?indexedDB\s*(?:\.|\[)/],
+    ['Cache Storage API', /\b(?:window\s*\.\s*|globalThis\s*\.\s*)?caches\s*(?:\.|\[)/],
+    ['cookie persistence', /\bdocument\s*\.\s*cookie\b/],
+    ['origin-private file storage', /\bnavigator\s*\.\s*storage\s*\.\s*getDirectory\s*\(/],
+    ['service worker registration', /\bnavigator\s*\.\s*serviceWorker\s*\.\s*register\s*\(/],
+    ['fetch network API', /\bfetch\s*\(/],
+    ['XMLHttpRequest network API', /\bXMLHttpRequest\b/],
+    ['sendBeacon network API', /\bnavigator\s*\.\s*sendBeacon\s*\(/],
+    ['WebSocket network API', /\bnew\s+WebSocket\s*\(/],
+    ['EventSource network API', /\bnew\s+EventSource\s*\(/],
+  ]) {
+    assert.ok(!pattern.test(functionalSource), `Source tree introduced ${label}.`)
+  }
+  for (const forbidden of ['JSON.stringify(report)', 'JSON.stringify(nextReport)']) {
+    assert.ok(!functionalSource.includes(forbidden), `Source tree introduced forbidden report persistence: ${forbidden}`)
+  }
+  const localStorageCalls = functionalSourceFiles.flatMap(({ name, source }) =>
+    [...source.matchAll(/\blocalStorage\s*\.\s*(getItem|setItem|removeItem|clear|key)\s*\(/g)]
+      .map((match) => ({ method: match[1], name })))
+  assert.equal(localStorageCalls.length, 4, 'The approved localStorage call surface changed.')
+  assert.ok(
+    localStorageCalls.every(({ method, name }) =>
+      name.endsWith('/src/App.tsx') && (method === 'getItem' || method === 'setItem')),
+    `localStorage access escaped the preference-only App boundary: ${JSON.stringify(localStorageCalls)}`,
+  )
+  assert.ok(!/\blocalStorage\s*\[/.test(functionalSource), 'Dynamic localStorage access was introduced.')
 
   const missingValuesReport = JSON.parse(JSON.stringify(syntheticReport))
   missingValuesReport.source = 'local'
@@ -250,6 +358,10 @@ try {
   const privacyLine = 'Excludes holdings, account identifiers, and exact net liquidation value.'
   assert.ok(summary.includes(privacyLine))
   assert.ok(previewMarkup.includes(privacyLine))
+  assert.ok(summary.includes('Self-reported · not broker-verified'))
+  assert.ok(previewMarkup.includes('Self-reported · not broker-verified'))
+  assert.ok(summary.includes('Internal calculation check: Review internal checks'))
+  assert.ok(previewMarkup.includes('Review internal checks'))
 
   const drawnText = []
   const gradient = { addColorStop() {} }
@@ -357,6 +469,9 @@ try {
     assert.ok(!pngText.includes(forbidden), `PNG text leaked ${forbidden}.`)
   }
   assert.ok(pngText.includes(privacyLine))
+  assert.ok(pngText.includes('Self-reported · not broker-verified'))
+  assert.ok(pngText.includes('Internal calculation check'))
+  assert.ok(pngText.includes('Review internal checks'))
 
   const duplicate = { ...localReport, fingerprint: 'current-file' }
   const sameDate = { ...localReport, fingerprint: 'same-date-different-file' }

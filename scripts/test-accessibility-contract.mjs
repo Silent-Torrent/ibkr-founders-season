@@ -17,9 +17,20 @@ function includesAll(markup, values, label) {
 }
 
 try {
-  const [{ AppShell }, { PrivacyNoticeModal }, { LedgerPage }, { ArenaPage }, { TrophiesPage }, { demoReport }] =
+  const [
+    { AppNotice },
+    { AppShell },
+    { GettingStartedScreen },
+    { PrivacyNoticeModal },
+    { LedgerPage },
+    { ArenaPage },
+    { TrophiesPage },
+    { demoReport },
+  ] =
     await Promise.all([
+      vite.ssrLoadModule('/src/components/AppNotice.tsx'),
       vite.ssrLoadModule('/src/components/AppShell.tsx'),
+      vite.ssrLoadModule('/src/components/GettingStartedScreen.tsx'),
       vite.ssrLoadModule('/src/components/PrivacyNoticeModal.tsx'),
       vite.ssrLoadModule('/src/pages/LedgerPage.tsx'),
       vite.ssrLoadModule('/src/pages/ArenaPage.tsx'),
@@ -32,9 +43,11 @@ try {
     createElement(
       AppShell,
       {
+        focusOnMount: false,
         locale: 'en',
         onClearLocal: noop,
         onLocaleChange: noop,
+        onOpenGuide: noop,
         onOpenPrivacy: noop,
         onPageChange: noop,
         page: 'ledger',
@@ -57,6 +70,67 @@ try {
     ],
     'App shell accessibility contract',
   )
+
+  const gettingStartedMarkup = renderToStaticMarkup(
+    createElement(GettingStartedScreen, {
+      focusOnMount: false,
+      hasCurrentReport: false,
+      locale: 'en',
+      onImport: noop,
+      onLocaleChange: noop,
+      onOpenPrivacy: noop,
+      onPrimaryAction: noop,
+    }),
+  )
+  includesAll(
+    gettingStartedMarkup,
+    [
+      'href="#getting-started-main"',
+      'id="getting-started-main"',
+      'tabindex="-1"',
+      'aria-labelledby="welcome-title"',
+      'aria-label="Choose how to begin"',
+      'aria-label="Interface language"',
+      'data-action="welcome-primary"',
+      'data-action="welcome-import"',
+    ],
+    'Getting-started screen accessibility contract',
+  )
+
+  const [appNoticeSource, appShellSource, gettingStartedSource] = await Promise.all([
+    readFile(new URL('../src/components/AppNotice.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/components/AppShell.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../src/components/GettingStartedScreen.tsx', import.meta.url), 'utf8'),
+  ])
+  includesAll(
+    `${appShellSource}\n${gettingStartedSource}`,
+    ['window.scrollTo({ left: 0, top: 0 })', 'focus({ preventScroll: true })'],
+    'SPA transition focus and scroll contract',
+  )
+  includesAll(
+    appNoticeSource,
+    ["closest('main')", 'requestAnimationFrame', 'focus({ preventScroll: true })'],
+    'Notice dismissal focus contract',
+  )
+
+  const successNoticeMarkup = renderToStaticMarkup(
+    createElement(AppNotice, {
+      dismissLabel: 'Dismiss',
+      message: 'Imported',
+      onDismiss: noop,
+      tone: 'success',
+    }),
+  )
+  const warningNoticeMarkup = renderToStaticMarkup(
+    createElement(AppNotice, {
+      dismissLabel: 'Dismiss',
+      message: 'Not replaced',
+      onDismiss: noop,
+      tone: 'warning',
+    }),
+  )
+  includesAll(successNoticeMarkup, ['aria-atomic="true"', 'role="status"'], 'Success notice')
+  includesAll(warningNoticeMarkup, ['aria-atomic="true"', 'role="alert"'], 'Warning notice')
 
   const privacyMarkup = renderToStaticMarkup(
     createElement(PrivacyNoticeModal, { isOpen: true, locale: 'en', onClose: noop }),
@@ -87,6 +161,13 @@ try {
       'role="region"',
       '<caption class="sr-only">Underlying breakdown</caption>',
       'Open details for ',
+      'aria-labelledby="trust-status-title"',
+      '<details class="metric-help">',
+      'What this means',
+      'aria-label="Season P&amp;L: What this means"',
+      'aria-label="Season return: What this means"',
+      'aria-label="Net liquidation: What this means"',
+      'aria-label="Options P&amp;L: What this means"',
     ],
     'Ledger accessibility contract',
   )
@@ -134,11 +215,16 @@ try {
       'aria-busy={busy}',
       'className="sr-only import-live-status"',
       'setImportCancelled(announce)',
-      "importCancelled ? t(locale, 'importCancelled') : ''",
       'role="alert"',
       'role="status"',
+      'aria-labelledby="import-recovery-title"',
+      'data-action="choose-file-after-error"',
     ],
     'Import announcements',
+  )
+  assert.ok(
+    !importSource.includes("importCancelled ? t(locale, 'importCancelled')"),
+    'Import cancellation must not be announced by two live regions.',
   )
   assert.match(
     importSource,
@@ -163,8 +249,8 @@ try {
   )
   assert.match(
     styles,
-    /@media \(max-width: 500px\)[\s\S]*?\.share-card-bottom\s*{[\s\S]*?position:\s*static;/,
-    'The narrow share card footer must stay in normal flow to prevent content overlap.',
+    /\.share-card-bottom\s*{[\s\S]*?position:\s*relative;/,
+    'The share card footer must stay in normal flow to prevent content overlap.',
   )
   assert.match(
     styles,

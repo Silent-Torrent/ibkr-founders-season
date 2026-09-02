@@ -59,4 +59,6 @@ npm run build
 
 echo
 echo "Verification completed. Production files are in ./dist"
-read "?Press Return to close..."
+if [[ -t 0 ]]; then
+  read "?Press Return to close..."
+fi

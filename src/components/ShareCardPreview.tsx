@@ -5,6 +5,7 @@ import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/form
 import {
   buildSeasonSummary,
   downloadSeasonCard,
+  getShareQualityLabel,
   getShareSourceLabel,
   type SeasonCardDelivery,
 } from '../lib/shareCard'
@@ -31,6 +32,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const activeRequestRef = useRef({ locale, report })
   activeRequestRef.current = { locale, report }
   const sourceLabel = getShareSourceLabel(report, locale)
+  const qualityLabel = getShareQualityLabel(report, locale)
   const division = getDivision(report.netLiquidationValue, report.baseCurrency)
   const visiblePngPreview = pngPreview?.report === report && pngPreview.locale === locale
     ? pngPreview
@@ -108,11 +110,11 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
     <section className="share-section">
       <div className="section-heading compact">
         <div>
-          <span className="eyebrow">SHAREABLE</span>
+          <span className="eyebrow">{t(locale, 'shareableEyebrow')}</span>
           <h2>{t(locale, 'shareCard')}</h2>
         </div>
         <div className="button-row">
-          <button className="secondary-button" onClick={copySummary} type="button">
+          <button className="secondary-button" data-action="copy-summary" onClick={copySummary} type="button">
             {copyStatus === 'copied'
               ? t(locale, 'copied')
               : copyStatus === 'failed'
@@ -121,6 +123,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           </button>
           <button
             className="primary-button"
+            data-action="download-card"
             onClick={handleDownloadCard}
             ref={downloadButtonRef}
             type="button"
@@ -147,7 +150,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         >
           <div className="png-fallback-heading">
             <div>
-              <span className="eyebrow">PNG · LOCAL</span>
+              <span className="eyebrow">{t(locale, 'pngLocalEyebrow')}</span>
               <strong>{t(locale, 'pngPreviewTitle')}</strong>
             </div>
             <button
@@ -198,10 +201,14 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             <span>{t(locale, 'sourceType')}</span>
             <strong>{sourceLabel}</strong>
           </div>
+          <div>
+            <span>{t(locale, 'trustCalculationCheck')}</span>
+            <strong>{qualityLabel}</strong>
+          </div>
         </div>
         <div className="share-card-bottom">
           <span>{t(locale, 'dataThrough')} {formatDate(report.endDate, locale)}</span>
-          <span>{sourceLabel} · {t(locale, 'shareNoHoldings')}</span>
+          <span>{t(locale, 'shareNoHoldings')}</span>
         </div>
       </div>
     </section>

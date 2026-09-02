@@ -69,6 +69,9 @@ let profileDirectory
 let browserArtifactDirectory
 let downloadDirectory
 let invalidFixturePath
+let invalidExtensionFixturePath
+let sameDateFixturePath
+let olderFixturePath
 let capacityFixturePath
 let overEventFixturePath
 let overSymbolFixturePath
@@ -478,16 +481,49 @@ async function assertProductionWorkerCapacityFailure(filePath, label) {
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
       rows: document.querySelectorAll('.data-table tbody tr').length,
+      shareFooterTop: document.querySelector('.share-card-bottom')?.getBoundingClientRect().top ?? 0,
+      shareGridBottom: document.querySelector('.share-grid')?.getBoundingClientRect().bottom ?? 0,
+      shareGridItems: document.querySelectorAll('.share-grid > div').length,
       source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
     }))()`,
     (value) =>
       value?.heading === 'Ledger' &&
       value?.rows === SYNTHETIC_CAPACITY_SYMBOLS &&
-      value?.source === 'Self-reported',
+      value?.source === 'Self-reported · not broker-verified',
     `${label} preserved prior Ledger`,
   )
   assert.equal(preservedLedger.rows, SYNTHETIC_CAPACITY_SYMBOLS)
   return durationMs
+}
+
+async function assertSnapshotNotice(filePath, expectedMessagePart, label) {
+  await clickPrimaryNavigation('Import')
+  const nodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [filePath],
+    nodeId,
+  })
+  const noticeState = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      notice: document.querySelector('.app-notice.warning')?.textContent?.trim() ?? '',
+      parserError: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading.startsWith('Import') && value?.notice.includes(expectedMessagePart),
+    label,
+  )
+  assert.equal(noticeState.parserError, '', `${label} unexpectedly became a parser error.`)
+
+  await clickPrimaryNavigation('Ledger')
+  const preserved = await waitForPageValue(
+    `(() => ({
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.rows === 3 && value?.source === 'Fully synthetic test',
+    `${label} preserved the current report`,
+  )
+  assert.equal(preserved.rows, 3)
 }
 
 assert(existsSync(fixturePath), `The canonical synthetic fixture is missing: ${fixturePath}`)
@@ -500,6 +536,7 @@ const runtimeErrors = []
 const consoleErrors = []
 const logErrors = []
 const requests = []
+const webSockets = []
 const responseErrors = []
 const workerTargets = []
 const workerFixedTimes = []
@@ -547,6 +584,9 @@ try {
   profileDirectory = join(browserArtifactDirectory, 'profile')
   downloadDirectory = join(browserArtifactDirectory, 'downloads')
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
+  invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
+  sameDateFixturePath = join(browserArtifactDirectory, 'same-date-activity-statement.csv')
+  olderFixturePath = join(browserArtifactDirectory, 'older-activity-statement.csv')
   capacityFixturePath = join(browserArtifactDirectory, 'synthetic-capacity-statement.csv')
   overEventFixturePath = join(browserArtifactDirectory, 'synthetic-over-event-cap.csv')
   overSymbolFixturePath = join(browserArtifactDirectory, 'synthetic-over-symbol-cap.csv')
@@ -556,6 +596,19 @@ try {
   writeFileSync(
     invalidFixturePath,
     'Statement,Header,Field Name,Field Value\nStatement,Data,Title,Not an Activity Statement\n',
+  )
+  writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
+  const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  writeFileSync(
+    sameDateFixturePath,
+    `${canonicalFixtureText}\nUnsupported UX Marker,Data,Note,Same date snapshot test\n`,
+  )
+  writeFileSync(
+    olderFixturePath,
+    canonicalFixtureText.replace(
+      'January 1, 2026 - August 15, 2026',
+      'January 1, 2026 - August 14, 2026',
+    ),
   )
   const capacityStatement = generateSyntheticCapacityStatement()
   const overEventBaseStatement = generateSyntheticOverEventStatement()
@@ -658,6 +711,9 @@ try {
       url: params.request?.url,
     })
   })
+  cdp.on('Network.webSocketCreated', (params) => {
+    webSockets.push({ url: params.url })
+  })
   cdp.on('Network.responseReceived', (params) => {
     if ((params.response?.status ?? 0) >= 400) {
       responseErrors.push({ status: params.response.status, url: params.response.url })
@@ -706,7 +762,16 @@ try {
       }
       await cdp.send('Runtime.runIfWaitingForDebugger', {}, sessionId)
     } catch (error) {
-      asynchronousProtocolErrors.push(error instanceof Error ? error.message : String(error))
+      const message = error instanceof Error ? error.message : String(error)
+      // An intentionally cancelled or fail-closed Worker may disappear between
+      // attachment and clock injection. Its lifecycle assertions still verify
+      // termination; only unrelated DevTools setup errors fail the suite.
+      const workerSessionClosed =
+        targetInfo?.type === 'worker' &&
+        /^(?:Runtime\.(?:enable|evaluate|runIfWaitingForDebugger): )?Session with given id not found\.?$/.test(message)
+      if (!workerSessionClosed) {
+        asynchronousProtocolErrors.push(message)
+      }
       try {
         await cdp.send('Runtime.runIfWaitingForDebugger', {}, sessionId)
       } catch {
@@ -739,8 +804,53 @@ try {
   const observedPageNow = await evaluate('Date.now()')
   assert.equal(observedPageNow, fixedNowMs, 'The page did not receive the fixed 2026-08-30 clock.')
 
-  await clickPrimaryNavigation('Import')
+  const firstUseState = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('#getting-started-main h1')?.textContent?.trim() ?? '',
+      activeTag: document.activeElement?.tagName ?? '',
+      importAction: Boolean(document.querySelector('[data-action="welcome-import"]')),
+      primaryAction: Boolean(document.querySelector('[data-action="welcome-primary"]')),
+      seen: localStorage.getItem('pnl-arena.onboarding.v1'),
+      scrollY: window.scrollY,
+    }))()`,
+    (value) => value?.importAction === true && value?.primaryAction === true,
+    'First-use choice screen',
+  )
+  assert.equal(firstUseState.seen, null, 'The guide was marked seen before the user chose a path.')
+  assert.equal(firstUseState.activeTag, 'BODY', 'Initial document entry skipped the natural keyboard order.')
+  assert.equal(firstUseState.scrollY, 0, 'The first-use screen moved away from the page top on initial load.')
+  assert.match(firstUseState.heading, /demo or your own IBKR statement/i)
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 568,
+    mobile: false,
+    screenHeight: 568,
+    screenWidth: 320,
+    width: 320,
+  })
+  const welcomeScroll = await evaluate(`(() => {
+    window.scrollTo(0, document.querySelector('[data-action="welcome-import"]')?.getBoundingClientRect().top ?? 0);
+    return window.scrollY;
+  })()`)
+  assert(welcomeScroll > 0, 'The first-use transition test could not establish a scrolled starting point.')
+  const choseImport = await evaluate(`(() => {
+    const button = document.querySelector('[data-action="welcome-import"]');
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(choseImport, true, 'Could not choose the first-use import path.')
   const nodeId = await resolveFileInputNodeId()
+  assert.equal(
+    await evaluate('document.activeElement?.id ?? ""'),
+    'main-content',
+    'Leaving the guide did not move focus into the selected page.',
+  )
+  assert.equal(
+    await evaluate(`localStorage.getItem('pnl-arena.onboarding.v1')`),
+    'seen',
+    'The explicit first-use choice did not save the non-financial seen-guide preference.',
+  )
 
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     deviceScaleFactor: 1,
@@ -757,13 +867,17 @@ try {
   const invalidMessageState = await waitForPageValue(
     `(() => {
       const message = document.querySelector('.error-message');
-      if (!message) return null;
+      const recovery = document.querySelector('.import-recovery-panel');
+      if (!message || !recovery) return null;
       const style = getComputedStyle(message);
       const rect = message.getBoundingClientRect();
+      const recoveryRect = recovery.getBoundingClientRect();
       return {
         clientWidth: message.clientWidth,
         display: style.display,
         documentWidth: document.documentElement.scrollWidth,
+        documentText: document.body.innerText,
+        exportSettings: Boolean(document.querySelector('#export-settings')),
         fontSize: Number.parseFloat(style.fontSize),
         lineHeight: Number.parseFloat(style.lineHeight),
         messageHeight: rect.height,
@@ -771,6 +885,11 @@ try {
         messageRight: rect.right,
         messageWidth: rect.width,
         opacity: Number.parseFloat(style.opacity),
+        recoveryAction: Boolean(document.querySelector('[data-action="choose-file-after-error"]')),
+        recoveryItems: recovery.querySelectorAll('li').length,
+        recoveryLeft: recoveryRect.left,
+        recoveryRight: recoveryRect.right,
+        recoveryTitle: recovery.querySelector('h2')?.textContent?.trim() ?? '',
         scrollWidth: message.scrollWidth,
         text: message.textContent?.trim() ?? '',
         viewportWidth: window.innerWidth,
@@ -783,6 +902,14 @@ try {
   assert.equal(invalidMessageState.viewportWidth, 320, 'Chrome did not apply the simulated 320 px viewport.')
   assert.notEqual(invalidMessageState.display, 'none', 'Import error is display:none.')
   assert.equal(invalidMessageState.visibility, 'visible', 'Import error is not visible.')
+  assert.equal(invalidMessageState.recoveryAction, true, 'Import recovery did not offer another file picker.')
+  assert.equal(invalidMessageState.exportSettings, true, 'Import recovery could not point back to export settings.')
+  assert(invalidMessageState.recoveryItems > 0, 'Import recovery did not include a concrete next step.')
+  assert.equal(invalidMessageState.recoveryTitle, 'What to do next')
+  assert(
+    !invalidMessageState.documentText.includes(basename(invalidFixturePath)),
+    'The invalid local filename leaked into visible UI copy.',
+  )
   assert(invalidMessageState.opacity > 0, 'Import error is fully transparent.')
   assert(invalidMessageState.messageWidth > 0 && invalidMessageState.messageHeight > 0, 'Import error has no visible box.')
   assert(invalidMessageState.messageLeft >= 0, `Import error escaped left of the viewport: ${JSON.stringify(invalidMessageState)}`)
@@ -800,6 +927,10 @@ try {
     invalidMessageState.messageRight <= invalidMessageState.viewportWidth,
     `Invalid-file message escaped the 320 px viewport: ${JSON.stringify(invalidMessageState)}`,
   )
+  assert(
+    invalidMessageState.recoveryLeft >= 0 && invalidMessageState.recoveryRight <= invalidMessageState.viewportWidth,
+    `Import recovery escaped the 320 px viewport: ${JSON.stringify(invalidMessageState)}`,
+  )
   await cdp.send('Emulation.clearDeviceMetricsOverride')
 
   console.log(`Selecting ${fixturePath.slice(projectRoot.length + 1)} through DevTools...`)
@@ -811,16 +942,37 @@ try {
   const ledgerState = await waitForPageValue(
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      notice: document.querySelector('.app-notice.success')?.textContent?.trim() ?? '',
       quality: document.querySelector('.quality-badge')?.textContent?.trim() ?? '',
       source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
       text: document.body.innerText,
     }))()`,
-    (value) => value?.heading === 'Ledger' && value?.source === 'Fully synthetic test',
+    (value) =>
+      value?.heading === 'Ledger' &&
+      value?.notice.includes('imported locally') &&
+      value?.source === 'Fully synthetic test',
     'Synthetic Worker-backed import',
     20_000,
   )
   assert.equal(ledgerState.quality, 'Internal checks passed')
   assert(!ledgerState.text.includes('Self-reported'), 'The known synthetic fixture was labelled Self-reported.')
+
+  const noticeDismissed = await evaluate(`(() => {
+    const button = document.querySelector('[data-action="dismiss-notice"]');
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.focus();
+    button.click();
+    return true;
+  })()`)
+  assert.equal(noticeDismissed, true, 'Could not dismiss the successful-import notice.')
+  await waitForPageValue(
+    `(() => ({
+      activeId: document.activeElement?.id ?? '',
+      notice: Boolean(document.querySelector('.app-notice')),
+    }))()`,
+    (value) => value?.activeId === 'main-content' && value?.notice === false,
+    'Notice dismissal focus recovery',
+  )
 
   const ledgerDetails = await evaluate(`(() => {
     const metrics = [...document.querySelectorAll('.metric-card')].map((card) => ({
@@ -829,17 +981,161 @@ try {
     }));
     return {
       exactChecks: document.querySelectorAll('.reconciliation-status.pass-exact').length,
+      metricHelpNames: [...document.querySelectorAll('.metric-help summary')]
+        .map((summary) => summary.getAttribute('aria-label')),
+      metricDetails: document.querySelectorAll('.metric-card details.metric-help').length,
+      metricSummaries: document.querySelectorAll('.metric-card .metric-summary').length,
       metrics,
       rows: document.querySelectorAll('.data-table tbody tr').length,
+      shareFooterTop: document.querySelector('.share-card-bottom')?.getBoundingClientRect().top ?? 0,
+      shareGridBottom: document.querySelector('.share-grid')?.getBoundingClientRect().bottom ?? 0,
+      shareGridItems: document.querySelectorAll('.share-grid > div').length,
+      trustColumns: document.querySelectorAll('.trust-status-grid > div').length,
+      trustText: document.querySelector('.trust-status-panel')?.textContent ?? '',
     };
   })()`)
   assert.equal(ledgerDetails.rows, 3, 'The synthetic fixture did not render exactly three underlying rows.')
   assert.equal(ledgerDetails.exactChecks, 3, 'Not all three reconciliation checks rendered Exact match.')
+  assert.equal(ledgerDetails.metricDetails, 4, 'Not all four core metrics exposed an expandable explanation.')
+  assert.equal(ledgerDetails.metricSummaries, 4, 'Not all four core metrics exposed a plain-language summary.')
+  assert.equal(ledgerDetails.trustColumns, 2, 'Data source and internal calculation checks were not separated.')
+  assert.equal(ledgerDetails.shareGridItems, 4, 'The share preview did not disclose both trust dimensions.')
+  assert(
+    ledgerDetails.shareFooterTop >= ledgerDetails.shareGridBottom + 20,
+    `Share preview content overlapped its footer: ${JSON.stringify(ledgerDetails)}`,
+  )
+  assert.deepEqual(ledgerDetails.metricHelpNames, [
+    'Season P&L: What this means',
+    'Season return: What this means',
+    'Net liquidation: What this means',
+    'Options P&L: What this means',
+  ])
+  assert(ledgerDetails.trustText.includes('Data source'))
+  assert(ledgerDetails.trustText.includes('Internal calculation check'))
   const seasonPnl = ledgerDetails.metrics.find((metric) => metric.label === 'Season P&L')?.value
   assert.match(
     seasonPnl ?? '',
     /^\+(?:US)?\$740$/,
     `Unexpected rounded Season P&L display: ${seasonPnl}`,
+  )
+
+  const guideOpened = await evaluate(`(() => {
+    window.scrollTo(0, 500);
+    const button = [...document.querySelectorAll('[data-action="open-guide"]')]
+      .find((candidate) => candidate.getClientRects().length > 0);
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(guideOpened, true, 'Could not reopen the first-use guide from the app shell.')
+  const reopenedGuide = await waitForPageValue(
+    `(() => ({
+      activeId: document.activeElement?.id ?? '',
+      heading: document.querySelector('#getting-started-main h1')?.textContent?.trim() ?? '',
+      primary: document.querySelector('[data-action="welcome-primary"]')?.textContent?.trim() ?? '',
+      scrollY: window.scrollY,
+    }))()`,
+    (value) =>
+      value?.activeId === 'getting-started-main' &&
+      value?.primary === 'Return to current report' &&
+      value?.scrollY === 0,
+    'Reopenable guide preserving the current report',
+  )
+  assert.equal(reopenedGuide.activeId, 'getting-started-main')
+  const returnedFromGuide = await evaluate(`(() => {
+    const button = document.querySelector('[data-action="welcome-primary"]');
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(returnedFromGuide, true)
+  await waitForPageValue(
+    `(() => ({
+      activeId: document.activeElement?.id ?? '',
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      scrollY: window.scrollY,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) =>
+      value?.activeId === 'main-content' &&
+      value?.heading === 'Ledger' &&
+      value?.scrollY === 0 &&
+      value?.source === 'Fully synthetic test',
+    'Return from guide without replacing current report',
+  )
+
+  await assertSnapshotNotice(
+    fixturePath,
+    'already open. Nothing changed',
+    'Duplicate snapshot in-page notice',
+  )
+  await assertSnapshotNotice(
+    sameDateFixturePath,
+    'same end date was not imported',
+    'Same-date snapshot in-page notice',
+  )
+  await assertSnapshotNotice(
+    olderFixturePath,
+    'older YTD file was not imported',
+    'Older snapshot in-page notice',
+  )
+
+  await clickPrimaryNavigation('Import')
+  const confirmCancelNodeId = await resolveFileInputNodeId()
+  const fixedWorkerCountBeforeDemoConfirmation = workerFixedTimes.length
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [capacityFixturePath],
+    nodeId: confirmCancelNodeId,
+  })
+  await waitForPageValue(
+    `document.querySelector('.drop-zone')?.getAttribute('aria-busy')`,
+    (value) => value === 'true',
+    'Busy import before cancelling the Demo confirmation',
+  )
+  await waitForCondition(
+    () => workerFixedTimes.length > fixedWorkerCountBeforeDemoConfirmation,
+    'Demo-confirmation regression Worker setup',
+  )
+  const demoConfirmationCancelled = await evaluate(`(() => {
+    const nativeConfirm = window.confirm;
+    try {
+      window.confirm = () => false;
+      const button = document.querySelector('[data-action="use-demo"]');
+      if (!(button instanceof HTMLButtonElement)) return null;
+      button.click();
+      return {
+        busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+        heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      };
+    } finally {
+      window.confirm = nativeConfirm;
+    }
+  })()`)
+  assert.deepEqual(
+    demoConfirmationCancelled,
+    { busy: 'true', heading: 'Import your current YTD statement' },
+    'Cancelling the Demo confirmation silently stopped the active import.',
+  )
+  const explicitCancelClicked = await evaluate(`(() => {
+    const button = document.querySelector('[data-action="cancel-import"]');
+    if (!(button instanceof HTMLButtonElement)) return false;
+    button.click();
+    return true;
+  })()`)
+  assert.equal(explicitCancelClicked, true, 'Could not cleanly cancel the confirmation regression import.')
+  await waitForPageValue(
+    `(() => ({
+      busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+      visible: document.querySelector('.import-cancelled-message')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.busy === 'false' && value?.visible.includes('report already open'),
+    'Explicit cleanup after cancelled Demo confirmation',
+  )
+  await clickPrimaryNavigation('Ledger')
+  await waitForPageValue(
+    `document.querySelector('.trust-badge')?.textContent?.trim() ?? ''`,
+    (value) => value === 'Fully synthetic test',
+    'Current report preserved after cancelled Demo confirmation',
   )
 
   const canvasCaptureInstalled = await evaluate(`(() => {
@@ -943,6 +1239,8 @@ try {
     'Aug 15, 2026',
     'Source',
     'Fully synthetic test',
+    'Internal calculation check',
+    'Internal checks passed',
     'Data through: 2026-08-15',
     'Excludes holdings, account identifiers, and exact net liquidation value.',
     'P&L ARENA',
@@ -1180,15 +1478,35 @@ try {
 
   await cdp.send('Page.reload', { ignoreCache: true })
   const refreshState = await waitForPageValue(
-    `(() => ({
+    `(async () => ({
+      cacheKeys: typeof caches === 'undefined' ? [] : await caches.keys(),
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      indexedDbNames: typeof indexedDB.databases === 'function'
+        ? (await indexedDB.databases()).map(({ name }) => name ?? '').filter(Boolean).sort()
+        : [],
+      seenGuide: localStorage.getItem('pnl-arena.onboarding.v1'),
+      serviceWorkerScopes: 'serviceWorker' in navigator
+        ? (await navigator.serviceWorker.getRegistrations()).map(({ scope }) => scope).sort()
+        : [],
+      sessionStorageKeys: Object.keys(sessionStorage).sort(),
       source: document.querySelector('.source-pill.demo')?.textContent?.trim() ?? '',
+      storageKeys: Object.keys(localStorage).sort(),
       text: document.body.innerText,
     }))()`,
     (value) => value?.heading === 'Ledger' && value?.source === 'Demo data',
     'Refresh reset to Demo',
   )
   assert(!refreshState.text.includes('Fully synthetic test'), 'The imported report survived a full refresh.')
+  assert.equal(refreshState.seenGuide, 'seen', 'The explicit first-use choice was not remembered after refresh.')
+  assert.deepEqual(
+    refreshState.storageKeys,
+    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1'],
+    'The browser persisted data beyond the two approved non-financial preferences.',
+  )
+  assert.deepEqual(refreshState.sessionStorageKeys, [], 'The browser wrote sessionStorage data.')
+  assert.deepEqual(refreshState.indexedDbNames, [], 'The browser created an IndexedDB database.')
+  assert.deepEqual(refreshState.cacheKeys, [], 'The browser created a Cache Storage entry.')
+  assert.deepEqual(refreshState.serviceWorkerScopes, [], 'The browser registered a service worker.')
 
   await clickPrimaryNavigation('Import')
   const cancelNodeId = await resolveFileInputNodeId()
@@ -1253,12 +1571,14 @@ try {
       fileInput: Boolean(document.querySelector('input[type="file"]')),
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
       live: document.querySelector('.import-live-status')?.textContent?.trim() ?? '',
+      visible: document.querySelector('.import-cancelled-message')?.textContent?.trim() ?? '',
       probe: { ...globalThis.__capacityCancelProbe },
     }))()`,
     (value) =>
       value?.probe?.clicked === true &&
       value?.fileInput === true &&
-      value?.live === 'Import cancelled.',
+      value?.live === '' &&
+      value?.visible.includes('report already open in this tab was not changed'),
     'Production Worker cancellation through the visible UI',
   )
   assert.equal(cancelledImportState.busy, 'false')
@@ -1282,7 +1602,7 @@ try {
     live: document.querySelector('.import-live-status')?.textContent?.trim() ?? '',
   }))()`)
   assert.equal(noLateCancelledResult.fileInput, true, 'A cancelled Worker produced a late navigation.')
-  assert.equal(noLateCancelledResult.live, 'Import cancelled.')
+  assert.equal(noLateCancelledResult.live, '')
 
   const capacityNodeId = await resolveFileInputNodeId()
   const capacityProbeInstalled = await evaluate(`(() => {
@@ -1385,6 +1705,24 @@ try {
     files: [capacityFixturePath],
     nodeId: capacityNodeId,
   })
+  await waitForPageValue(
+    `document.querySelector('.drop-zone')?.getAttribute('aria-busy')`,
+    (value) => value === 'true',
+    'Exact-capacity busy state before invalid replacement probe',
+  )
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [invalidExtensionFixturePath],
+    nodeId: capacityNodeId,
+  })
+  await delay(50)
+  const ignoredInvalidReplacement = await evaluate(`(() => ({
+    busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+    error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+    recovery: Boolean(document.querySelector('.import-recovery-panel')),
+  }))()`)
+  assert.equal(ignoredInvalidReplacement.busy, 'true')
+  assert.equal(ignoredInvalidReplacement.error, '')
+  assert.equal(ignoredInvalidReplacement.recovery, false)
   const capacityLedgerState = await waitForPageValue(
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
@@ -1412,7 +1750,7 @@ try {
     rafTicks: capacityProbe.rafTicks,
     timerTicks: capacityProbe.timerTicks,
   })
-  assert.equal(capacityLedgerState.source, 'Self-reported')
+  assert.equal(capacityLedgerState.source, 'Self-reported · not broker-verified')
   assert.equal(capacityLedgerState.quality, 'Review internal checks')
   assert.notEqual(capacityProbe.busyAt, null, 'The capacity import never exposed its busy state.')
   assert.equal(
@@ -1548,10 +1886,45 @@ try {
       || parsed.hostname !== '127.0.0.1'
       || parsed.port !== String(previewPort)
   })
-  const postRequests = requests.filter(({ method }) => method?.toUpperCase() === 'POST')
+  const nonGetRequests = requests.filter(({ method }) => method?.toUpperCase() !== 'GET')
+  const allowedLocalPathPatterns = [
+    /^\/$/,
+    /^\/index\.html$/,
+    /^\/favicon\.svg$/,
+    /^\/sample-ibkr-ytd\.csv$/,
+    /^\/assets\/index-[A-Za-z0-9_-]+\.js$/,
+    /^\/assets\/index-[A-Za-z0-9_-]+\.css$/,
+    /^\/assets\/ibkrParser\.worker-[A-Za-z0-9_-]+\.js$/,
+  ]
+  const unexpectedLocalRequests = requests.filter(({ method, url }) => {
+    if (!url || /^(about|blob|data):/.test(url)) return false
+    let parsed
+    try {
+      parsed = new URL(url)
+    } catch {
+      return false
+    }
+    if (
+      parsed.protocol !== 'http:' ||
+      parsed.hostname !== '127.0.0.1' ||
+      parsed.port !== String(previewPort)
+    ) return false
+    return method?.toUpperCase() !== 'GET'
+      || parsed.username !== ''
+      || parsed.password !== ''
+      || parsed.search !== ''
+      || parsed.hash !== ''
+      || !allowedLocalPathPatterns.some((pattern) => pattern.test(parsed.pathname))
+  })
 
   assert.deepEqual(externalRequests, [], `External page requests were observed: ${JSON.stringify(externalRequests)}`)
-  assert.deepEqual(postRequests, [], `POST requests were observed: ${JSON.stringify(postRequests)}`)
+  assert.deepEqual(nonGetRequests, [], `Non-GET page requests were observed: ${JSON.stringify(nonGetRequests)}`)
+  assert.deepEqual(
+    unexpectedLocalRequests,
+    [],
+    `Unexpected same-origin request paths or query payloads were observed: ${JSON.stringify(unexpectedLocalRequests)}`,
+  )
+  assert.deepEqual(webSockets, [], `Page WebSocket connections were observed: ${JSON.stringify(webSockets)}`)
   assert.deepEqual(responseErrors, [], `HTTP error responses were observed: ${JSON.stringify(responseErrors)}`)
   assert.deepEqual(runtimeErrors, [], `Runtime exceptions were observed: ${JSON.stringify(runtimeErrors)}`)
   assert.deepEqual(consoleErrors, [], `Console errors/warnings were observed: ${JSON.stringify(consoleErrors)}`)

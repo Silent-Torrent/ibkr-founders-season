@@ -100,7 +100,7 @@ export function PrivacyNoticeModal({ isOpen, locale, onClose }: PrivacyNoticeMod
       >
         <header className="privacy-modal-header">
           <div>
-            <span className="eyebrow">LOCAL-FIRST BETA</span>
+            <span className="eyebrow">{t(locale, 'localFirstBetaEyebrow')}</span>
             <h2 id="privacy-notice-title">{t(locale, 'privacyNoticeTitle')}</h2>
           </div>
           <button

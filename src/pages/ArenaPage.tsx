@@ -75,7 +75,7 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
             </div>
             <div><dt>{t(locale, 'return')}</dt><dd>{formatPercent(report.seasonReturn, locale)}</dd></div>
             <div><dt>{t(locale, 'pnl')}</dt><dd>{formatCurrency(report.seasonPnl, report.baseCurrency, locale)}</dd></div>
-            <div><dt>{t(locale, 'sourceType')}</dt><dd>{t(locale, 'selfReported')}</dd></div>
+            <div><dt>{t(locale, 'sourceType')}</dt><dd>{t(locale, 'selfReportedUnverified')}</dd></div>
           </dl>
         </section>
       )}
@@ -83,7 +83,7 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
       <section className="panel leaderboard-panel">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">SEASON RETURN</span>
+            <span className="eyebrow">{t(locale, 'seasonReturnEyebrow')}</span>
             <h2>{t(locale, 'demoLeaderboard')}</h2>
           </div>
           <div className="demo-chip">{t(locale, 'demoOnly')}</div>
@@ -114,7 +114,7 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
       <section className="divisions-section">
         <div className="section-heading">
           <div>
-            <span className="eyebrow">FAIR MATCHING</span>
+            <span className="eyebrow">{t(locale, 'fairMatchingEyebrow')}</span>
             <h2>{t(locale, 'capitalDivisions')}</h2>
             <p>{t(locale, 'divisionNote')}</p>
           </div>

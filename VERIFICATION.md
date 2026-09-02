@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.15 iPhone Safari evidence sync
+# Verification record — checkpoint 0.16 first-user experience
 
 Last updated: 2026-09-02
 
@@ -20,6 +20,23 @@ Last updated: 2026-09-02
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.16 first-user and recovery gate
+
+- The first-use screen renders explicit Demo and Import choices in English, Simplified Chinese and Traditional Chinese. The seen-guide key is absent before a path is chosen, becomes `seen` only after that choice, survives refresh, and the guide can be reopened without replacing the report already open in memory.
+- A fresh document preserves the browser's natural keyboard order. In-app guide/application transitions reset scroll to the top and move focus to the new main region; dismissing an in-page notice returns focus to the current main region. Every headline metric disclosure has a distinct accessible name that includes its metric label.
+- All five required export settings are visible before file selection. All 42 parser/import diagnostic codes have a fixed recovery mapping and explicit copy in all three locales; recovery content never interpolates an uploaded filename or free-form statement text.
+- A content-invalid CSV at a simulated 320 px viewport displayed both the fixed error and a concrete recovery panel. The alert, recovery panel and document remained within 320 px, and the user could choose another CSV or jump to the correct export settings.
+- Successful import feedback carries onto the Ledger. Duplicate, different-same-date and older YTD files produce dismissible in-page warnings and preserve the current report rather than invoking a blocking alert or replacing it.
+- Declining the confirmation to replace an imported report with Demo leaves an active import running; a filename/size-preflight failure during active work also leaves that valid task and its visible state undisturbed.
+- The Ledger renders Data source and Internal calculation check as two independent columns. Four headline metrics expose both a plain-language summary and expandable detail. Demo/test metric copy does not imply that fictional numbers were broker-reported.
+- Ordinary local data is labelled `Self-reported · not broker-verified` in the Ledger, Arena, preview, copied summary and generated PNG. Every share form separately carries the Internal calculation check status, including warnings. Product-policy canaries confirm that the share outputs still omit holdings, account identifiers, comparison keys and exact NAV.
+- Cancellation exposes one visible polite status instead of duplicating the same message through two live regions. The production browser still observed the busy state, visible cancellation, Worker termination and no late result.
+- The browser storage allowlist contained exactly `pnl-arena.locale.v1` and `pnl-arena.onboarding.v1` after refresh. sessionStorage, IndexedDB, Cache Storage and service-worker registrations were empty. The imported normalized report did not survive refresh; the page opened no WebSocket and made no external, non-GET, query-bearing or unlisted same-origin request.
+- The policy suite scans every functional source file for unapproved persistent-storage and network APIs, and fixes all localStorage calls to the two preference-only keys in `App.tsx`.
+- The explicit-locale contract requires identical key sets and placeholder sets for English, Simplified Chinese and Traditional Chinese; it renders the guide, Import, Ledger, Arena, Trophies, share preview and Privacy notice in all three locales and scans functional JSX for known hard-coded English regressions.
+- Local visual QA checked the first-use screen and Ledger at the normal desktop viewport, plus the first-use and invalid-file recovery paths at 320 px. DOM measurements showed document width 320 px and recovery bounds from 16 px to 304 px. This remains desktop-browser simulation, not new iPhone evidence.
+- `VERIFY_MAC.command` completed under Node 22.23.2 / npm 10.9.8 after the checkpoint 0.16 changes: clean locked installation, two vulnerability checks with zero reported vulnerabilities, every parser/streaming/materialization/Worker/i18n/accessibility/compatibility/policy/launcher/iPhone-pack/browser suite, and the final production build all passed.
 
 - Synthetic 2026 YTD Activity Statement parsed without errors.
 - Season P&L: 20,040 USD.
@@ -71,7 +88,7 @@ Last updated: 2026-09-02
 - Calendar dates are parsed strictly. Nonexistent dates, reversed statement periods, future period ends, and prior-season reports are rejected instead of being normalized or accepted silently.
 - A same-account, same-season report with the same ending date but different content is rejected; duplicate, older, newer, and different-account snapshot decisions have dedicated regression cases.
 - Base currency must resolve to one consistent three-letter code. Missing, malformed, and conflicting currency declarations are rejected, and display formatting falls back to an em dash instead of crashing on an invalid code.
-- Synthetic Demo, Fully Synthetic Test, Self-Reported, and Internal Checks Passed are separate UI concepts. The two repository-owned fictional CSVs are matched by normalized SHA-256 content digest plus a synthetic account marker; this is not a general authenticity detector. Internal arithmetic closure is not labelled `Reconciled`, broker-verified, or authentic.
+- Synthetic Demo, Fully Synthetic Test, Self-reported · not broker-verified, and Internal Checks Passed are separate UI concepts. The two repository-owned fictional CSVs are matched by normalized SHA-256 content digest plus a synthetic account marker; this is not a general authenticity detector. Internal arithmetic closure is not labelled `Reconciled`, broker-verified, or authentic.
 - A missing account identifier returns a fixed parser error and no report. Cross-file account identity uses a session-salted SHA-256 comparison key, not the masked suffix; the raw identifier and session salt are not displayed, logged, persisted, or shared.
 - Imported user results appear in Arena as an unranked current-tab snapshot. The synthetic leaderboard does not insert a fake local rank, synthetic data unlocks no achievements, and missing or non-USD NAV does not create an inferred USD capital division. Fixed monetary achievement thresholds are also USD-only until an exchange-rate policy exists.
 - Internal Checks Passed is shown only when every configured reconciliation has `PASS_EXACT` or `PASS_ROUNDED`. A missing check produces Review; the bundled sample and Demo no longer present two unavailable checks as passed.
@@ -88,14 +105,14 @@ Last updated: 2026-09-02
 - After the checkpoint 0.15 documentation sync, `VERIFY_MAC.command` completed under Node 22.23.2 / npm 10.9.8: locked installation, dependency audit with zero reported vulnerabilities, every automated suite, the production-Chrome import/PNG/capacity regression, and the final production build all passed.
 - Both beginner-facing macOS scripts select a working Node 22.12+ runtime without exposing errors from this Mac's broken default Node 25 loader. `VERIFY_MAC.command` retains the clean install, audit, full checks and build; `START_MAC.command` conditionally repairs only missing/changed locked dependencies and otherwise starts the local site without repeating the full gate. Their shell syntax and separate roles have an automated contract test.
 - A dedicated Privacy & Data dialog is available from both the desktop privacy card and the page footer.
-- English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, locale-only persistence, no statement upload, the Self-Reported authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
+- English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, the language and seen-guide preferences, no statement upload, the Self-reported and non-broker-verified authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
 - The privacy dialog exposes `role="dialog"`, `aria-modal`, a labelled title and description, initial focus, Tab/Shift+Tab containment, Escape close, backdrop close, background interaction lock, and focus return to the opening control.
 - The symbol drawer now uses the same modal focus, Escape, background-lock, scroll-lock and focus-return behavior, including native `summary` controls in its focus loop.
-- Page changes update the document title and language, identify the current navigation item, and move focus to the main region without stealing focus on first load.
+- Initial guide/application views update the document title and language without stealing the browser's natural first focus. Later in-app page and guide/application transitions identify the current navigation item, reset scroll, and move focus to the applicable main region.
 - Search, sorting, filters, table-detail actions, leaderboard cells, trophy lists/progress, copy feedback, and import messages now expose explicit accessibility semantics.
-- The import live status sits outside the `aria-busy` subtree, cancellation has a localized polite announcement, and clearing a local report restores focus to the main region while announcing Demo status.
+- The import busy status sits outside the `aria-busy` subtree, cancellation has one localized visible polite announcement, and clearing a local report restores focus to the main region while announcing Demo status.
 - The mobile Arena scroll region has a keyboard focus entry and visible focus indicator. The narrow share-card footer remains in normal flow to prevent overlap.
-- Clearing browser-session data does not delete a PNG season card that the user deliberately downloaded; the three-locale privacy notice now states this boundary.
+- Clearing browser-session data does not delete a PNG season card that the user downloaded, shared to another app, or opened in another tab; the three-locale privacy notice tells the user to delete each separate copy at its destination.
 
 ## Private real-statement calibration
 
@@ -123,7 +140,7 @@ Last updated: 2026-09-02
 - Both the sidebar and footer privacy controls opened the dialog. Backdrop close and the visible close controls worked.
 - The privacy notice was visually checked in English, Simplified Chinese, and Traditional Chinese.
 - At a simulated 320 px browser width, the bottom navigation, Ledger table, share card, Arena local-snapshot card and horizontal scroll region, privacy dialog, and symbol drawer remained contained. The document width stayed at 320 px without whole-page horizontal overflow. This was a desktop simulation, not a real iPhone test.
-- A content-invalid `.csv` produced a visible alert in desktop Chrome at a simulated 320 px viewport. Its computed text size was at least 14 px with at least 21 px line height, and neither the message nor the document overflowed the viewport.
+- A content-invalid `.csv` produced a visible alert and bounded recovery panel in desktop Chrome at a simulated 320 px viewport. Its computed text size was at least 14 px with at least 21 px line height; the message, recovery panel and document did not overflow, and no local filename appeared in visible UI copy.
 - The fully synthetic current-schema CSV imported successfully through the visible file chooser.
 - The import completed through the Worker-backed path and changed the UI from Demo to Fully Synthetic Test.
 - The known fictional fixture was labelled Fully Synthetic Test, not Self-Reported. It created no local ranking snapshot and unlocked no local achievements; its normalized source-reference cards remained inspectable without exposing raw rows or values.

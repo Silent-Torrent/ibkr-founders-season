@@ -160,7 +160,7 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
       >
         <div className="drawer-header">
           <div>
-            <span className="eyebrow">UNDERLYING</span>
+            <span className="eyebrow">{t(locale, 'underlyingEyebrow')}</span>
             <h2 id="symbol-drawer-title">{symbol.symbol}</h2>
             <p>{symbol.description}</p>
           </div>

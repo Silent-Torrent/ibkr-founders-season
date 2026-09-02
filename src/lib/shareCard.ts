@@ -12,6 +12,12 @@ export function getShareSourceLabel(report: PortfolioReport, locale: Locale): st
   return t(locale, reportTrustLabelKey(report.source))
 }
 
+export function getShareQualityLabel(report: PortfolioReport, locale: Locale): string {
+  if (report.dataQuality === 'good') return t(locale, 'qualityGood')
+  if (report.dataQuality === 'warning') return t(locale, 'qualityWarning')
+  return t(locale, 'qualityError')
+}
+
 function dataUrlToFile(dataUrl: string, filename: string): File {
   const separator = dataUrl.indexOf(',')
   if (separator < 0) throw new Error('Invalid PNG data URL')
@@ -100,6 +106,7 @@ export async function downloadSeasonCard(
   const divisionKey = getDivision(report.netLiquidationValue, report.baseCurrency)
   const division = divisionKey ? t(locale, divisionKey) : t(locale, 'divisionUnavailable')
   const sourceLabel = getShareSourceLabel(report, locale)
+  const qualityLabel = getShareQualityLabel(report, locale)
 
   const background = context.createLinearGradient(0, 0, 1200, 1500)
   background.addColorStop(0, '#070a0f')
@@ -159,16 +166,17 @@ export async function downloadSeasonCard(
   const rows = [
     { label: t(locale, 'dataThrough'), value: formatDate(report.endDate, locale) },
     { label: t(locale, 'sourceType'), value: sourceLabel },
+    { label: t(locale, 'trustCalculationCheck'), value: qualityLabel },
   ]
 
   rows.forEach((row, index) => {
-    const y = 925 + index * 150
+    const y = 885 + index * 120
     context.fillStyle = '#718397'
     context.font = '650 25px -apple-system, BlinkMacSystemFont, sans-serif'
     context.fillText(row.label, 120, y)
     context.fillStyle = '#f3f7fb'
     context.font = '750 48px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(row.value, 120, y + 60)
+    context.fillText(row.value, 120, y + 52)
   })
 
   context.fillStyle = '#6f8193'
@@ -222,6 +230,7 @@ export function buildSeasonSummary(report: PortfolioReport, locale: Locale): str
     `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'dataThrough')}: ${report.endDate}`,
     `${t(locale, 'sourceType')}: ${getShareSourceLabel(report, locale)}`,
+    `${t(locale, 'trustCalculationCheck')}: ${getShareQualityLabel(report, locale)}`,
     t(locale, 'shareNoHoldings'),
   ]
     .filter(Boolean)
