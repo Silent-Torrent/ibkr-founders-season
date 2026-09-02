@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through coding checkpoint 0.14
+## Completed through checkpoint 0.14 plus the 2026-09-01 iPhone Safari fix and 2026-09-02 fictional device pack
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -24,6 +24,8 @@
 - [x] Capital divisions.
 - [x] Trophy rules and locked previews.
 - [x] PNG season card export.
+- [x] iOS secure-context file sharing plus an explicit local Blob-preview/Safari-save fallback when file sharing is unavailable.
+- [x] Automated coverage for Web Share filename/MIME/bytes, iOS preview focus, stale-request protection, Blob-URL cleanup, and PNG privacy canaries.
 - [x] Privacy-safe default share card and copied summary with no underlying symbols, account identifiers, or exact net liquidation value.
 - [x] Sample CSV and parser smoke suite, including invalid-input cases.
 - [x] Visible IBKR YTD-total reconciliation difference.
@@ -47,6 +49,8 @@
 - [x] Deterministic option-underlying alias candidates: retain agreeing duplicate provenance and reject the whole report on any conflicting Symbol/Description alias, independent of row order.
 - [x] Automated real-Chrome regression against a fresh production bundle, including the dedicated Worker path, a real downloaded/decoded 1200×1500 PNG with privacy canaries, synthetic trust/ranking/achievement boundaries, refresh-to-Demo, and no external page request or POST.
 - [x] Runtime-only fully fictional exact-capacity input: 5,242,880 bytes, 100,000 rows, 500 underlyings, and 1,000 assignment/expiration events; production Chrome verifies complete Worker import/render, bounded main-thread gaps, Ledger search/drawer behavior, visible cancellation with Worker termination, exact-5-MiB/100,000-row 501-symbol/1,001-event fail-closed paths, and 5 MiB plus one-byte preflight rejection.
+- [x] Repository-external, fully fictional iPhone stress pack with five fixed-hash CSVs, a manifest, SHA-256 list, beginner-safe instructions and a device result template that starts entirely at `NOT_RUN`.
+- [x] Independent stress-pack verification for output-path safety, no overwrite, exact bytes/rows/hashes, supported parser outcomes, support-file integrity, tamper rejection and automatic test cleanup; keep the product trust allowlist unchanged.
 - [x] Shared parser/Worker report-capacity constants and parser-side fixed capacity exits: reject the 1,001st deduplicated final event before construction/push, reject the 501st retained normalized symbol before portfolio aggregation/report construction, accept exactly 256 distinct exact section strings at the post-known-code-mapping stage and reject a 257th during the selective first scan before the FII second pass or report construction, bound retained invalid/source-reference evidence with explicit canonical-key overflow sentinels and spread-safe failure marking, reject overlong input-derived output fields or an assembled result above the actual shared item/string footprint instead of allowing a later `worker_failure`, directly test exact 501/502 collections, overlong fields, dense parser string-budget crossing, exact 1,000,000/1,000,001 string-character results, compact 20,000/20,001 reference boundaries, and unused bounded internal mappings, and keep final Worker validation as defense in depth.
 - [x] Three-locale Privacy & Data dialog with the approved local-processing, storage, authenticity, PDF, disclaimer, and clearing boundaries.
 - [x] Accessible privacy-dialog focus behavior: initial focus, Tab/Shift+Tab containment, Escape/backdrop close, background lock, and focus return.
@@ -88,9 +92,13 @@
 - [x] Add parser-stage report-capacity exits for adversarial files at or below the byte/row ceilings, including separate known-code smoke coverage, direct post-mapping 256/257 exact-section boundaries, parser/Worker alignment for actual aggregate item/string budgets, and exact-5-MiB/100,000-row 501-symbol and 1,001-event production-Worker cases that preserve the prior report.
 - [x] Remove application-owned whole-file decoding and hashing buffers from the production Worker. The parser now reopens the Blob for two bounded-chunk passes, retains only selective section/FII state, and preserves all tested accounting/diagnostic results. This is intentionally not a single-pass parser.
 - [ ] Measure browser-Worker peak allocation and establish a supported real-iPhone/Safari memory threshold. Node process proxies and desktop Chrome are directional evidence only; they are not a hard release gate.
-- [ ] Verify real iPhone Safari file import, cancellation, timeout and PNG download using only fictional data.
+- [x] Verify on iPhone 17 Pro Max / iOS 27.0 Safari: production-page loading, the system file picker, fully fictional small-file Worker import, refresh clearing, and synthetic no-rank/no-trophy behavior.
+- [x] Verify an imported-report PNG preview and a Demo-card local-HTTP Safari share/save/reopen round trip to “On My iPhone”; record the Safari-generated filename limitation.
+- [ ] Verify an imported-report PNG save/reopen round trip, HTTPS native file sharing, and preservation of `pnl-arena-2026-season.png`.
+- [ ] Verify real-iPhone cancellation, the 12-second timeout, Worker recovery, and exact-capacity behavior using developer-generated fictional boundary files with recorded SHA-256 values.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
 - [ ] Run VoiceOver and real-device accessibility checks on the supported iPhone Safari baseline.
+- [ ] Verify real-device rotation, three-locale privacy-dialog scrolling/closing, symbol-drawer/source-card interaction, and close-tab/reopen clearing.
 - [x] Add a three-locale privacy notice and disclaimer modal.
 - [x] Initialize local Git history with the approved GitHub `noreply` identity.
 - [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
@@ -101,7 +109,7 @@
 - [x] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
 - [x] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
 - [x] Add an automated local-browser import regression for the synthetic fixture.
-- [x] Add an automated desktop-Chrome PNG download regression that verifies filename, file count, PNG structure, dimensions, decoding and privacy canaries; keep real-iPhone PNG verification open.
+- [x] Add an automated desktop-Chrome PNG download regression that verifies filename, file count, PNG structure, dimensions, decoding and privacy canaries; keep the remaining imported-report save/reopen, HTTPS native-share, and specified-filename real-iPhone gates open.
 - [x] Localize remaining parser rejection messages in all three interface languages.
 
 ## P1 — after first testers

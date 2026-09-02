@@ -1,6 +1,6 @@
-# Verification record — coding checkpoint 0.14
+# Verification record — checkpoint 0.14 plus iPhone Safari follow-up tooling
 
-Last updated: 2026-08-31
+Last updated: 2026-09-02
 
 ## Frozen release decisions and execution status
 
@@ -12,6 +12,7 @@ Last updated: 2026-08-31
 - The user selected A + C on 2026-08-30: keep Vercel at zero deployments and research alternatives only. No alternate host, external upload, Production deployment, or public domain is approved without a new explicit user decision.
 - The user then selected L: continue local/private-GitHub development and defer all deployment discussion until the local product is ready.
 - The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac.
+- Commit `a9df475` records the iPhone Safari sharing fix and partial-device evidence; local `main` and `origin/main` matched after that push.
 - An empty Vercel project exists with Standard Protection enabled and build settings frozen to Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. It currently has zero deployments.
 - A first upload explicitly requested as Preview was classified by Vercel as Production and received the default production alias. It was immediately removed; both generated URLs were then verified as `404 DEPLOYMENT_NOT_FOUND`. This is a failed release-gate attempt, not a successful Preview or Production release.
 - The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
@@ -81,6 +82,8 @@ Last updated: 2026-08-31
 - Production Vite build passed locally.
 - Dependency lockfile created; installed dependency audit reported zero known vulnerabilities.
 - Checkpoint 0.14 adds two-pass Blob streaming, shared incremental collectors, incremental fingerprint/SHA-256, full-read prohibitions, filename stripping at the helper boundary and a hard 12-second maximum. The current full verification includes parser/streaming/materialization/Worker suites and the local production-Chrome import/PNG/capacity regression under Node 22.23.2 with npm 10.9.8. Its Node memory proxy and desktop browser evidence do not replace the real-device gates.
+- Commit `a9df475` additionally covers desktop-download fallback, Web Share filename/MIME/bytes, iOS Blob-preview creation and focus, stale-preview protection, Blob-URL release on report/language/close/unmount changes, and PNG privacy canaries.
+- The 2026-09-02 iPhone stress-pack workflow generates five repository-external, fully fictional CSVs at fixed SHA-256 identities plus a manifest, checksum list, beginner instructions and an all-`NOT_RUN` device-results template. Its independent verifier checks the output contract and refuses a changed CSV; its Node 22 regression verifies the expected parser acceptance/rejection outcomes and temporary-directory cleanup. These checks do not exercise the production Worker, Safari file picker, cancellation button, 12-second timeout, device memory or any real iPhone path.
 - Both beginner-facing macOS scripts select a working Node 22.12+ runtime without exposing errors from this Mac's broken default Node 25 loader. `VERIFY_MAC.command` retains the clean install, audit, full checks and build; `START_MAC.command` conditionally repairs only missing/changed locked dependencies and otherwise starts the local site without repeating the full gate. Their shell syntax and separate roles have an automated contract test.
 - A dedicated Privacy & Data dialog is available from both the desktop privacy card and the page footer.
 - English, Simplified Chinese, and Traditional Chinese privacy copy covers local Worker parsing, current-tab memory, locale-only persistence, no statement upload, the Self-Reported authenticity limit, the optional and currently unparsed PDF boundary, the investment-advice disclaimer, and clearing instructions.
@@ -133,6 +136,15 @@ Last updated: 2026-08-31
 - A static source scan found no application `fetch`, XHR, WebSocket, external script, remote font or analytics endpoint.
 - The private real statement was not selected in the browser test; it was verified only through the local command-line parser.
 
+## Partial iPhone Safari real-device check — 2026-09-01
+
+- The production bundle was tested on an iPhone 17 Pro Max / iOS 27.0 in system Safari over temporary trusted-Wi-Fi HTTP, using only `tests/fixtures/ibkr-current-schema-synthetic.csv`.
+- Production-page loading, touch/scroll/navigation, three-locale switching, the system picker, Worker import, Fully Synthetic Test labelling, the expected approximate metrics and three underlyings passed.
+- The imported result remained unranked and unlocked no achievements. Reloading returned to Demo while the locale preference could remain.
+- The imported-report PNG preview rendered and omitted account identifiers, the comparison key, holdings and exact NAV; the capital division still disclosed a broad balance range.
+- The save/share/reopen round trip passed only with the Demo card through the local-HTTP Blob fallback. Safari assigned a random `.png` filename; the reopened file was a complete nonblank 1200×1500 PNG.
+- This session did not test imported-report PNG save/reopen, iOS/Safari 16.4, VoiceOver, rotation, privacy-dialog or symbol-drawer interaction, tab-close/reopen clearing, cancellation, timeout, exact capacity, peak memory, HTTPS native file sharing, the specified filename, deployed headers, clipboard, or Network/Storage.
+
 ## Not yet verified
 
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
@@ -140,6 +152,6 @@ Last updated: 2026-08-31
 - Custom wide Flex NAV queries with omitted registered asset fields or a non-empty Model are not supported; only the tested full-field account-level layout is accepted.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
 - Exercise remains uncovered by a qualified real or independently proven CSV fixture. Official IBKR documentation confirms `Ex` and the lifecycle-field semantics, but the public samples are HTML and do not prove the completed-exercise CSV serialization; see `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
-- Protected private-host header/Worker MIME inspection, complete deployed Network/Storage instrumentation, near-5 MB responsiveness on the iOS/Safari 16.4+ baseline, real iPhone Safari import/cancellation/timeout and real-iPhone PNG export remain unverified. Deployment remains frozen under the L decision; checkpoint 0.14 does not imply release readiness.
+- The partial iOS 27.0 Safari pass described above does not establish the supported iOS/Safari 16.4 floor. Real-device cancellation/timeout, exact-5-MiB/100,000-row responsiveness, Worker recovery, peak memory, imported-report PNG save/reopen, HTTPS native file sharing and its specified filename remain unverified. Protected-host headers, complete deployed Network/Storage instrumentation and clipboard inspection also remain deferred under the L deployment decision.
 - Blob streaming and incremental hashing are implemented, but the intentional two-pass design still reads the immutable Blob twice and retains the selective statement index, global FII alias states and final report. Browser-engine internal Blob caching, browser-Worker peak allocation and real-device peak-memory headroom remain unmeasured. This is not a single-pass parser or an iPhone/Safari memory guarantee.
 - VoiceOver has not been tested. The desktop keyboard/focus pass and 320 px simulated-width pass do not establish real-device screen-reader accessibility.
