@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.18 share and copy recovery
+# Verification record — checkpoint 0.19 import recovery
 
 Last updated: 2026-09-05
 
@@ -20,6 +20,15 @@ Last updated: 2026-09-05
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.19 import recovery
+
+- A pre-fix production-bundle regression reproduced actual focus loss after selecting a file from the error-retry panel and entering Worker busy state. All three picker entry points now focus the stable main Choose/Cancel control synchronously before opening the input; no delayed focus effect was added.
+- The new browser module observes five real button-triggered, CDP-intercepted picker openings; one held Worker is cancelled, and two held Workers reach the unchanged production 12-second timeout at 12,056.5 / 12,058.8 ms. Each target disappears, the old 500-row report is preserved in the checked cancel/preflight and first-timeout paths, and a same-page same-file retry after the second timeout succeeds with a fresh production Worker and 3 rows.
+- Main-control focus is retained, cancellation followed by a non-CSV preflight rejection creates no new Worker, and moving to the Demo control without activating it preserves that focus on timeout. These are controlled Chrome checks, not a manual system picker, natural iPhone timeout, VoiceOver or peak-memory result.
+- `npm run check` and `npm run build` passed; all existing parser, privacy, share/PNG, exact-capacity, over-capacity, locale and responsive checks remained passing. Dependencies were unchanged; no new audit/install was performed.
+- The existing external five-file fictional iPhone pack passed independent verification without regeneration or modification. The next device section is separately marked `NOT_RUN`, and checklist storage wording now reflects the already-approved language/seen-guide preferences; the immutable pack template remains untouched.
+- See `docs/IMPORT_RECOVERY_EVIDENCE_2026-09-05.md` for exact scope, measurements and remaining user-assisted gates. No real statement was read, no iPhone/LAN/VoiceOver setting was used, and no deployment was made.
 
 ### Checkpoint 0.18 share and copy recovery
 
@@ -193,6 +202,8 @@ Last updated: 2026-09-05
 - With VoiceOver enabled, a visible cancel at about 3.1 seconds returned the page to idle and no late report appeared over more than 29 seconds. The test tool could not capture device audio, and the complete navigation/dialog focus and spoken-reading order was not exercised; no claim is made that the cancellation announcement was heard. VoiceOver was turned off and the off state was visually rechecked after the test.
 
 ## Not yet verified
+
+Recovery items below refer to actual iPhone/Safari behavior. The controlled desktop-Chrome recovery result in checkpoint 0.19 does not close those device gates, and the historical checkpoint 0.15 observations do not certify the current build.
 
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
 - Mixed MTM + Month/YTD is verified only for the repository's fully fictional, family-correct English full-account shapes. New broker layouts, partial Flex selections, non-empty Model slices, or structures that cannot be normalized exactly remain unsupported and fail closed.

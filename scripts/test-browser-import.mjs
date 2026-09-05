@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { testShareInteractions } from './test-share-interactions.mjs'
+import { testImportRecovery } from './test-import-recovery.mjs'
 import {
   generateSyntheticCapacityStatement,
   generateSyntheticOverEventStatement,
@@ -544,6 +545,29 @@ const workerFixedTimes = []
 const asynchronousProtocolErrors = []
 const downloadStarts = []
 const downloadProgress = []
+let nextWorkerHold = null
+
+// Test-only gate: keep one real production Worker waiting at startup while
+// the unchanged page timer exercises its normal 12-second timeout path.
+function holdNextWorker() {
+  assert.equal(nextWorkerHold, null, 'A Worker startup hold is already armed.')
+  const ticket = { targetId: null, sessionId: null, ready: false }
+  nextWorkerHold = ticket
+  return ticket
+}
+
+async function releaseWorkerHold(ticket) {
+  if (nextWorkerHold === ticket) nextWorkerHold = null
+  if (!ticket.sessionId) return
+  const { targetInfos = [] } = await cdp.send('Target.getTargets')
+  if (targetInfos.some(({ targetId }) => targetId === ticket.targetId)) {
+    try {
+      await cdp.send('Runtime.runIfWaitingForDebugger', {}, ticket.sessionId)
+    } catch (error) {
+      if (!/Session with given id not found/.test(String(error))) throw error
+    }
+  }
+}
 
 try {
   if (process.env.IBKR_BROWSER_IMPORT_SKIP_BUILD === '1') {
@@ -739,6 +763,12 @@ try {
     const { sessionId, targetInfo } = params
     try {
       if (targetInfo?.type === 'worker') {
+        const hold = nextWorkerHold
+        nextWorkerHold = null
+        if (hold) {
+          hold.targetId = targetInfo.targetId
+          hold.sessionId = sessionId
+        }
         workerTargets.push({
           targetId: targetInfo.targetId,
           title: targetInfo.title,
@@ -760,6 +790,10 @@ try {
           url: targetInfo.url,
           value: observedClock.result?.value,
         })
+        if (hold) {
+          hold.ready = true
+          return
+        }
       }
       await cdp.send('Runtime.runIfWaitingForDebugger', {}, sessionId)
     } catch (error) {
@@ -2223,6 +2257,20 @@ try {
     'The browser created a Worker for an oversized file that should fail preflight.',
   )
 
+  const importRecovery = await testImportRecovery({
+    cdp,
+    evaluate,
+    waitForPageValue,
+    waitForAsyncCondition,
+    clickPrimaryNavigation,
+    resolveFileInputNodeId,
+    holdNextWorker,
+    releaseWorkerHold,
+    getWorkerTargets: () => workerTargets,
+    fixturePath,
+    invalidExtensionFixturePath,
+  })
+
   await delay(250)
 
   assert.equal(downloadStarts.length, 1, 'A delayed second browser download was observed.')
@@ -2335,6 +2383,7 @@ try {
     rows: ledgerDetails.rows,
     seasonPnl,
     shareInteractions,
+    importRecovery,
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
     workerTargets: workerTargets.length,
   })

@@ -2,7 +2,7 @@
 
 ## 作用和非声明
 
-这套工具为真实 iPhone Safari 生成可重复的全虚构 CSV 压力包。生成成功、SHA-256 匹配和 Mac 自动测试通过都不代表真机已通过；生成的结果模板必须保持 `NOT_RUN`，直到在指定设备上完成对应操作。
+这套工具为真实 iPhone Safari 生成可重复的全虚构 CSV 压力包。生成成功、SHA-256 匹配和 Mac 自动测试通过都不代表真机已通过；认证包内的结果模板永久保持原始 `NOT_RUN`，实际设备观察另存包外，不能直接修改已认证模板。
 
 工具不读取私密测试资料、真实 IBKR CSV/PDF、账户号或持仓。它只使用仓库已有的小型全虚构 fixture 和 `scripts/synthetic-capacity-statement.mjs` 中的确定性生成器。
 
@@ -44,7 +44,7 @@ npm run prepare:iphone-stress-pack -- "/absolute/path/outside-repo/iphone-stress
 - `MANIFEST.json`：生成时间、Git HEAD、工作区清洁状态、生成器/校验器哈希、每个 CSV 的边界和预期结果。
 - `SHA256SUMS.txt`：五个 CSV 的标准 SHA-256 清单。
 - `README_先读.md`：现场安全规则、顺序、诚实记录口径和清理步骤。
-- `RESULTS_NOT_RUN.md`：默认全部为 `NOT_RUN` 的真机结果模板。
+- `RESULTS_NOT_RUN.md`：永久保留原样、全部为 `NOT_RUN` 的真机结果模板；实际结果另存包外。
 
 ## 传输前独立校验
 
@@ -84,6 +84,7 @@ npm run verify:iphone-stress-pack -- "/absolute/path/outside-repo/iphone-stress-
 1. 在新标签页选择 `02-cancel-timeout-probe.csv`。
 2. 文件选择器返回后，若“取消导入”可见，立即点击。
 3. 确认出现取消提示，然后继续等待至少 12.25 秒，确认页面没有被迟到的 Worker 结果切换到 Ledger。
+4. 在同一未刷新标签页，从取消面板“重新选择”导入 `00` 并成功显示 3 标的账本，才能另外记录恢复通过。该流程从 Demo 开始，不先加载相同 `00`，以免正确的重复报表保护被误判为恢复失败。
 
 如果文件在点击前已完成，记为 `NOT_EXERCISED`，不是通过。没有 Safari Web Inspector 证据时，只能声称取消提示和无迟到结果被观察，不能声称直接观察到 Worker 终止。
 
@@ -92,6 +93,7 @@ npm run verify:iphone-stress-pack -- "/absolute/path/outside-repo/iphone-stress-
 1. 在另一个新标签页再次选择 `02`，这次不取消。
 2. 若成功完成，记录耗时，但超时路径必须保持 `NOT_TRIGGERED`。
 3. 只有未修改的生产页面自然显示固定 12 秒超时，且继续等待后没有迟到结果，才能记录真机超时界面与迟到保护已观察。
+4. 若自然超时被触发，在同一未刷新标签页从错误面板“重新选择”导入 `00` 成功，才另外记录超时后恢复通过；未触发则保持 `NOT_TRIGGERED`。
 
 不保证任何合规 CSV 在指定 iPhone 上一定超过 12 秒。为 Worker 加人工延迟或缩短时间只能证明专用 QA 构建的生命周期线路，不能冒充生产真机超时通过。
 
@@ -111,7 +113,8 @@ npm run verify:iphone-stress-pack -- "/absolute/path/outside-repo/iphone-stress-
 
 1. 删除 iPhone“文件”App 中该压力包的所有副本。
 2. 删除测试期间保存的全虚构 PNG。
-3. 在 Mac 上仅删除创建的精确仓库外输出目录，不要删除仓库内的 fixture。
+3. 如需清理 Mac 输出，仅处理本次明确创建且不再保留的精确仓库外目录；不要删除旧验收包、归档或仓库内的 fixture。结果记录保存在包外。
 4. 检查 `git status --short`，确认仓库中没有任何大 CSV、结果文件或临时包。
+5. 关闭本次临时 Safari 测试标签与 Mac 局域网服务；复核 VoiceOver 和本次改动的系统权限恢复原状态，不改动无关权限。
 
-相关真机全流程见 `docs/IPHONE_SAFARI_TEST_CHECKLIST.md`；已有的 iOS 27.0 部分证据与未验证项见 `docs/IPHONE_SAFARI_EVIDENCE_2026-09-01.md`。
+相关真机全流程和下一轮清单见 `docs/IPHONE_SAFARI_TEST_CHECKLIST.md`；最近的历史设备证据见 `docs/IPHONE_SAFARI_EVIDENCE_2026-09-02.md`。这些 0.15 / iOS 27.0 观察不代表当前 0.19 构建已通过真机验证，也不代表支持下限 iOS/Safari 16.4 已通过。

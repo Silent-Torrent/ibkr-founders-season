@@ -26,6 +26,7 @@ export function ImportPage({
   onUseDemo,
 }: ImportPageProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const mainActionRef = useRef<HTMLButtonElement>(null)
   const activeTaskRef = useRef<{
     controller: AbortController
     id: number
@@ -113,6 +114,14 @@ export function ImportPage({
 
   const recoveryKeys = importRecoveryKeys(errors)
 
+  function chooseFile() {
+    // Retry panels disappear when parsing starts (or preflight changes the
+    // outcome). Keep focus on the stable Choose/Cancel node before opening
+    // the picker, without any later effect that could steal the user's focus.
+    mainActionRef.current?.focus()
+    inputRef.current?.click()
+  }
+
   function cancelImport(announce = true) {
     activeTaskRef.current?.controller.abort()
     activeTaskRef.current = null
@@ -168,6 +177,7 @@ export function ImportPage({
               className="secondary-button"
               data-action="cancel-import"
               onClick={() => cancelImport()}
+              ref={mainActionRef}
               type="button"
             >
               {t(locale, 'cancelImport')}
@@ -176,7 +186,8 @@ export function ImportPage({
             <button
               className="primary-button"
               data-action="choose-file"
-              onClick={() => inputRef.current?.click()}
+              onClick={chooseFile}
+              ref={mainActionRef}
               type="button"
             >
               {t(locale, 'chooseFile')}
@@ -197,7 +208,7 @@ export function ImportPage({
             <button
               className="secondary-button"
               data-action="choose-file-after-cancel"
-              onClick={() => inputRef.current?.click()}
+              onClick={chooseFile}
               type="button"
             >
               {t(locale, 'chooseAnotherFile')}
@@ -239,7 +250,7 @@ export function ImportPage({
               <button
                 className="primary-button"
                 data-action="choose-file-after-error"
-                onClick={() => inputRef.current?.click()}
+                onClick={chooseFile}
                 type="button"
               >
                 {t(locale, 'chooseAnotherFile')}

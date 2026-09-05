@@ -220,8 +220,19 @@ try {
       'role="status"',
       'aria-labelledby="import-recovery-title"',
       'data-action="choose-file-after-error"',
+      'mainActionRef.current?.focus()',
     ],
     'Import announcements',
+  )
+  assert.equal(
+    (importSource.match(/onClick=\{chooseFile\}/g) ?? []).length,
+    3,
+    'All three file-picker entry points must use the stable-focus handler.',
+  )
+  assert.equal(
+    (importSource.match(/ref=\{mainActionRef\}/g) ?? []).length,
+    2,
+    'The main Choose and Cancel branches must share the same focus ref.',
   )
   assert.ok(
     !importSource.includes("importCancelled ? t(locale, 'importCancelled')"),

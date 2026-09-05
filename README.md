@@ -2,10 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.18 share and copy recovery
+## Current project state — checkpoint 0.19 import recovery
 
 The repository already contains:
 
+- File selection and both recovery entry points synchronously focus the stable main Choose/Cancel control before opening the picker. Production Chrome reproduces and guards the removed-retry-button focus defect, preserves the previous report after cancellation/preflight rejection and controlled 12-second timeout, and succeeds on a same-page same-file retry through a fresh real Worker. A moved focus is not stolen. The native chooser is intercepted and Worker startup is controlled for these timeout tests; current-build iPhone results remain unrun. See `docs/IMPORT_RECOVERY_EVIDENCE_2026-09-05.md`.
 - Share and copy requests are invalidated synchronously when the report/language changes or the Ledger unmounts. Late system-share rejection cannot create an obsolete fallback preview/download, old results and timers cannot overwrite a newer action, and both buttons prevent duplicate pending submissions. Copy has explicit three-locale pending feedback and retry behavior. Controlled production-Chrome regressions cover these races; they do not replace real iPhone/clipboard-permission checks. See `docs/SHARE_RECOVERY_EVIDENCE_2026-09-05.md`.
 - React + TypeScript + Vite application shell.
 - English, Simplified Chinese, and Traditional Chinese UI.
@@ -191,6 +192,8 @@ scripts/
   test-iphone-stress-pack.mjs path-safety, tamper, parser-outcome, and cleanup regression
   test-parser-materialization.mjs deterministic selective-materialization pressure regression
   test-browser-import.mjs
+  test-import-recovery.mjs  controlled production-Worker timeout, retry, preservation, and focus regression
+  test-share-interactions.mjs  controlled production share/clipboard lifecycle regression
   test-i18n-contract.mjs  explicit three-locale key, placeholder, render, and hard-coded-copy contract
   test-mac-launchers.mjs
   test-product-policy.mjs
@@ -204,6 +207,8 @@ docs/
   IPHONE_SAFARI_EVIDENCE_2026-09-02.md  checkpoint 0.15 fictional iPhone stress, privacy, PNG and tab-session evidence
   FIRST_USER_EXPERIENCE_EVIDENCE_2026-09-02.md  checkpoint 0.16 beginner flow, recovery, trust, accessibility, and browser evidence
   RELEASE_CANDIDATE_REFINEMENT_EVIDENCE_2026-09-05.md  checkpoint 0.17 visual identity, unavailable-state, responsive, and share evidence
+  SHARE_RECOVERY_EVIDENCE_2026-09-05.md  checkpoint 0.18 share/copy races and delivery boundaries
+  IMPORT_RECOVERY_EVIDENCE_2026-09-05.md  checkpoint 0.19 retry focus, controlled timeout, and same-file recovery
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
   OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required
   PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md  A + C private-host comparison, proposed gates and stop conditions
@@ -234,7 +239,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
-2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only; checkpoint 0.18 is not a deployment or release-readiness decision.
-3. Continue only the remaining device gates in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` when iPhone access is next required: iOS/Safari 16.4, rotation, measured peak memory, a fresh successful import after cancellation and natural timeout, and complete VoiceOver speech/focus order. Later secure-context HTTPS native sharing, exact requested filename, clipboard behavior, protected-host headers, and deployed Network/Storage inspection remain deferred with hosting. The iOS 27 pass, visible VoiceOver cancellation, local-HTTP PNG fallback, desktop-Chrome checks, Node memory proxy, and simulated widths are not substitutes for those specific gates.
+1. Resume section H of `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` when the user opens iPhone mirroring: same-tab recovery after cancellation/natural timeout, capacity-error recovery, current guide/privacy/PNG checks, rotation, and user-assisted VoiceOver. Checkpoint 0.19 closes the desktop recovery checks only; prior checkpoint 0.15 device observations do not certify this build.
+2. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses. The iOS/Safari 16.4 floor, measured browser-Worker peak memory and complete VoiceOver behavior also remain separate open gates; a newer iPhone or desktop simulation cannot establish them.
+3. Keep all hosting work deferred under L. Secure-context HTTPS native sharing, exact requested filename, clipboard behavior, protected-host headers and deployed Network/Storage inspection remain deferred with hosting. Checkpoint 0.19 is not a deployment or release-readiness decision.
 4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.
