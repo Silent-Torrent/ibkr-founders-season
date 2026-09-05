@@ -2,10 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.17 local release-candidate refinement
+## Current project state — checkpoint 0.18 share and copy recovery
 
 The repository already contains:
 
+- Share and copy requests are invalidated synchronously when the report/language changes or the Ledger unmounts. Late system-share rejection cannot create an obsolete fallback preview/download, old results and timers cannot overwrite a newer action, and both buttons prevent duplicate pending submissions. Copy has explicit three-locale pending feedback and retry behavior. Controlled production-Chrome regressions cover these races; they do not replace real iPhone/clipboard-permission checks. See `docs/SHARE_RECOVERY_EVIDENCE_2026-09-05.md`.
 - React + TypeScript + Vite application shell.
 - English, Simplified Chinese, and Traditional Chinese UI.
 - A first code-native P&L Arena mark—arena ring, zero line, and P/L trace—now uses one geometry/color/opacity contract across the welcome screen, sidebar, share preview, generated PNG, and favicon. Brand chartreuse is kept separate from the mint/amber/blue/red financial and trust-status palette, and dynamic season headings use the report year.
@@ -234,6 +235,6 @@ docs/
 ## Immediate next workstream
 
 1. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
-2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only; checkpoint 0.17 is not a deployment or release-readiness decision.
+2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only; checkpoint 0.18 is not a deployment or release-readiness decision.
 3. Continue only the remaining device gates in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` when iPhone access is next required: iOS/Safari 16.4, rotation, measured peak memory, a fresh successful import after cancellation and natural timeout, and complete VoiceOver speech/focus order. Later secure-context HTTPS native sharing, exact requested filename, clipboard behavior, protected-host headers, and deployed Network/Storage inspection remain deferred with hosting. The iOS 27 pass, visible VoiceOver cancellation, local-HTTP PNG fallback, desktop-Chrome checks, Node memory proxy, and simulated widths are not substitutes for those specific gates.
 4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.

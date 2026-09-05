@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatDate, pnlClass } from '../lib/format'
@@ -42,7 +42,7 @@ const cardDeliveryStatusKeys = {
 } as const
 
 export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const [cardStatus, setCardStatus] = useState<CardDeliveryStatus>('idle')
   const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
   const copyResetTimerRef = useRef<number | null>(null)
@@ -51,7 +51,12 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const pngPreviewUrlRef = useRef<string | null>(null)
   const mountedRef = useRef(true)
   const activeRequestRef = useRef({ locale, report })
-  activeRequestRef.current = { locale, report }
+  // A distinct context also invalidates A -> B -> A transitions while a browser API is pending.
+  if (activeRequestRef.current.locale !== locale || activeRequestRef.current.report !== report) {
+    activeRequestRef.current = { locale, report }
+  }
+  const downloadRequestRef = useRef<AbortController | null>(null)
+  const copyRequestRef = useRef<AbortController | null>(null)
   const sourceLabel = getShareSourceLabel(report, locale)
   const qualityLabel = getShareQualityLabel(report, locale)
   const division = getDivision(report.netLiquidationValue, report.baseCurrency)
@@ -59,11 +64,13 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
     ? pngPreview
     : null
 
-  useEffect(
+  useLayoutEffect(
     () => {
       mountedRef.current = true
       return () => {
         mountedRef.current = false
+        downloadRequestRef.current?.abort()
+        copyRequestRef.current?.abort()
         if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
         if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
       }
@@ -71,9 +78,16 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
     [],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    downloadRequestRef.current?.abort()
+    downloadRequestRef.current = null
+    copyRequestRef.current?.abort()
+    copyRequestRef.current = null
+    if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
+    copyResetTimerRef.current = null
     closePngPreview()
     setCardStatus('idle')
+    setCopyStatus('idle')
   }, [locale, report])
 
   useEffect(() => {
@@ -88,39 +102,48 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   }
 
   async function handleDownloadCard() {
-    const requestedLocale = locale
-    const requestedReport = report
+    if (downloadRequestRef.current) return
+    const controller = new AbortController()
+    const requestedContext = activeRequestRef.current
+    downloadRequestRef.current = controller
+    const isCurrent = () => mountedRef.current && !controller.signal.aborted &&
+      activeRequestRef.current === requestedContext && downloadRequestRef.current === controller
     setCardStatus('preparing')
-    let result: SeasonCardDelivery | null
     try {
-      result = await downloadSeasonCard(report, locale)
+      const result = await downloadSeasonCard(report, locale, { signal: controller.signal })
+
+      if (!isCurrent()) {
+        if (result?.kind === 'preview') URL.revokeObjectURL(result.previewUrl)
+        return
+      }
+
+      if (!result || result.kind !== 'preview') {
+        closePngPreview()
+        setCardStatus(result?.kind ?? 'failed')
+        return
+      }
+
+      if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
+      pngPreviewUrlRef.current = result.previewUrl
+      setPngPreview({ ...result, locale, report })
+      setCardStatus('preview')
     } catch {
-      if (mountedRef.current) setCardStatus('failed')
-      return
+      if (isCurrent()) setCardStatus('failed')
+    } finally {
+      if (downloadRequestRef.current === controller) downloadRequestRef.current = null
     }
-
-    if (
-      !mountedRef.current ||
-      activeRequestRef.current.report !== requestedReport ||
-      activeRequestRef.current.locale !== requestedLocale
-    ) {
-      if (result?.kind === 'preview') URL.revokeObjectURL(result.previewUrl)
-      return
-    }
-
-    if (!result || result.kind !== 'preview') {
-      closePngPreview()
-      setCardStatus(result?.kind ?? 'failed')
-      return
-    }
-
-    if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
-    pngPreviewUrlRef.current = result.previewUrl
-    setPngPreview({ ...result, locale: requestedLocale, report: requestedReport })
-    setCardStatus('preview')
   }
 
   async function copySummary() {
+    if (copyRequestRef.current) return
+    const controller = new AbortController()
+    const requestedContext = activeRequestRef.current
+    copyRequestRef.current = controller
+    const isCurrent = () => mountedRef.current && !controller.signal.aborted &&
+      activeRequestRef.current === requestedContext && copyRequestRef.current === controller
+    if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
+    copyResetTimerRef.current = null
+    setCopyStatus('copying')
     let nextStatus: 'copied' | 'failed'
     try {
       await navigator.clipboard.writeText(buildSeasonSummary(report, locale))
@@ -129,12 +152,22 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
       nextStatus = 'failed'
     }
 
-    if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
+    if (!isCurrent()) return
     setCopyStatus(nextStatus)
-    copyResetTimerRef.current = window.setTimeout(
-      () => setCopyStatus('idle'),
+    const resetTimer = window.setTimeout(
+      () => {
+        if (
+          mountedRef.current && !controller.signal.aborted &&
+          activeRequestRef.current === requestedContext && copyResetTimerRef.current === resetTimer
+        ) {
+          setCopyStatus('idle')
+          copyResetTimerRef.current = null
+        }
+      },
       nextStatus === 'failed' ? 3000 : 1400,
     )
+    copyResetTimerRef.current = resetTimer
+    copyRequestRef.current = null
   }
 
   return (
@@ -145,12 +178,20 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           <h2>{t(locale, 'shareCard')}</h2>
         </div>
         <div className="button-row">
-          <button className="secondary-button" data-action="copy-summary" onClick={copySummary} type="button">
-            {copyStatus === 'copied'
-              ? t(locale, 'copied')
-              : copyStatus === 'failed'
-                ? t(locale, 'copyFailed')
-                : t(locale, 'copySummary')}
+          <button
+            className="secondary-button"
+            data-action="copy-summary"
+            disabled={copyStatus === 'copying'}
+            onClick={copySummary}
+            type="button"
+          >
+            {copyStatus === 'copying'
+              ? t(locale, 'copying')
+              : copyStatus === 'copied'
+                ? t(locale, 'copied')
+                : copyStatus === 'failed'
+                  ? t(locale, 'copyFailed')
+                  : t(locale, 'copySummary')}
           </button>
           <button
             className="primary-button"
@@ -164,11 +205,13 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           </button>
         </div>
         <span aria-live="polite" className="sr-only" role="status">
-          {copyStatus === 'copied'
-            ? t(locale, 'copied')
-            : copyStatus === 'failed'
-              ? t(locale, 'copyFailed')
-              : ''}
+          {copyStatus === 'copying'
+            ? t(locale, 'copying')
+            : copyStatus === 'copied'
+              ? t(locale, 'copied')
+              : copyStatus === 'failed'
+                ? t(locale, 'copyFailed')
+                : ''}
         </span>
       </div>
 

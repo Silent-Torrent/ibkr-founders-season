@@ -15,6 +15,7 @@ import { createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { testShareInteractions } from './test-share-interactions.mjs'
 import {
   generateSyntheticCapacityStatement,
   generateSyntheticOverEventStatement,
@@ -339,13 +340,13 @@ class CdpConnection {
   }
 }
 
-async function evaluate(expression) {
+async function evaluate(expression, timeoutMs = 10_000) {
   const response = await cdp.send('Runtime.evaluate', {
     awaitPromise: true,
     expression,
     returnByValue: true,
     userGesture: true,
-  })
+  }, undefined, timeoutMs)
   if (response.exceptionDetails) {
     const detail = response.exceptionDetails.exception?.description
       ?? response.exceptionDetails.text
@@ -1436,16 +1437,22 @@ try {
     )
   }
 
+  const shareInteractions = await testShareInteractions((expression) => evaluate(expression, 30_000))
+
   const previewClearLifecycle = await evaluate(`(async () => {
-    const navigatorKeys = ['canShare', 'maxTouchPoints', 'platform', 'share', 'userAgent'];
+    const navigatorKeys = ['clipboard', 'canShare', 'maxTouchPoints', 'platform', 'share', 'userAgent'];
     const navigatorDescriptors = Object.fromEntries(
       navigatorKeys.map((key) => [key, Object.getOwnPropertyDescriptor(navigator, key)]),
     );
     const nativeConfirm = window.confirm;
     const nativeCreateObjectURL = URL.createObjectURL;
     const nativeRevokeObjectURL = URL.revokeObjectURL;
+    const nativeAnchorClick = HTMLAnchorElement.prototype.click;
     const createdUrls = [];
     const revokedUrls = [];
+    let rejectPendingShare;
+    let resolvePendingCopy;
+    let lateDownloadCount = 0;
     const waitUntil = async (predicate, label) => {
       const deadline = performance.now() + 5_000;
       while (performance.now() < deadline) {
@@ -1545,6 +1552,26 @@ try {
       );
       const clearPreviewUrl = document.querySelector('.png-fallback-panel img')?.src ?? '';
 
+      // Clear the report while both browser operations are pending, not only after PNG creation.
+      Object.defineProperties(navigator, {
+        canShare: { configurable: true, value: () => true },
+        share: { configurable: true, value: () => new Promise((resolveShare, rejectShare) => {
+          rejectPendingShare = rejectShare;
+        }) },
+        clipboard: { configurable: true, value: { writeText: () => new Promise((resolveCopy) => {
+          resolvePendingCopy = resolveCopy;
+        }) } },
+      });
+      secondDownloadButton.click();
+      document.querySelector('[data-action="copy-summary"]').click();
+      await waitUntil(
+        () => typeof rejectPendingShare === 'function' && typeof resolvePendingCopy === 'function',
+        'pending share and copy before report clearing',
+      );
+      HTMLAnchorElement.prototype.click = function () {
+        if (this.download) lateDownloadCount += 1;
+        else return Reflect.apply(nativeAnchorClick, this, []);
+      };
       window.confirm = () => true;
       const clearButton = document.querySelector('button.text-button.danger');
       if (!clearButton) throw new Error('Clear current statement button not found.');
@@ -1557,6 +1584,12 @@ try {
         'cleared iOS local PNG preview',
       );
 
+      rejectPendingShare(new DOMException('Controlled delayed share rejection', 'NotAllowedError'));
+      resolvePendingCopy();
+      await new Promise((resolveWait) => setTimeout(resolveWait, 50));
+      const clearedRequestFeedback = document.querySelector('[data-action="copy-summary"]')?.textContent?.trim() === 'Copy summary' &&
+        !document.querySelector('.share-delivery-status') && !document.querySelector('.png-fallback-panel');
+
       return {
         createdCount: createdUrls.length,
         closeFocusReturned,
@@ -1564,6 +1597,8 @@ try {
         closeRevoked: revokedUrls.includes(closePreviewUrl),
         clearPreviewUrl,
         clearRevoked: revokedUrls.includes(clearPreviewUrl),
+        clearedRequestFeedback,
+        lateDownloadCount,
         initialPreviewAccessible,
         localePreviewUrl,
         localeRevoked: revokedUrls.includes(localePreviewUrl),
@@ -1572,6 +1607,10 @@ try {
       };
     } finally {
       window.confirm = nativeConfirm;
+      rejectPendingShare?.(new DOMException('Test cleanup', 'AbortError'));
+      resolvePendingCopy?.();
+      await new Promise((resolveWait) => setTimeout(resolveWait, 0));
+      HTMLAnchorElement.prototype.click = nativeAnchorClick;
       URL.createObjectURL = nativeCreateObjectURL;
       URL.revokeObjectURL = nativeRevokeObjectURL;
       for (const url of createdUrls) {
@@ -1585,6 +1624,8 @@ try {
     }
   })()`)
   assert.equal(previewClearLifecycle.createdCount, 3, 'iOS fallback created an unexpected number of Blob URLs.')
+  assert.equal(previewClearLifecycle.clearedRequestFeedback, true, 'Cleared report received stale share/copy feedback.')
+  assert.equal(previewClearLifecycle.lateDownloadCount, 0, 'Cleared report triggered a late download.')
   assert.equal(previewClearLifecycle.initialPreviewAccessible, true, 'iOS preview did not receive an operable focused region.')
   assert.ok(previewClearLifecycle.closePreviewUrl.startsWith('blob:'), 'The close-path iOS fallback did not expose a Blob preview URL.')
   assert.equal(previewClearLifecycle.closeRevoked, true, 'Closing the PNG preview did not release its Blob URL.')
@@ -2293,6 +2334,7 @@ try {
     requests: requests.length,
     rows: ledgerDetails.rows,
     seasonPnl,
+    shareInteractions,
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
     workerTargets: workerTargets.length,
   })

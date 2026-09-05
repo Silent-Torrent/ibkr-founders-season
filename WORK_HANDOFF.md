@@ -2,6 +2,8 @@
 
 ## Current status
 
+Checkpoint 0.18 closes share/copy lifecycle races on top of checkpoint 0.17. The UI invalidates requests synchronously when report/language changes or the component unmounts; late native-share rejection can no longer create an obsolete fallback output, and old callbacks/timers cannot overwrite a newer action. Copy has three-locale pending feedback, duplicate-click protection and retry. The optional delivery AbortSignal prevents post-invalidation fallback but cannot recall a share or clipboard call already submitted to the browser/system. `npm run check` and `npm run build` passed, including controlled production-Chrome races and pending share/copy followed by clearing the report. These are local browser checks, not new iPhone or deployment evidence. Full scope is in `docs/SHARE_RECOVERY_EVIDENCE_2026-09-05.md`.
+
 A desktop development copy is active at `IBKR Founders Season/项目工作区/ibkr-founders-season`. The original 2026-08-27 handoff archive remains unchanged. Checkpoint 0.17 completes the local release-candidate refinement without changing the accounting engine, parser, achievement thresholds, capacity limits, no-upload/current-tab-memory boundary, deployment freeze, or checkpoint 0.15 device evidence. A first code-native P&L Arena mark now uses one geometry/color/opacity contract in the welcome screen, sidebar, web share preview, generated PNG, and favicon. Guide and Arena years come from the report; the Founders achievement intentionally remains a 2026-only rule. Typography, hierarchy, share feedback, and 1024/812/768/500/501/320 px responsive states have explicit coverage.
 
 Checkpoint 0.17 also separates unavailable evidence from true zero throughout the Ledger, drawer, Arena, Trophies, and sharing surfaces. Source-backed Month/YTD realized fallback remains usable, current unrealized requires the supported dedicated section, and every non-zero reconciliation difference stays visibly non-zero. Achievement cards distinguish Preview, Unlocked, Not met, Unavailable, Not applicable, and Not supported yet; unavailable cards do not inflate the header count, synthetic data remains preview-only, and `getTrophies` plus every threshold are unchanged. Missing TWR is explicitly unavailable in all share forms. Browser-download feedback says only that a download started, while isolated Chrome separately proves its test file completed. `VERIFY_MAC.command` completed under Node 22.23.2 / npm 10.9.8 with a clean locked install, zero reported vulnerabilities, every automated suite, the production-Chrome regression, and the final build passing. Exact evidence and non-claims are in `docs/RELEASE_CANDIDATE_REFINEMENT_EVIDENCE_2026-09-05.md`.
@@ -160,7 +162,7 @@ These checks do not replace testing against a real IBKR statement.
 
 ## Immediate next milestone
 
-Do not add social features or deployment work first. Checkpoint 0.17 is complete; the next evidence milestone is:
+Do not add social features or deployment work first. Checkpoints 0.17 and 0.18 are complete; the next financial-evidence milestone is:
 
 > Obtain a qualified real or independently proven Exercise-event CSV shape when one becomes available. Do not invent the serialization. Until iPhone access is next needed, keep the local verified build and handoff evidence current; deployment remains frozen under decision L.
 

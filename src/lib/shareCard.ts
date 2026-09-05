@@ -136,7 +136,10 @@ function drawArenaMark(
 export async function downloadSeasonCard(
   report: PortfolioReport,
   locale: Locale,
+  { signal }: { signal?: AbortSignal } = {},
 ): Promise<SeasonCardDelivery | null> {
+  const filename = `pnl-arena-${report.seasonYear}-season.png`
+  if (signal?.aborted) return { filename, kind: 'cancelled' }
   const canvas = document.createElement('canvas')
   canvas.width = 1200
   canvas.height = 1500
@@ -231,7 +234,6 @@ export async function downloadSeasonCard(
   context.fillText('P&L ARENA', 1080, 1367)
   context.textAlign = 'left'
 
-  const filename = `pnl-arena-${report.seasonYear}-season.png`
   const dataUrl = canvas.toDataURL('image/png')
   let file: File | null = null
   try {
@@ -245,8 +247,11 @@ export async function downloadSeasonCard(
   if (file && useAppleMobileDelivery && supportsFileShare(file)) {
     try {
       await navigator.share({ files: [file], title: t(locale, 'shareCard') })
+      if (signal?.aborted) return { filename, kind: 'cancelled' }
       return { filename, kind: 'shared' }
     } catch (error: unknown) {
+      // The system share sheet cannot be recalled; do not create another output after its owner changes.
+      if (signal?.aborted) return { filename, kind: 'cancelled' }
       if (errorName(error) === 'AbortError') return { filename, kind: 'cancelled' }
 
       const preview = createLocalPreview(file, filename)

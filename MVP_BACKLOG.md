@@ -1,7 +1,9 @@
 # MVP backlog
 
-## Completed through checkpoint 0.17 — local release-candidate refinement
+## Completed through checkpoint 0.18 — share and copy recovery
 
+- [x] Invalidate pending share/copy work on report/language changes and unmount; stop stale native-share failures before any additional preview/download, protect new results from old callbacks/timers, prevent duplicate in-flight clicks, and expose three-locale copy-pending/retry feedback.
+- [x] Add controlled production-Chrome share/clipboard recovery regressions for success, denial, cancellation, output failure, retry, language A-to-B-to-A, leaving/reopening Ledger, and clearing the report with both actions pending; keep actual iPhone and clipboard-permission gates separate.
 - [x] Project scaffold.
 - [x] Responsive application shell.
 - [x] Three-locale UI framework.

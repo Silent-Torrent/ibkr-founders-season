@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.17 local release-candidate refinement
+# Verification record — checkpoint 0.18 share and copy recovery
 
 Last updated: 2026-09-05
 
@@ -20,6 +20,16 @@ Last updated: 2026-09-05
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.18 share and copy recovery
+
+- Synchronous request invalidation covers report/language changes and unmount, including A-to-B-to-A language changes. Late success/failure/cancellation cannot overwrite newer feedback; native-share failure checks invalidation before creating any fallback output.
+- Copy exposes pending feedback in all three locales, prevents duplicate in-flight calls, restores retry after failure, and isolates feedback-reset timers from new requests.
+- Policy checks cover delayed native-share success, rejection and AbortError with both current and invalidated requests, and an already invalidated request before drawing.
+- The production-Chrome module exercised 10 controlled copy calls and 9 controlled share calls, including retry, output failure, old/new request races, language changes, navigation and timer reset. Actual system sharing and clipboard writes are stubbed in these cases; this does not verify OS permission dialogs or iPhone sharing.
+- The browser's existing preview-clear case additionally starts both actions before clearing a report and confirms no late feedback, preview or download. Existing Blob URL release and focus checks remain passed.
+- `npm run check` and `npm run build` both passed. All existing suites, real desktop PNG download/decoding/privacy checks, exact-capacity acceptance and over-capacity preservation passed. Dependencies were unchanged; the prior checkpoint's audit is historical, not a newly run audit.
+- See `docs/SHARE_RECOVERY_EVIDENCE_2026-09-05.md` for exact observations and the limit that already submitted browser/system operations cannot be recalled. No new iPhone test or deployment was performed.
 
 ### Checkpoint 0.17 presentation and responsive gate
 

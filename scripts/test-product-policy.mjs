@@ -559,6 +559,65 @@ try {
     )
     assert.equal(downloadClickCount, 1, 'File sharing unexpectedly also triggered a browser download.')
 
+    // A late system-share result must not create a second output for an invalidated request.
+    const originalCreateObjectURL = URL.createObjectURL
+    let previewAttempts = 0
+    let nativeShareCalls = 0
+    try {
+      for (const outcome of ['resolve', 'reject', 'abort']) {
+        for (const invalidate of [false, true]) {
+          let settleShare
+          const controller = new AbortController()
+          const previousDownloads = downloadClickCount
+          const previousPreviews = previewAttempts
+          URL.createObjectURL = (value) => {
+            previewAttempts += 1
+            if (invalidate) throw new Error('An invalidated request must not attempt a preview.')
+            return originalCreateObjectURL(value)
+          }
+          Object.defineProperty(globalThis, 'navigator', {
+            configurable: true,
+            value: {
+              canShare: () => true,
+              maxTouchPoints: 5,
+              platform: 'iPhone',
+              userAgent: 'iPhone',
+              share: () => {
+                nativeShareCalls += 1
+                return new Promise((resolveShare, rejectShare) => {
+                  settleShare = () => outcome === 'resolve'
+                    ? resolveShare()
+                    : rejectShare(new DOMException('Test share outcome', outcome === 'abort' ? 'AbortError' : 'NotAllowedError'))
+                })
+              },
+            },
+          })
+          const pendingShare = downloadSeasonCard(canaryReport, 'en', { signal: controller.signal })
+          assert.equal(typeof settleShare, 'function')
+          if (invalidate) controller.abort()
+          settleShare()
+          const delivered = await pendingShare
+          const expectedKind = invalidate || outcome === 'abort'
+            ? 'cancelled'
+            : outcome === 'resolve' ? 'shared' : 'preview'
+          assert.equal(delivered?.kind, expectedKind, `${outcome}, invalidated=${invalidate}`)
+          assert.equal(downloadClickCount, previousDownloads, 'A delayed share triggered an unexpected download.')
+          assert.equal(previewAttempts - previousPreviews, expectedKind === 'preview' ? 1 : 0)
+          if (delivered?.kind === 'preview') URL.revokeObjectURL(delivered.previewUrl)
+        }
+      }
+      const controller = new AbortController()
+      controller.abort()
+      const previousShares = nativeShareCalls
+      const previousDraws = drawnText.length
+      const alreadyCancelled = await downloadSeasonCard(canaryReport, 'en', { signal: controller.signal })
+      assert.equal(alreadyCancelled?.kind, 'cancelled')
+      assert.equal(nativeShareCalls, previousShares, 'An already invalidated request invoked system sharing.')
+      assert.equal(drawnText.length, previousDraws, 'An already invalidated request rendered a card.')
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL
+    }
+
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
