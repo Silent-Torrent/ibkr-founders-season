@@ -80,6 +80,7 @@ try {
       onLocaleChange: noop,
       onOpenPrivacy: noop,
       onPrimaryAction: noop,
+      seasonYear: demoReport.seasonYear,
     }),
   )
   includesAll(

@@ -2,12 +2,16 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.16 first-user experience
+## Current project state — checkpoint 0.17 local release-candidate refinement
 
 The repository already contains:
 
 - React + TypeScript + Vite application shell.
 - English, Simplified Chinese, and Traditional Chinese UI.
+- A first code-native P&L Arena mark—arena ring, zero line, and P/L trace—now uses one geometry/color/opacity contract across the welcome screen, sidebar, share preview, generated PNG, and favicon. Brand chartreuse is kept separate from the mint/amber/blue/red financial and trust-status palette, and dynamic season headings use the report year.
+- Missing financial evidence is no longer presented as numeric zero. Realized YTD explanation can use a source-backed Month/YTD fallback; current unrealized requires the dedicated supported section. Non-zero reconciliation differences retain visible precision, and missing TWR is explicitly unavailable across the app and all share forms.
+- Achievement presentation now distinguishes Preview, Unlocked, Not met, Unavailable, Not applicable, and Not supported yet. Header counts use those final presentation states, unavailable cards explain the missing evidence, and synthetic data remains preview-only. The underlying trigger calculations and thresholds are unchanged.
+- Release-candidate layout checks now cover 1024 px Import, 812 px local Arena, 768 px onboarding/navigation, and simplified 500/320 px Ledger and Arena tables. Production Chrome also verifies the generated-card footer spacing and the browser's visible download-start state; the remaining share status labels are implemented and present in all three locales, without a claim that every native share outcome was exercised in Chrome.
 - A dedicated first-use screen offers two clear paths—explore fully fictional Demo data or import a supported statement—and remains reopenable from the app. It is marked seen only after the user chooses a path; that non-financial preference and the interface language are the only approved localStorage values.
 - Beginner-facing import guidance exposes all five required IBKR export settings before file selection. Every one of the 42 fixed parser diagnostics maps to a bounded, localized recovery category, while failed, cancelled, duplicate, same-date, and older imports explain that the report already open in the tab was not replaced.
 - The four headline metrics now pair a one-line plain-language definition with an expandable explanation. Demo/test wording remains source-neutral, and the Ledger separates Data source from Internal calculation check instead of presenting arithmetic closure as authenticity.
@@ -198,6 +202,7 @@ docs/
   IPHONE_SAFARI_EVIDENCE_2026-09-01.md  partial iPhone 17 Pro Max / iOS 27 Safari production-bundle evidence and open gates
   IPHONE_SAFARI_EVIDENCE_2026-09-02.md  checkpoint 0.15 fictional iPhone stress, privacy, PNG and tab-session evidence
   FIRST_USER_EXPERIENCE_EVIDENCE_2026-09-02.md  checkpoint 0.16 beginner flow, recovery, trust, accessibility, and browser evidence
+  RELEASE_CANDIDATE_REFINEMENT_EVIDENCE_2026-09-05.md  checkpoint 0.17 visual identity, unavailable-state, responsive, and share evidence
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
   OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required
   PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md  A + C private-host comparison, proposed gates and stop conditions
@@ -224,12 +229,11 @@ docs/
 - Internal arithmetic closure is not proof that an uploaded statement is authentic; it is labelled only Internal Checks Passed.
 - Season return is shown only when a usable explicit return field exists in MTM, NAV, or Change in NAV. Month/YTD/PLUI cannot supply it.
 - No server, account login, social feed, payment, automatic IBKR connection, or historical season archive yet.
-- Badge art is currently a geometric placeholder system; original meme character artwork is a later visual workstream.
+- Badge art is currently a geometric placeholder system; original meme character artwork and a complete brand/trademark package are later visual workstreams. The checkpoint 0.17 code-native mark is the first consistent product identifier, not a completed brand delivery.
 
 ## Immediate next workstream
 
-1. Begin checkpoint 0.17 as a local release-candidate refinement: review visual hierarchy, spacing, typography, wording, empty states and original visual identity without changing the frozen accounting, trust, storage or privacy rules. Full brand polish and original trophy art remain a deliberate later workstream rather than a prerequisite for verifying core behavior.
-2. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
-3. Keep all hosting work deferred under the L decision. The researched routes remain reference material only.
-4. Continue only the remaining device gates in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md`: iOS/Safari 16.4, rotation, measured peak memory, a fresh successful import after cancellation and natural timeout, complete VoiceOver speech/focus order, and later secure-context HTTPS native sharing with its exact requested filename. Clipboard behavior, protected-host headers and deployed Network/Storage inspection remain deferred with hosting under the L decision. The iOS 27 pass, visible VoiceOver cancellation, local-HTTP PNG fallback, desktop-Chrome checks, Node memory proxy and simulated widths are not substitutes for those specific gates. A public or Production release remains outside the approved current scope.
-5. Keep full brand polish and original trophy artwork as a later workstream; the current UX checkpoint may still improve clarity, hierarchy and consistency.
+1. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses.
+2. Keep all hosting work deferred under the L decision. The researched routes remain reference material only; checkpoint 0.17 is not a deployment or release-readiness decision.
+3. Continue only the remaining device gates in `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` when iPhone access is next required: iOS/Safari 16.4, rotation, measured peak memory, a fresh successful import after cancellation and natural timeout, and complete VoiceOver speech/focus order. Later secure-context HTTPS native sharing, exact requested filename, clipboard behavior, protected-host headers, and deployed Network/Storage inspection remain deferred with hosting. The iOS 27 pass, visible VoiceOver cancellation, local-HTTP PNG fallback, desktop-Chrome checks, Node memory proxy, and simulated widths are not substitutes for those specific gates.
+4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.

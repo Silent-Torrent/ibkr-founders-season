@@ -27,11 +27,12 @@ try {
     { ShareCardPreview },
     { TrophiesPage },
     { demoReport },
-    { formatCurrency },
+    { formatCurrency, formatReconciliationDifference },
+    { hasCurrentUnrealizedExplanation, hasRealizedExplanation },
     { getDivision, getTrophies },
     { parseIbkrActivityStatement },
     { formatParserDiagnostic },
-    { buildSeasonSummary, downloadSeasonCard },
+    { buildSeasonSummary, downloadSeasonCard, formatShareSeasonReturn },
     { decideSnapshotImport },
     { sha256Hex },
     { createSessionComparisonSalt },
@@ -45,6 +46,7 @@ try {
     vite.ssrLoadModule('/src/pages/TrophiesPage.tsx'),
     vite.ssrLoadModule('/src/data/demo.ts'),
     vite.ssrLoadModule('/src/lib/format.ts'),
+    vite.ssrLoadModule('/src/lib/explanationAvailability.ts'),
     vite.ssrLoadModule('/src/lib/season.ts'),
     vite.ssrLoadModule('/src/lib/ibkr.ts'),
     vite.ssrLoadModule('/src/lib/parserDiagnostics.ts'),
@@ -110,6 +112,13 @@ try {
     '—',
     'An invalid currency escaped the formatter safety fallback.',
   )
+  assert.equal(formatReconciliationDifference(0, 'USD', 'en'), '$0')
+  assert.equal(formatReconciliationDifference(0.4, 'USD', 'en'), '+$0.40')
+  assert.equal(formatReconciliationDifference(-0.4, 'USD', 'en'), '-$0.40')
+  assert.equal(formatReconciliationDifference(0.000001, 'USD', 'en'), '+$0.000001')
+  assert.equal(formatReconciliationDifference(0.0000004, 'USD', 'en'), '+$0.0000004')
+  assert.match(formatReconciliationDifference(1e-21, 'USD', 'en'), /\+\$1E-21/)
+  assert.equal(formatReconciliationDifference(1, '<img>', 'en'), '—')
 
   const arenaDemoMarkup = renderToStaticMarkup(
     createElement(ArenaPage, { locale: 'en', report: demoReport }),
@@ -217,6 +226,13 @@ try {
   assert.ok(syntheticLedgerMarkup.includes('Fully synthetic test'))
   assert.ok(!syntheticArenaMarkup.includes('Your local snapshot'))
   assert.ok(getTrophies(syntheticReport).every((trophy) => !trophy.unlocked))
+  assert.match(
+    syntheticTrophiesMarkup,
+    /data-status="preview" data-trophy="bagholder"/,
+    'Synthetic achievements are not clearly labelled as previews.',
+  )
+  assert.match(syntheticTrophiesMarkup, /data-status="unsupported" data-trophy="reverse"/)
+  assert.match(syntheticTrophiesMarkup, /data-status="unsupported" data-trophy="iv"/)
 
   const arenaLocalMarkup = renderToStaticMarkup(
     createElement(ArenaPage, { locale: 'en', report: localReport }),
@@ -237,9 +253,89 @@ try {
     'Internal calculation check',
     'Self-reported · not broker-verified',
     'do not prove that a file was issued by IBKR',
+    'reported All Asset Classes YTD mark-to-market total',
   ]) {
     assert.ok(localLedgerMarkup.includes(required), `The Ledger trust boundary is missing: ${required}`)
   }
+
+  const precisionReport = cloneReport()
+  precisionReport.source = 'local'
+  precisionReport.mtmReconciliationDifference = 0.4
+  const precisionMarkup = renderToStaticMarkup(
+    createElement(LedgerPage, { locale: 'en', report: precisionReport }),
+  )
+  assert.ok(
+    precisionMarkup.includes('+$0.40'),
+    'A non-zero sub-dollar reconciliation difference was rounded to zero in the Ledger.',
+  )
+
+  const missingExplanationReport = cloneReport()
+  missingExplanationReport.source = 'local'
+  missingExplanationReport.parserFacts.realizedSectionMissing = true
+  const firstMissingSymbol = missingExplanationReport.symbols[0]
+  assert.equal(hasRealizedExplanation(missingExplanationReport, firstMissingSymbol), false)
+  assert.equal(hasCurrentUnrealizedExplanation(missingExplanationReport), false)
+  const missingExplanationMarkup = renderToStaticMarkup(
+    createElement(LedgerPage, { locale: 'en', report: missingExplanationReport }),
+  )
+  const missingNvdaRow = missingExplanationMarkup.match(
+    /<tr><td><strong>NVDA<\/strong>[\s\S]*?<\/tr>/,
+  )?.[0]
+  assert.ok(missingNvdaRow, 'Could not inspect the missing-explanation NVDA row.')
+  assert.equal(
+    (missingNvdaRow.match(/Unavailable/g) ?? []).length,
+    2,
+    'Missing realized/current-unrealized explanations were rendered as numeric zero.',
+  )
+
+  const fallbackRealizedReport = cloneReport()
+  fallbackRealizedReport.source = 'local'
+  fallbackRealizedReport.parserFacts.realizedSectionMissing = true
+  fallbackRealizedReport.symbols[0].totalRealizedYtd = 0
+  fallbackRealizedReport.symbols[0].sourceRefs.totalRealizedYtd = [
+    {
+      field: 'YTD Realized Total',
+      recordType: 'Data',
+      rowNumber: 1,
+      section: 'Month & Year to Date Performance Summary',
+    },
+  ]
+  assert.equal(hasRealizedExplanation(fallbackRealizedReport, fallbackRealizedReport.symbols[0]), true)
+  const fallbackMarkup = renderToStaticMarkup(
+    createElement(LedgerPage, { locale: 'en', report: fallbackRealizedReport }),
+  )
+  const fallbackNvdaRow = fallbackMarkup.match(/<tr><td><strong>NVDA<\/strong>[\s\S]*?<\/tr>/)?.[0]
+  assert.ok(fallbackNvdaRow?.includes('$0'), 'A sourced zero realized value was hidden as missing.')
+  assert.equal(
+    (fallbackNvdaRow?.match(/Unavailable/g) ?? []).length,
+    1,
+    'The missing current-unrealized value was not kept separate from sourced realized zero.',
+  )
+
+  const trophiesBeforeMissingFact = getTrophies(localReport).map(({ id, unlocked }) => ({ id, unlocked }))
+  const trophiesAfterMissingFact = getTrophies(missingExplanationReport).map(({ id, unlocked }) => ({ id, unlocked }))
+  assert.deepEqual(
+    trophiesAfterMissingFact,
+    trophiesBeforeMissingFact,
+    'A presentation-only missing-data flag changed trophy unlock calculations.',
+  )
+  const missingTrophiesMarkup = renderToStaticMarkup(
+    createElement(TrophiesPage, { locale: 'en', report: missingExplanationReport }),
+  )
+  assert.match(missingTrophiesMarkup, /data-status="unavailable" data-trophy="bagholder"/)
+  assert.match(missingTrophiesMarkup, /data-status="unsupported" data-trophy="reverse"/)
+  assert.ok(missingTrophiesMarkup.includes('does not include the supported current-unrealized P&amp;L section'))
+  const presentationUnlockedCount = (missingTrophiesMarkup.match(/data-status="unlocked"/g) ?? []).length
+  assert.match(
+    missingTrophiesMarkup,
+    new RegExp(`<div class="trophy-counter"><strong>${presentationUnlockedCount}</strong>`),
+    'The trophy header counted an unavailable achievement as unlocked.',
+  )
+  const nonUsdTrophiesMarkup = renderToStaticMarkup(
+    createElement(TrophiesPage, { locale: 'en', report: nonUsdTrophyReport }),
+  )
+  assert.match(nonUsdTrophiesMarkup, /data-status="notApplicable" data-trophy="theta"/)
+  assert.match(nonUsdTrophiesMarkup, /data-status="notApplicable" data-trophy="bagholder"/)
   for (const [locale, sourceBoundary, checkBoundary] of [
     ['en', 'Self-reported · not broker-verified', 'Internal calculation check'],
     ['zh-CN', '用户自报 · 非券商验证', '内部算术检查'],
@@ -330,6 +426,23 @@ try {
     missingLedgerMarkup.includes('Division unavailable'),
     'Missing NAV is not labelled as an unavailable division.',
   )
+  const missingArenaMarkup = renderToStaticMarkup(
+    createElement(ArenaPage, { locale: 'en', report: missingValuesReport }),
+  )
+  const missingCashTrophiesMarkup = renderToStaticMarkup(
+    createElement(TrophiesPage, { locale: 'en', report: missingValuesReport }),
+  )
+  assert.ok(missingArenaMarkup.includes('TWR unavailable'))
+  assert.match(missingCashTrophiesMarkup, /data-status="unavailable" data-trophy="cash"/)
+  assert.ok(missingCashTrophiesMarkup.includes('cash value or a non-zero net liquidation value is unavailable'))
+  assert.equal(formatShareSeasonReturn(undefined, 'en'), 'Unavailable')
+  assert.ok(buildSeasonSummary(missingValuesReport, 'en').includes('Season return: Unavailable'))
+  assert.ok(
+    renderToStaticMarkup(
+      createElement(ShareCardPreview, { locale: 'en', report: missingValuesReport }),
+    ).includes('<strong class="neutral">Unavailable</strong>'),
+  )
+  assert.ok(missingArenaMarkup.includes('Internal checks passed'))
   assert.ok(
     missingLedgerMarkup.includes('Internal checks passed'),
     'Arithmetic checks are not labelled independently from authenticity.',
@@ -366,12 +479,17 @@ try {
   const drawnText = []
   const gradient = { addColorStop() {} }
   const context = {
+    arc() {},
     beginPath() {},
     createLinearGradient() { return gradient },
     fill() {},
     fillRect() {},
     fillText(value) { drawnText.push(String(value)) },
+    lineTo() {},
+    moveTo() {},
+    restore() {},
     roundRect() {},
+    save() {},
     stroke() {},
   }
   let downloadClickCount = 0
@@ -403,7 +521,7 @@ try {
     })
     const fallbackResult = await downloadSeasonCard(canaryReport, 'en')
 
-    assert.equal(fallbackResult.kind, 'downloaded')
+    assert.equal(fallbackResult.kind, 'downloadStarted')
     assert.equal(downloadClickCount, 1, 'PNG download fallback did not click the download link.')
     assert.equal(downloadLink.download, 'pnl-arena-2026-season.png')
     assert.equal(downloadLink.href, 'data:image/png;base64,AAECAw==')

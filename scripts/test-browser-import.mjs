@@ -822,6 +822,29 @@ try {
   assert.match(firstUseState.heading, /demo or your own IBKR statement/i)
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     deviceScaleFactor: 1,
+    height: 700,
+    mobile: false,
+    screenHeight: 700,
+    screenWidth: 768,
+    width: 768,
+  })
+  const tabletWelcomeState = await evaluate(`(() => {
+    const cards = [...document.querySelectorAll('.welcome-choice-card')]
+      .map((card) => card.getBoundingClientRect());
+    return {
+      columns: getComputedStyle(document.querySelector('.welcome-choice-grid')).gridTemplateColumns,
+      firstTop: cards[0]?.top ?? -1,
+      secondTop: cards[1]?.top ?? -2,
+    };
+  })()`)
+  assert.equal(
+    tabletWelcomeState.firstTop,
+    tabletWelcomeState.secondTop,
+    'The 768 px guide unnecessarily stacked the two primary choices.',
+  )
+  assert.match(tabletWelcomeState.columns, /\S+px \S+px/)
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
     height: 568,
     mobile: false,
     screenHeight: 568,
@@ -851,6 +874,49 @@ try {
     'seen',
     'The explicit first-use choice did not save the non-financial seen-guide preference.',
   )
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 1024,
+    width: 1024,
+  })
+  assert.equal(
+    await evaluate(
+      `getComputedStyle(document.querySelector('.import-layout')).gridTemplateColumns.trim().split(/\\s+/).length`,
+    ),
+    1,
+    'The 1024 px import layout stayed cramped in two columns.',
+  )
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 812,
+    width: 812,
+  })
+  const compactDesktopImportState = await evaluate(`(() => {
+    const layout = document.querySelector('.import-layout');
+    const main = document.querySelector('.import-main');
+    const side = document.querySelector('.import-side');
+    return {
+      columns: layout ? getComputedStyle(layout).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+      headingWidth: main?.querySelector('h1')?.getBoundingClientRect().width ?? 0,
+      mainTop: main?.getBoundingClientRect().top ?? 0,
+      sideTop: side?.getBoundingClientRect().top ?? 0,
+    };
+  })()`)
+  assert.equal(
+    compactDesktopImportState.columns,
+    1,
+    `The 812 px import layout stayed cramped in two columns: ${JSON.stringify(compactDesktopImportState)}`,
+  )
+  assert(compactDesktopImportState.headingWidth >= 400)
+  assert(compactDesktopImportState.sideTop > compactDesktopImportState.mainTop)
 
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     deviceScaleFactor: 1,
@@ -1019,6 +1085,54 @@ try {
     `Unexpected rounded Season P&L display: ${seasonPnl}`,
   )
 
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 768,
+    width: 768,
+  })
+  const tabletNavigationState = await evaluate(`(() => {
+    const nav = document.querySelector('.bottom-nav');
+    const label = nav?.querySelector('small');
+    return {
+      labelFontSize: label ? Number.parseFloat(getComputedStyle(label).fontSize) : 0,
+      navWidth: nav?.getBoundingClientRect().width ?? 0,
+    };
+  })()`)
+  assert(tabletNavigationState.navWidth <= 560, `Tablet bottom navigation is too wide: ${JSON.stringify(tabletNavigationState)}`)
+  assert(tabletNavigationState.labelFontSize >= 10, `Tablet navigation labels are too small: ${JSON.stringify(tabletNavigationState)}`)
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 320,
+    width: 320,
+  })
+  const mobileLedgerState = await evaluate(`(() => {
+    const visibleText = (element) => element && getComputedStyle(element).display !== 'none'
+      ? element.textContent?.trim() ?? ''
+      : null;
+    return {
+      headers: [...document.querySelectorAll('.data-table th')].map(visibleText).filter((value) => value !== null),
+      pageWidth: document.documentElement.scrollWidth,
+      rowCells: [...document.querySelectorAll('.data-table tbody tr:first-child td')]
+        .map(visibleText).filter((value) => value !== null),
+      viewportWidth: window.innerWidth,
+    };
+  })()`)
+  assert.deepEqual(mobileLedgerState.headers, ['Symbol', 'YTD P&L', ''])
+  assert.equal(mobileLedgerState.rowCells.length, 3)
+  assert.match(mobileLedgerState.rowCells[1], /^\+(?:US)?\$/)
+  assert(
+    mobileLedgerState.pageWidth <= mobileLedgerState.viewportWidth,
+    `The simplified mobile Ledger caused page overflow: ${JSON.stringify(mobileLedgerState)}`,
+  )
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
+
   const guideOpened = await evaluate(`(() => {
     window.scrollTo(0, 500);
     const button = [...document.querySelectorAll('[data-action="open-guide"]')]
@@ -1140,19 +1254,33 @@ try {
 
   const canvasCaptureInstalled = await evaluate(`(() => {
     if (globalThis.__pnlArenaCanvasCapture) return false;
-    const captured = { drawImage: 0, fillText: [], putImageData: 0, strokeText: [] };
+    const captured = { arcs: [], drawImage: 0, fillText: [], fillTextCalls: [], putImageData: 0, strokes: [], strokeText: [] };
+    const nativeArc = CanvasRenderingContext2D.prototype.arc;
     const nativeFillText = CanvasRenderingContext2D.prototype.fillText;
     const nativeStrokeText = CanvasRenderingContext2D.prototype.strokeText;
     const nativeDrawImage = CanvasRenderingContext2D.prototype.drawImage;
     const nativePutImageData = CanvasRenderingContext2D.prototype.putImageData;
+    const nativeStroke = CanvasRenderingContext2D.prototype.stroke;
     Object.defineProperty(globalThis, '__pnlArenaCanvasCapture', {
       configurable: false,
       enumerable: false,
       value: captured,
       writable: false,
     });
+    CanvasRenderingContext2D.prototype.arc = function (x, y, radius, ...args) {
+      captured.arcs.push({ radius, x, y });
+      return Reflect.apply(nativeArc, this, [x, y, radius, ...args]);
+    };
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
-      captured.fillText.push(String(text));
+      const normalizedText = String(text);
+      captured.fillText.push(normalizedText);
+      captured.fillTextCalls.push({
+        align: this.textAlign,
+        text: normalizedText,
+        width: this.measureText(normalizedText).width,
+        x: args[0],
+        y: args[1],
+      });
       return Reflect.apply(nativeFillText, this, [text, ...args]);
     };
     CanvasRenderingContext2D.prototype.strokeText = function (text, ...args) {
@@ -1166,6 +1294,14 @@ try {
     CanvasRenderingContext2D.prototype.putImageData = function (...args) {
       captured.putImageData += 1;
       return Reflect.apply(nativePutImageData, this, args);
+    };
+    CanvasRenderingContext2D.prototype.stroke = function (...args) {
+      captured.strokes.push({
+        alpha: this.globalAlpha,
+        lineWidth: this.lineWidth,
+        strokeStyle: String(this.strokeStyle),
+      });
+      return Reflect.apply(nativeStroke, this, args);
     };
     return true;
   })()`)
@@ -1195,6 +1331,12 @@ try {
     },
     'PNG file flush',
   )
+  const downloadStatus = await waitForPageValue(
+    `document.querySelector('.share-delivery-status')?.textContent?.trim() ?? ''`,
+    (value) => value === 'PNG download started.',
+    'Visible PNG delivery status',
+  )
+  assert.equal(downloadStatus, 'PNG download started.')
 
   assert.equal(downloadStarts[0].suggestedFilename, 'pnl-arena-2026-season.png')
   const downloadedFiles = readdirSync(downloadDirectory).filter((name) => !name.startsWith('.'))
@@ -1216,14 +1358,37 @@ try {
   assert.deepEqual(decodedPng, { height: 1500, width: 1200 }, 'Chrome could not decode the downloaded PNG.')
 
   const canvasCapture = await evaluate(`({
+    arcs: globalThis.__pnlArenaCanvasCapture.arcs.map((item) => ({ ...item })),
     drawImage: globalThis.__pnlArenaCanvasCapture.drawImage,
     fillText: [...globalThis.__pnlArenaCanvasCapture.fillText],
+    fillTextCalls: globalThis.__pnlArenaCanvasCapture.fillTextCalls.map((item) => ({ ...item })),
     putImageData: globalThis.__pnlArenaCanvasCapture.putImageData,
+    strokes: globalThis.__pnlArenaCanvasCapture.strokes.map((item) => ({ ...item })),
     strokeText: [...globalThis.__pnlArenaCanvasCapture.strokeText],
   })`)
   assert.equal(canvasCapture.drawImage, 0, 'PNG generation introduced an unreviewed image source.')
   assert.equal(canvasCapture.putImageData, 0, 'PNG generation introduced unreviewed raw pixel data.')
   assert.deepEqual(canvasCapture.strokeText, [], 'PNG generation introduced unreviewed stroked text.')
+  assert.deepEqual(canvasCapture.strokes.slice(-3), [
+    { alpha: 0.52, lineWidth: 3.375, strokeStyle: '#d8ff4f' },
+    { alpha: 0.55, lineWidth: 2.25, strokeStyle: '#8e9dab' },
+    { alpha: 1, lineWidth: 4.5, strokeStyle: '#d8ff4f' },
+  ])
+  const pngBrandText = canvasCapture.fillTextCalls.find(({ text }) => text === 'P&L ARENA')
+  const pngPrivacyLine = canvasCapture.fillTextCalls.find(
+    ({ text }) => text === 'Excludes holdings, account identifiers, and exact net liquidation value.',
+  )
+  const pngBrandOuterRing = canvasCapture.arcs.at(-1)
+  assert(pngBrandText && pngPrivacyLine && pngBrandOuterRing, 'PNG footer layout evidence was not captured.')
+  assert.equal(pngBrandText?.align, 'right')
+  assert(
+    pngBrandOuterRing.x + pngBrandOuterRing.radius + 16 <= pngBrandText.x - pngBrandText.width,
+    `PNG brand mark overlapped its label: ${JSON.stringify({ pngBrandOuterRing, pngBrandText })}`,
+  )
+  assert(
+    pngBrandOuterRing.y - pngBrandOuterRing.radius - pngPrivacyLine.y >= 40,
+    `PNG privacy line crowded the brand mark: ${JSON.stringify({ pngBrandOuterRing, pngPrivacyLine })}`,
+  )
   const capturedCanvasText = canvasCapture.fillText
   const expectedCanvasText = [
     '2026 FOUNDERS SEASON',
@@ -1241,7 +1406,6 @@ try {
     'Fully synthetic test',
     'Internal calculation check',
     'Internal checks passed',
-    'Data through: 2026-08-15',
     'Excludes holdings, account identifiers, and exact net liquidation value.',
     'P&L ARENA',
   ]
@@ -1461,6 +1625,81 @@ try {
   assert.equal(arenaState.localSnapshots, 0, 'Synthetic fixture created a local ranking snapshot.')
   assert(!arenaState.text.includes('Your local snapshot'), 'Synthetic fixture exposed a local snapshot label.')
   assert(!arenaState.text.includes('Self-reported'), 'Synthetic fixture exposed a Self-reported Arena label.')
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 320,
+    width: 320,
+  })
+  const mobileArenaState = await evaluate(`(() => {
+    const visibleText = (element) => getComputedStyle(element).display !== 'none'
+      ? element.textContent?.trim() ?? ''
+      : null;
+    return {
+      headers: [...document.querySelectorAll('.leaderboard-head > *')]
+        .map(visibleText).filter((value) => value !== null),
+      listWidth: document.querySelector('.leaderboard-list')?.getBoundingClientRect().width ?? 0,
+      viewportWidth: window.innerWidth,
+    };
+  })()`)
+  assert.deepEqual(mobileArenaState.headers, ['Rank', 'Trader', 'Return'])
+  assert(mobileArenaState.listWidth <= mobileArenaState.viewportWidth)
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 500,
+    width: 500,
+  })
+  const arenaAt500 = await evaluate(`(() => {
+    const visibleText = (element) => getComputedStyle(element).display !== 'none'
+      ? element.textContent?.trim() ?? ''
+      : null;
+    const list = document.querySelector('.leaderboard-list');
+    return {
+      documentWidth: document.documentElement.scrollWidth,
+      headers: [...document.querySelectorAll('.leaderboard-head > *')]
+        .map(visibleText).filter((value) => value !== null),
+      listClientWidth: list?.clientWidth ?? 0,
+      listScrollWidth: list?.scrollWidth ?? 0,
+    };
+  })()`)
+  assert.deepEqual(arenaAt500.headers, ['Rank', 'Trader', 'Return'])
+  assert(arenaAt500.listScrollWidth <= arenaAt500.listClientWidth)
+  assert(arenaAt500.documentWidth <= 500)
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 501,
+    width: 501,
+  })
+  const arenaAt501 = await evaluate(`(() => {
+    const visibleText = (element) => getComputedStyle(element).display !== 'none'
+      ? element.textContent?.trim() ?? ''
+      : null;
+    const list = document.querySelector('.leaderboard-list');
+    list?.focus();
+    return {
+      documentWidth: document.documentElement.scrollWidth,
+      focused: document.activeElement === list,
+      headers: [...document.querySelectorAll('.leaderboard-head > *')]
+        .map(visibleText).filter((value) => value !== null),
+      listClientWidth: list?.clientWidth ?? 0,
+      listOverflowX: list ? getComputedStyle(list).overflowX : '',
+      listScrollWidth: list?.scrollWidth ?? 0,
+    };
+  })()`)
+  assert.deepEqual(arenaAt501.headers, ['Rank', 'Trader', 'Division', 'Return', 'P&L'])
+  assert.equal(arenaAt501.focused, true)
+  assert.equal(arenaAt501.listOverflowX, 'auto')
+  assert(arenaAt501.listScrollWidth > arenaAt501.listClientWidth)
+  assert(arenaAt501.documentWidth <= 501)
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
 
   await clickPrimaryNavigation('Trophies')
   const trophyState = await waitForPageValue(
@@ -1475,6 +1714,21 @@ try {
   assert.equal(trophyState.unlocked, 0, 'Synthetic fixture unlocked a local achievement.')
   assert(trophyState.text.includes('Achievement preview'), 'Synthetic trophy state was not labelled as a preview.')
   assert(!trophyState.text.includes('Local achievement'), 'Synthetic fixture displayed a local achievement label.')
+  const lockedTrophyStyle = await evaluate(`(() => {
+    const card = document.querySelector('.trophy-card.locked');
+    const copy = card?.querySelector('p');
+    const statuses = [...document.querySelectorAll('.trophy-status')];
+    return {
+      copyFontSize: copy ? Number.parseFloat(getComputedStyle(copy).fontSize) : 0,
+      copyOpacity: copy ? Number.parseFloat(getComputedStyle(copy).opacity) : 0,
+      opacity: card ? Number.parseFloat(getComputedStyle(card).opacity) : 0,
+      statusFontSize: Math.min(...statuses.map((status) => Number.parseFloat(getComputedStyle(status).fontSize))),
+    };
+  })()`)
+  assert.equal(lockedTrophyStyle.opacity, 1, 'Locked trophy text was dimmed with whole-card opacity.')
+  assert.equal(lockedTrophyStyle.copyOpacity, 1, 'Locked trophy copy is not fully visible.')
+  assert(lockedTrophyStyle.copyFontSize >= 10, 'Locked trophy copy is too small to read.')
+  assert(lockedTrophyStyle.statusFontSize >= 10, 'Trophy status text is too small to read.')
 
   await cdp.send('Page.reload', { ignoreCache: true })
   const refreshState = await waitForPageValue(
@@ -1833,6 +2087,68 @@ try {
     Boolean,
     'Capacity drawer close',
   )
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 812,
+    width: 812,
+  })
+  await clickPrimaryNavigation('Arena')
+  const compactLocalArenaState = await waitForPageValue(
+    `(() => {
+      const panel = document.querySelector('.local-snapshot-panel');
+      const grid = document.querySelector('.local-snapshot-grid');
+      const list = document.querySelector('.leaderboard-list');
+      const panelRect = panel?.getBoundingClientRect();
+      const listRect = list?.getBoundingClientRect();
+      return {
+        documentWidth: document.documentElement.scrollWidth,
+        listClientWidth: list?.clientWidth ?? 0,
+        listOverflowX: list ? getComputedStyle(list).overflowX : '',
+        listRight: listRect?.right ?? 0,
+        listScrollWidth: list?.scrollWidth ?? 0,
+        panelColumns: panel ? getComputedStyle(panel).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+        panelRight: panelRect?.right ?? 0,
+        snapshotColumns: grid ? getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+        snapshotItems: grid?.children.length ?? 0,
+        viewportWidth: window.innerWidth,
+      };
+    })()`,
+    (value) => value?.snapshotItems === 6,
+    '812 px local Arena layout',
+  )
+  assert.equal(compactLocalArenaState.panelColumns, 1)
+  assert.equal(compactLocalArenaState.snapshotColumns, 3)
+  assert.equal(compactLocalArenaState.listOverflowX, 'auto')
+  assert(compactLocalArenaState.listScrollWidth > compactLocalArenaState.listClientWidth)
+  assert(compactLocalArenaState.panelRight <= compactLocalArenaState.viewportWidth)
+  assert(compactLocalArenaState.listRight <= compactLocalArenaState.viewportWidth)
+  assert(compactLocalArenaState.documentWidth <= compactLocalArenaState.viewportWidth)
+
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1,
+    height: 900,
+    mobile: false,
+    screenHeight: 900,
+    screenWidth: 500,
+    width: 500,
+  })
+  const narrowLocalSnapshotState = await evaluate(`(() => {
+    const grid = document.querySelector('.local-snapshot-grid');
+    return {
+      columns: grid ? getComputedStyle(grid).gridTemplateColumns.trim().split(/\\s+/).length : 0,
+      documentWidth: document.documentElement.scrollWidth,
+      items: grid?.children.length ?? 0,
+      viewportWidth: window.innerWidth,
+    };
+  })()`)
+  assert.equal(narrowLocalSnapshotState.items, 6)
+  assert.equal(narrowLocalSnapshotState.columns, 1)
+  assert(narrowLocalSnapshotState.documentWidth <= narrowLocalSnapshotState.viewportWidth)
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
 
   const overSymbolFailureMs = await assertProductionWorkerCapacityFailure(
     overSymbolFixturePath,

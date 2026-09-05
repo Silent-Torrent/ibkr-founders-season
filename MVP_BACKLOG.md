@@ -1,6 +1,6 @@
 # MVP backlog
 
-## Completed through checkpoint 0.16 — first-user experience and recovery
+## Completed through checkpoint 0.17 — local release-candidate refinement
 
 - [x] Project scaffold.
 - [x] Responsive application shell.
@@ -15,6 +15,12 @@
 - [x] Require explicit English, Simplified Chinese, and Traditional Chinese keys with matching placeholders; render the first-user surfaces in every locale and reject functional hard-coded English regressions.
 - [x] Preserve natural keyboard order on a fresh document; reset scroll and restore main-region focus across in-app guide/application transitions and after notice dismissal; give each metric disclosure a unique accessible name; announce cancellation through one polite live region rather than two.
 - [x] Expand the no-upload/no-persistence gate across the full functional source tree and real Chrome: only the two preference keys may use localStorage; alternate browser stores, service workers, WebSockets, external/non-GET requests, query payloads and unlisted same-origin paths must remain absent.
+- [x] Establish one code-native P&L Arena mark—arena ring, zero line and P/L trace—with the same geometry, color and opacity contract in the welcome screen, sidebar, web share card, generated PNG and favicon; keep brand chartreuse separate from financial/trust colors.
+- [x] Replace hard-coded Guide/Arena display years with the report season while deliberately retaining the 2026-only Founders achievement rule.
+- [x] Keep true financial zero separate from unavailable evidence: allow source-backed Month/YTD realized fallback, require the dedicated section for current unrealized, and preserve visible precision for every non-zero reconciliation difference.
+- [x] Give Preview, Unlocked, Not met, Unavailable, Not applicable and Not supported yet distinct achievement presentation states; count only presentation-level unlocked cards and explain missing Bagholder/Cash evidence without changing core triggers or thresholds.
+- [x] Show missing TWR as unavailable in Arena and every share form; expose honest Preparing/Download started/Shared/Cancelled/Failed/Preview-ready feedback and prevent generated-PNG footer collisions.
+- [x] Add responsive browser gates for 1024 px Import, 812 px local Arena, 768 px first-use/navigation, exact 500/501 px Arena table behavior and 320 px Ledger/Arena essentials; keep locked achievement copy at full opacity with at least 10 px status/body text.
 - [x] Demo mode.
 - [x] CSV drag-and-drop and file picker.
 - [x] Local-only parser.

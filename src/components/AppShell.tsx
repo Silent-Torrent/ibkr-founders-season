@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import type { Locale, PageId, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { isImportedSource, reportSourceStatusKey } from '../lib/reportSource'
+import { ArenaMark } from './ArenaMark'
 
 interface AppShellProps {
   children: ReactNode
@@ -70,9 +71,7 @@ export function AppShell({
       <aside className="sidebar">
         <button className="brand" onClick={() => onPageChange('ledger')} type="button">
           <span className="brand-mark" aria-hidden="true">
-            <span />
-            <span />
-            <span />
+            <ArenaMark className="arena-mark" />
           </span>
           <span>
             <strong>{t(locale, 'appName')}</strong>

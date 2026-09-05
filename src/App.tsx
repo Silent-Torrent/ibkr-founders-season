@@ -152,6 +152,7 @@ export default function App() {
           onLocaleChange={changeLocale}
           onOpenPrivacy={() => setIsPrivacyNoticeOpen(true)}
           onPrimaryAction={() => completeGettingStarted('ledger')}
+          seasonYear={report.seasonYear}
         />
         <PrivacyNoticeModal
           isOpen={isPrivacyNoticeOpen}

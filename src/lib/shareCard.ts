@@ -5,7 +5,7 @@ import { t } from '../i18n'
 import { reportTrustLabelKey } from './reportSource'
 
 export type SeasonCardDelivery =
-  | { kind: 'cancelled' | 'downloaded' | 'shared'; filename: string }
+  | { kind: 'cancelled' | 'downloadStarted' | 'shared'; filename: string }
   | { kind: 'preview'; filename: string; previewUrl: string }
 
 export function getShareSourceLabel(report: PortfolioReport, locale: Locale): string {
@@ -16,6 +16,10 @@ export function getShareQualityLabel(report: PortfolioReport, locale: Locale): s
   if (report.dataQuality === 'good') return t(locale, 'qualityGood')
   if (report.dataQuality === 'warning') return t(locale, 'qualityWarning')
   return t(locale, 'qualityError')
+}
+
+export function formatShareSeasonReturn(value: number | undefined, locale: Locale): string {
+  return value == null ? t(locale, 'valueUnavailable') : formatPercent(value, locale)
 }
 
 function dataUrlToFile(dataUrl: string, filename: string): File {
@@ -92,6 +96,43 @@ function roundedRect(
   context.roundRect(x, y, width, height, radius)
 }
 
+function drawArenaMark(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+): void {
+  context.save()
+  context.strokeStyle = '#d8ff4f'
+  context.globalAlpha = 0.52
+  context.lineWidth = 1.5 * scale
+  context.beginPath()
+  context.arc(x + 12 * scale, y + 12 * scale, 9 * scale, 0, Math.PI * 2)
+  context.stroke()
+
+  context.strokeStyle = '#8e9dab'
+  context.globalAlpha = 0.55
+  context.lineWidth = scale
+  context.beginPath()
+  context.moveTo(x + 5 * scale, y + 12 * scale)
+  context.lineTo(x + 19 * scale, y + 12 * scale)
+  context.stroke()
+
+  context.strokeStyle = '#d8ff4f'
+  context.globalAlpha = 1
+  context.lineWidth = 2 * scale
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.beginPath()
+  context.moveTo(x + 5.25 * scale, y + 15.75 * scale)
+  context.lineTo(x + 8.75 * scale, y + 12.25 * scale)
+  context.lineTo(x + 11.25 * scale, y + 13.75 * scale)
+  context.lineTo(x + 15.25 * scale, y + 8.25 * scale)
+  context.lineTo(x + 18.75 * scale, y + 10.25 * scale)
+  context.stroke()
+  context.restore()
+}
+
 export async function downloadSeasonCard(
   report: PortfolioReport,
   locale: Locale,
@@ -134,7 +175,7 @@ export async function downloadSeasonCard(
 
   context.fillStyle = '#a8b6c5'
   context.font = '600 38px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(`${t(locale, 'seasonReturn')}: ${formatPercent(report.seasonReturn, locale)}`, 120, 485)
+  context.fillText(`${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`, 120, 485)
   context.fillText(`${t(locale, 'division')}: ${division}`, 120, 545)
 
   const cards = [
@@ -181,13 +222,13 @@ export async function downloadSeasonCard(
 
   context.fillStyle = '#6f8193'
   context.font = '500 25px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(`${t(locale, 'dataThrough')}: ${report.endDate}`, 120, 1270)
-  context.fillText(t(locale, 'shareNoHoldings'), 120, 1320)
+  context.fillText(t(locale, 'shareNoHoldings'), 120, 1285)
 
+  drawArenaMark(context, 842, 1329, 2.25)
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
   context.font = '700 30px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText('P&L ARENA', 1080, 1320)
+  context.fillText('P&L ARENA', 1080, 1367)
   context.textAlign = 'left'
 
   const filename = `pnl-arena-${report.seasonYear}-season.png`
@@ -219,14 +260,14 @@ export async function downloadSeasonCard(
   }
 
   triggerBrowserDownload(dataUrl, filename)
-  return { filename, kind: 'downloaded' }
+  return { filename, kind: 'downloadStarted' }
 }
 
 export function buildSeasonSummary(report: PortfolioReport, locale: Locale): string {
   return [
     `${report.seasonYear} ${t(locale, 'seasonLabel')}`,
     `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
-    `${t(locale, 'seasonReturn')}: ${formatPercent(report.seasonReturn, locale)}`,
+    `${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`,
     `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'dataThrough')}: ${report.endDate}`,
     `${t(locale, 'sourceType')}: ${getShareSourceLabel(report, locale)}`,

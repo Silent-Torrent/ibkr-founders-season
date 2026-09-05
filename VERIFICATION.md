@@ -1,6 +1,6 @@
-# Verification record — checkpoint 0.16 first-user experience
+# Verification record — checkpoint 0.17 local release-candidate refinement
 
-Last updated: 2026-09-02
+Last updated: 2026-09-05
 
 ## Frozen release decisions and execution status
 
@@ -20,6 +20,22 @@ Last updated: 2026-09-02
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.17 presentation and responsive gate
+
+- A code-native arena-ring / zero-line / P&L-trace mark uses the same geometry, color, opacity, and line-width contract in React SVG, favicon SVG, and generated-PNG Canvas. The Canvas regression captures the three mark strokes and requires non-overlapping privacy, mark, and brand-label rows.
+- `P&L Arena` is the product name in all three locales. Guide and Arena display years use `report.seasonYear`; the Founders achievement remains deliberately limited to 2026 in both copy and its unchanged trigger.
+- Ledger and drawer output distinguish unavailable evidence from numeric zero. Realized YTD explanation is available from the dedicated section or a validated Month/YTD fallback with a source reference; current unrealized requires the dedicated section. Tests preserve a source-backed `$0` while separately showing unavailable current unrealized.
+- Non-zero reconciliation differences retain sufficient currency precision at 0.40, 0.000001, and 0.0000004 instead of rendering as zero. Invalid currencies still fail to the safe dash.
+- Achievement presentation distinguishes Preview, Unlocked, Not met, Unavailable, Not applicable, and Not supported yet. The header count is derived from the final presentation states, unavailable Bagholder/Cash cards explain the missing evidence, unsupported cards make no delivery-date promise, and synthetic data does not become a local achievement. `getTrophies` and every threshold are unchanged.
+- Missing TWR is explicitly unavailable in the Arena, web share preview, copied summary, and generated PNG. Browser-download UI reports only `Download started`; the isolated Chrome test independently waits for actual completion before validating the file.
+- Responsive browser checks cover a single-column Import layout at 1024 and 812 px, a single-column local Arena snapshot with three metric columns and a contained scrollable leaderboard at 812 px, two first-use choices plus a capped 560 px bottom navigation at 768 px, the exact 500/501 px Arena table transition, and simplified 320 px Ledger/Arena tables without whole-page overflow.
+- Locked achievement cards preserve full-opacity copy and at least 10 px status/body text. Decorative Arena year text is subdued so it does not compete with the page heading.
+- Manual local visual QA covered Ledger, Arena, Trophies, and Import at the current 812 px application viewport. It caught and closed the Arena-year, narrow Import, local snapshot, leaderboard, and PNG-footer collisions that assertion-only checks initially missed.
+- Independent read-only reviews covered financial missingness, presentation-count consistency, trust/PDF/deployment language, responsive breakpoints, accessibility, and SVG/Canvas identity. Their blocking findings were fixed and regression-tested before this record was finalized.
+- Focused TypeScript, i18n, accessibility, policy, and production-Chrome checks passed under Node 22.23.2. The final browser run accepted the exact-capacity fictional file in approximately 0.78 seconds with 0 ms maximum long task, approximately 16.8 ms maximum animation-frame gap, and approximately 78.1 ms maximum timer gap. Its completed test PNG was 1,279,488 bytes and 1200x1500 pixels; 501-symbol and 1,001-event cases still failed closed while preserving the accepted report.
+- `VERIFY_MAC.command` completed under Node 22.23.2 / npm 10.9.8 after the checkpoint 0.17 changes: clean locked installation, two vulnerability checks with zero reported vulnerabilities, every parser/streaming/materialization/Worker/i18n/accessibility/compatibility/policy/launcher/iPhone-pack/browser suite, and the final production build all passed.
+- Exact scope and non-claims are recorded in `docs/RELEASE_CANDIDATE_REFINEMENT_EVIDENCE_2026-09-05.md`.
 
 ### Checkpoint 0.16 first-user and recovery gate
 
@@ -145,7 +161,7 @@ Last updated: 2026-09-02
 - The import completed through the Worker-backed path and changed the UI from Demo to Fully Synthetic Test.
 - The known fictional fixture was labelled Fully Synthetic Test, not Self-Reported. It created no local ranking snapshot and unlocked no local achievements; its normalized source-reference cards remained inspectable without exposing raw rows or values.
 - The share-card preview showed Source instead of an underlying and explicitly stated that holdings, account identifiers, and exact net liquidation value were excluded.
-- The real Download PNG button created exactly one `pnl-arena-2026-season.png` file in an isolated download directory. In this recorded run it was 1,268,971 bytes; it had valid PNG signature/IHDR/IEND structure, decoded in Chrome, and measured 1200×1500 pixels. Captured production-canvas text contained the required season metrics, synthetic-source and privacy labels but no fixture holdings, account identifier, or exact NAV canaries. The temporary file was deleted with the isolated browser profile after the test.
+- The real Download PNG button created exactly one `pnl-arena-2026-season.png` file in an isolated download directory. In this historical checkpoint 0.16 run it was 1,268,971 bytes; it had valid PNG signature/IHDR/IEND structure, decoded in Chrome, and measured 1200×1500 pixels. Captured production-canvas text contained the required season metrics, synthetic-source and privacy labels but no fixture holdings, account identifier, or exact NAV canaries. The temporary file was deleted with the isolated browser profile after the test.
 - All three reconciliation checks displayed `PASS_EXACT`, and expandable source cards exposed only CSV section, one-based row, record type, field, and a technical header signature.
 - The first underlying drawer exposed six source groups: total, stock, option, realized, current unrealized and one lifecycle event. Its source-card text contained neither currency/financial values nor the fictional instrument/contract values shown elsewhere in the drawer.
 - Reloading the page returned to Demo, confirming that the complete imported report was not restored.

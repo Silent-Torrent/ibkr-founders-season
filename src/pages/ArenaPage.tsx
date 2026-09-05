@@ -35,17 +35,22 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
     { key: 'capitalLeague', range: '$500K–$1M' },
     { key: 'whaleLeague', range: '> $1M' },
   ]
+  const qualityLabel = report.dataQuality === 'good'
+    ? t(locale, 'qualityGood')
+    : report.dataQuality === 'warning'
+      ? t(locale, 'qualityWarning')
+      : t(locale, 'qualityError')
 
   return (
     <>
       <section className="arena-hero">
         <div>
           <span className="eyebrow">{t(locale, 'arenaDemoEyebrow')}</span>
-          <h1>{t(locale, 'arenaTitle')}</h1>
+          <h1>{report.seasonYear} {t(locale, 'arenaTitle')}</h1>
           <p>{t(locale, 'arenaSubtitle')}</p>
         </div>
         <div className="season-orbit" aria-hidden="true">
-          <span>2026</span>
+          <span>{report.seasonYear}</span>
           <i />
           <i />
           <i />
@@ -73,9 +78,20 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
               <dt>{t(locale, 'division')}</dt>
               <dd>{localDivision ? t(locale, localDivision) : t(locale, 'divisionUnavailable')}</dd>
             </div>
-            <div><dt>{t(locale, 'return')}</dt><dd>{formatPercent(report.seasonReturn, locale)}</dd></div>
+            <div>
+              <dt>{t(locale, 'return')}</dt>
+              <dd className={report.seasonReturn == null ? 'unavailable' : pnlClass(report.seasonReturn)}>
+                {report.seasonReturn == null
+                  ? t(locale, 'seasonReturnMissingHint')
+                  : formatPercent(report.seasonReturn, locale)}
+              </dd>
+            </div>
             <div><dt>{t(locale, 'pnl')}</dt><dd>{formatCurrency(report.seasonPnl, report.baseCurrency, locale)}</dd></div>
             <div><dt>{t(locale, 'sourceType')}</dt><dd>{t(locale, 'selfReportedUnverified')}</dd></div>
+            <div>
+              <dt>{t(locale, 'trustCalculationCheck')}</dt>
+              <dd className={`snapshot-quality ${report.dataQuality}`}>{qualityLabel}</dd>
+            </div>
           </dl>
         </section>
       )}

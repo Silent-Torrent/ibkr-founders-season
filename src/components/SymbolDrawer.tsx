@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom'
 import type { Locale, PortfolioReport, SourceRef, SymbolPnl } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatDate, pnlClass } from '../lib/format'
+import {
+  hasCurrentUnrealizedExplanation,
+  hasRealizedExplanation,
+} from '../lib/explanationAvailability'
 import { SourceRows } from './SourceRows'
 
 const eventLabelKeys = {
@@ -109,6 +113,8 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
   if (!symbol) return null
   const events = report.events.filter((event) => event.symbol === symbol.symbol)
   const isDemo = report.source === 'demo'
+  const realizedAvailable = hasRealizedExplanation(report, symbol)
+  const currentUnrealizedAvailable = hasCurrentUnrealizedExplanation(report)
   const otherRefs = symbol.sourceRefs.otherYtdMtm ?? []
   const showOther = symbol.otherYtdMtm !== 0 || otherRefs.length > 0
 
@@ -224,16 +230,24 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
             label={t(locale, 'realized')}
             locale={locale}
             refs={symbol.sourceRefs.totalRealizedYtd ?? []}
-            value={formatCurrency(symbol.totalRealizedYtd, report.baseCurrency, locale)}
-            valueClass={pnlClass(symbol.totalRealizedYtd)}
+            value={realizedAvailable
+              ? formatCurrency(symbol.totalRealizedYtd, report.baseCurrency, locale)
+              : t(locale, 'valueUnavailable')}
+            valueClass={realizedAvailable
+              ? pnlClass(symbol.totalRealizedYtd)
+              : 'unavailable'}
           />
           <DrawerMetric
             isDemo={isDemo}
             label={t(locale, 'unrealized')}
             locale={locale}
             refs={symbol.sourceRefs.totalCurrentUnrealized ?? []}
-            value={formatCurrency(symbol.totalCurrentUnrealized, report.baseCurrency, locale)}
-            valueClass={pnlClass(symbol.totalCurrentUnrealized)}
+            value={currentUnrealizedAvailable
+              ? formatCurrency(symbol.totalCurrentUnrealized, report.baseCurrency, locale)
+              : t(locale, 'valueUnavailable')}
+            valueClass={currentUnrealizedAvailable
+              ? pnlClass(symbol.totalCurrentUnrealized)
+              : 'unavailable'}
           />
         </div>
 

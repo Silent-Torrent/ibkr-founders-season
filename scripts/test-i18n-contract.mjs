@@ -82,6 +82,7 @@ try {
       onLocaleChange: noop,
       onOpenPrivacy: noop,
       onPrimaryAction: noop,
+      seasonYear: demoReport.seasonYear,
     })),
     importPage: (locale) => renderToStaticMarkup(createElement(ImportPage, {
       accountComparisonSalt: 'i18n-contract-session',

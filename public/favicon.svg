@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="P&amp;L Arena">
-  <rect width="64" height="64" rx="14" fill="#080b10"/>
-  <path d="M14 46V34h8v12zm14 0V25h8v21zm14 0V15h8v31z" fill="#43e6a8"/>
-  <path d="M12 50h40" stroke="#d8ff4f" stroke-linecap="round" stroke-width="4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="P&amp;L Arena">
+  <rect width="24" height="24" rx="5.25" fill="#070a0f"/>
+  <circle cx="12" cy="12" r="9" fill="none" stroke="#d8ff4f" stroke-width="1.5" opacity=".52"/>
+  <path d="M5 12H19" fill="none" stroke="#8e9dab" stroke-width="1" stroke-linecap="round" opacity=".55"/>
+  <path d="M5.25 15.75L8.75 12.25L11.25 13.75L15.25 8.25L18.75 10.25" fill="none" stroke="#d8ff4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

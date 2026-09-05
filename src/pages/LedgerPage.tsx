@@ -7,9 +7,19 @@ import type {
   SymbolPnl,
 } from '../types'
 import { t } from '../i18n'
-import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
+import {
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  formatReconciliationDifference,
+  pnlClass,
+} from '../lib/format'
 import { diagnosticKey, formatParserDiagnostic } from '../lib/parserDiagnostics'
 import { getDivision } from '../lib/season'
+import {
+  hasCurrentUnrealizedExplanation,
+  hasRealizedExplanation,
+} from '../lib/explanationAvailability'
 import { MetricCard } from '../components/MetricCard'
 import { ShareCardPreview } from '../components/ShareCardPreview'
 import { SymbolDrawer } from '../components/SymbolDrawer'
@@ -48,6 +58,12 @@ function reconciliationStatusClass(status: ReconciliationStatus): string {
   return status.toLowerCase().replace('_', '-')
 }
 
+function reconciliationHelp(locale: Locale, id: ReconciliationCheckId): string {
+  if (id === 'mtm_all_assets') return t(locale, 'reconciliationMtmHelp')
+  if (id === 'statement_period_pnl') return t(locale, 'reconciliationStatementPnlHelp')
+  return t(locale, 'reconciliationNavBridgeHelp')
+}
+
 export function LedgerPage({ report, locale }: LedgerPageProps) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterMode>('all')
@@ -55,6 +71,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
   const [selected, setSelected] = useState<SymbolPnl | null>(null)
   const division = getDivision(report.netLiquidationValue, report.baseCurrency)
   const divisionLabel = division ? t(locale, division) : t(locale, 'divisionUnavailable')
+  const currentUnrealizedAvailable = hasCurrentUnrealizedExplanation(report)
 
   const symbols = useMemo(() => {
     const normalizedQuery = query.trim().toUpperCase()
@@ -221,11 +238,15 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                     <td className={`emphasis ${pnlClass(item.totalYtdMtm)}`}>
                       {formatCurrency(item.totalYtdMtm, report.baseCurrency, locale)}
                     </td>
-                    <td className={pnlClass(item.totalRealizedYtd)}>
-                      {formatCurrency(item.totalRealizedYtd, report.baseCurrency, locale)}
+                    <td className={hasRealizedExplanation(report, item) ? pnlClass(item.totalRealizedYtd) : 'unavailable'}>
+                      {hasRealizedExplanation(report, item)
+                        ? formatCurrency(item.totalRealizedYtd, report.baseCurrency, locale)
+                        : t(locale, 'valueUnavailable')}
                     </td>
-                    <td className={pnlClass(item.totalCurrentUnrealized)}>
-                      {formatCurrency(item.totalCurrentUnrealized, report.baseCurrency, locale)}
+                    <td className={currentUnrealizedAvailable ? pnlClass(item.totalCurrentUnrealized) : 'unavailable'}>
+                      {currentUnrealizedAvailable
+                        ? formatCurrency(item.totalCurrentUnrealized, report.baseCurrency, locale)
+                        : t(locale, 'valueUnavailable')}
                     </td>
                     <td>
                       <button
@@ -265,7 +286,11 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
               <div>
                 <dt>{t(locale, 'reconciliationDiff')}</dt>
                 <dd className={pnlClass(report.mtmReconciliationDifference)}>
-                  {formatCurrency(report.mtmReconciliationDifference, report.baseCurrency, locale)}
+                  {formatReconciliationDifference(
+                    report.mtmReconciliationDifference,
+                    report.baseCurrency,
+                    locale,
+                  )}
                 </dd>
               </div>
               <div><dt>{t(locale, 'sections')}</dt><dd>{report.sections.length}</dd></div>
@@ -312,6 +337,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                         {reconciliationStatusLabel(locale, status)}
                       </small>
                     </summary>
+                    <p className="reconciliation-help">{reconciliationHelp(locale, id)}</p>
                     <SourceRows
                       isDemo={report.source === 'demo'}
                       locale={locale}

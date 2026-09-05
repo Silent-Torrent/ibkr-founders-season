@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
-import { formatCurrency, formatDate, formatPercent, pnlClass } from '../lib/format'
+import { formatCurrency, formatDate, pnlClass } from '../lib/format'
 import {
   buildSeasonSummary,
   downloadSeasonCard,
+  formatShareSeasonReturn,
   getShareQualityLabel,
   getShareSourceLabel,
   type SeasonCardDelivery,
 } from '../lib/shareCard'
 import { getDivision } from '../lib/season'
+import { ArenaMark } from './ArenaMark'
 
 interface ShareCardPreviewProps {
   report: PortfolioReport
@@ -21,8 +23,27 @@ type PngPreviewState = Extract<SeasonCardDelivery, { kind: 'preview' }> & {
   report: PortfolioReport
 }
 
+type CardDeliveryStatus =
+  | 'idle'
+  | 'preparing'
+  | 'downloadStarted'
+  | 'shared'
+  | 'cancelled'
+  | 'failed'
+  | 'preview'
+
+const cardDeliveryStatusKeys = {
+  preparing: 'shareCardPreparing',
+  downloadStarted: 'shareCardDownloadStarted',
+  shared: 'shareCardShared',
+  cancelled: 'shareCardCancelled',
+  failed: 'shareCardFailed',
+  preview: 'shareCardPreviewReady',
+} as const
+
 export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const [cardStatus, setCardStatus] = useState<CardDeliveryStatus>('idle')
   const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
   const copyResetTimerRef = useRef<number | null>(null)
   const downloadButtonRef = useRef<HTMLButtonElement>(null)
@@ -52,6 +73,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
 
   useEffect(() => {
     closePngPreview()
+    setCardStatus('idle')
   }, [locale, report])
 
   useEffect(() => {
@@ -68,7 +90,14 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   async function handleDownloadCard() {
     const requestedLocale = locale
     const requestedReport = report
-    const result = await downloadSeasonCard(report, locale)
+    setCardStatus('preparing')
+    let result: SeasonCardDelivery | null
+    try {
+      result = await downloadSeasonCard(report, locale)
+    } catch {
+      if (mountedRef.current) setCardStatus('failed')
+      return
+    }
 
     if (
       !mountedRef.current ||
@@ -81,12 +110,14 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
 
     if (!result || result.kind !== 'preview') {
       closePngPreview()
+      setCardStatus(result?.kind ?? 'failed')
       return
     }
 
     if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
     pngPreviewUrlRef.current = result.previewUrl
     setPngPreview({ ...result, locale: requestedLocale, report: requestedReport })
+    setCardStatus('preview')
   }
 
   async function copySummary() {
@@ -124,6 +155,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           <button
             className="primary-button"
             data-action="download-card"
+            disabled={cardStatus === 'preparing'}
             onClick={handleDownloadCard}
             ref={downloadButtonRef}
             type="button"
@@ -140,6 +172,12 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         </span>
       </div>
 
+      {cardStatus !== 'idle' && (
+        <p aria-live="polite" className={`share-delivery-status ${cardStatus}`} role="status">
+          {t(locale, cardDeliveryStatusKeys[cardStatus])}
+        </p>
+      )}
+
       {visiblePngPreview ? (
         <div
           aria-label={t(locale, 'pngPreviewTitle')}
@@ -155,7 +193,10 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             </div>
             <button
               className="secondary-button"
-              onClick={() => closePngPreview(true)}
+              onClick={() => {
+                closePngPreview(true)
+                setCardStatus('idle')
+              }}
               type="button"
             >
               {t(locale, 'close')}
@@ -182,7 +223,10 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             <span>{report.seasonYear}</span>
             <strong>{t(locale, 'seasonLabel').toUpperCase()}</strong>
           </div>
-          <span className="share-watermark">P&amp;L ARENA</span>
+          <span className="share-watermark">
+            <ArenaMark className="share-arena-mark" />
+            <span>P&amp;L ARENA</span>
+          </span>
         </div>
         <p>{t(locale, 'seasonPnl')}</p>
         <div className={`share-pnl ${pnlClass(report.seasonPnl)}`}>
@@ -191,7 +235,9 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         <div className="share-grid">
           <div>
             <span>{t(locale, 'seasonReturn')}</span>
-            <strong className={pnlClass(report.seasonReturn)}>{formatPercent(report.seasonReturn, locale)}</strong>
+            <strong className={pnlClass(report.seasonReturn)}>
+              {formatShareSeasonReturn(report.seasonReturn, locale)}
+            </strong>
           </div>
           <div>
             <span>{t(locale, 'division')}</span>

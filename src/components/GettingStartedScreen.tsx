@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react'
 import type { Locale } from '../types'
 import { t } from '../i18n'
+import { ArenaMark } from './ArenaMark'
 
 interface GettingStartedScreenProps {
   focusOnMount: boolean
   hasCurrentReport: boolean
   locale: Locale
+  seasonYear: number
   onImport: () => void
   onLocaleChange: (locale: Locale) => void
   onOpenPrivacy: () => void
@@ -16,6 +18,7 @@ export function GettingStartedScreen({
   focusOnMount,
   hasCurrentReport,
   locale,
+  seasonYear,
   onImport,
   onLocaleChange,
   onOpenPrivacy,
@@ -38,13 +41,11 @@ export function GettingStartedScreen({
       <header className="getting-started-topbar">
         <div className="welcome-brand">
           <span aria-hidden="true" className="brand-mark">
-            <span />
-            <span />
-            <span />
+            <ArenaMark className="arena-mark" />
           </span>
           <span>
             <strong>{t(locale, 'appName')}</strong>
-            <small>2026 {t(locale, 'seasonLabel')}</small>
+            <small>{seasonYear} {t(locale, 'seasonLabel')}</small>
           </span>
         </div>
         <div className="getting-started-actions">

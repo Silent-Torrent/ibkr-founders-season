@@ -26,6 +26,33 @@ export function formatCurrency(
   }
 }
 
+export function formatReconciliationDifference(
+  value: number | undefined,
+  currency: string,
+  locale: Locale,
+): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  if (value === 0) return formatCurrency(value, currency, locale)
+
+  try {
+    const absoluteValue = Math.abs(value)
+    const useScientificNotation = absoluteValue < 1e-20
+    const maximumFractionDigits = useScientificNotation
+      ? 6
+      : Math.max(2, Math.min(20, Math.ceil(-Math.log10(absoluteValue)) + 2))
+    return new Intl.NumberFormat(localeMap[locale], {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: useScientificNotation ? 0 : 2,
+      maximumFractionDigits,
+      notation: useScientificNotation ? 'scientific' : 'standard',
+      signDisplay: 'exceptZero',
+    }).format(value)
+  } catch {
+    return '—'
+  }
+}
+
 export function formatPercent(value: number | undefined, locale: Locale): string {
   if (value == null || !Number.isFinite(value)) return '—'
   return new Intl.NumberFormat(localeMap[locale], {
