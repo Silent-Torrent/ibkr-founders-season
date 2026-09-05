@@ -3,7 +3,7 @@
 ## Completed through checkpoint 0.19 — import recovery
 
 - [x] Reproduce removed-retry-button focus loss in production Chrome and route all three file-picker entry points through the stable main Choose/Cancel control, including cancellation followed by preflight failure, without an asynchronous focus effect.
-- [x] Exercise real production-Worker cancellation and two controlled startup-stall 12-second timeouts, terminated targets, old-report preservation, same-page same-file successful retry, and retention of deliberately moved focus; keep actual native chooser and iPhone recovery unverified.
+- [x] Exercise real production-Worker cancellation and two controlled startup-stall 12-second timeouts, terminated targets, old-report preservation, same-page same-file successful retry, and retention of deliberately moved focus. These are controlled desktop checks; current-build native-picker cancellation and same-tab iPhone recovery are separately recorded in `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md`.
 - [x] Invalidate pending share/copy work on report/language changes and unmount; stop stale native-share failures before any additional preview/download, protect new results from old callbacks/timers, prevent duplicate in-flight clicks, and expose three-locale copy-pending/retry feedback.
 - [x] Add controlled production-Chrome share/clipboard recovery regressions for success, denial, cancellation, output failure, retry, language A-to-B-to-A, leaving/reopening Ledger, and clearing the report with both actions pending; keep actual iPhone and clipboard-permission gates separate.
 - [x] Project scaffold.
@@ -121,7 +121,10 @@
 - [x] Verify the real-iPhone natural 12-second timeout message and no late result during more than 12.25 seconds of further observation.
 - [x] Verify real-iPhone acceptance at the exact 5 MiB / 100,000-row / 500-underlying / 1,000-event caps; the report rendered within approximately 9.6 seconds and the final underlying and lifecycle drawer remained usable.
 - [x] Verify real-iPhone fail-closed rejection at 501 underlyings and at 1,001 events; each preserved the prior accepted 500-underlying report.
-- [ ] Directly verify real-iPhone recovery with a successful fresh import after cancellation and after natural timeout. Checkpoint 0.19 verifies desktop Chrome recovery with controlled Worker startup holds, not natural Safari timeout/retry; visible device cancellation/timeout alone does not prove internal Worker termination or successful recovery.
+- [x] Directly verify current-build same-tab real-iPhone recovery after cancellation/native-picker cancellation and after natural timeout, plus capacity-error preservation and retry (2026-09-06, `8cf0496`, iPhone 17 Pro Max / iOS 27.0). These are visible UI outcomes, not internal Worker-termination or minimum-version proof; see `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md`.
+- [x] Recheck the current guide, three-locale privacy content and current PNG preview/save directly to Files/reopen on that device. The 1200×1500 PNG reopened successfully, but the HTTP Save as route appended another `.png` and did not preserve the manual name exactly.
+- [ ] Resolve the observed HTTP PNG filename usability limitation without claiming HTTPS naming has passed or reopening deployment.
+- [ ] Complete test-copy cleanup decisions: three local PNGs are recoverably deleted; four iCloud test objects have only their iPhone downloads removed and cloud deletion awaits consent; an old Photos card was not reliably located. Preserve Mac archives and do not empty unrelated Recently Deleted items.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
 - [x] Verify that an import can be visibly cancelled with VoiceOver enabled and remains idle without a late report; VoiceOver was turned off and visually rechecked after the test.
 - [ ] Complete VoiceOver speech/focus-order and real-device accessibility checks on the supported iPhone Safari baseline; the test tooling could not capture spoken announcements.

@@ -1,6 +1,6 @@
 # Verification record — checkpoint 0.19 import recovery
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 ## Frozen release decisions and execution status
 
@@ -21,13 +21,21 @@ Last updated: 2026-09-05
 
 ## Passed in the current workspace
 
+### 2026-09-06 device follow-up on checkpoint 0.19
+
+- The unchanged `8cf0496` production build and existing external fictional pack verification passed this round. After the documentation update, `npm run test:policy` and `git diff --check` also passed. The complete automated `npm run check` pass remains the 2026-09-05 result; it was not rerun for this documentation-only follow-up.
+- iPhone 17 Pro Max / iOS 27.0 system Safari visibly passed cancellation plus native-picker cancellation followed by same-tab small-file recovery, natural timeout followed by same-tab recovery, and exact-capacity acceptance followed by 501-underlying rejection with 500 prior rows retained and direct error-panel retry. No forced delay or modified timeout was used on the phone; observation intervals are not parser durations.
+- The current guide, three-language privacy content and one close method per language passed. Current PNG preview/close/regeneration, Safari save directly to On My iPhone, and native reopen passed; Files Info showed PNG, 2.1 MB and 1200×1500. The manually supplied name gained an extra `.png`, so exact naming failed. No HTTPS native share or new Photos save was exercised.
+- Three local test PNGs were deleted recoverably and rechecked in Recently Deleted. Only iPhone downloads of the four iCloud test objects were removed, confirmed by cloud icons; cloud originals remain pending a cross-device deletion decision. Photos searches did not identify an old test card, so that cleanup remains unverified. Test Safari tabs and the temporary LAN server were closed, port 4173 had no listener, and VoiceOver was verified Off without changing it.
+- See `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md` for exact evidence, cleanup scope and open gates. No private statement, parser/accounting change, dependency change or deployment was involved.
+
 ### Checkpoint 0.19 import recovery
 
 - A pre-fix production-bundle regression reproduced actual focus loss after selecting a file from the error-retry panel and entering Worker busy state. All three picker entry points now focus the stable main Choose/Cancel control synchronously before opening the input; no delayed focus effect was added.
 - The new browser module observes five real button-triggered, CDP-intercepted picker openings; one held Worker is cancelled, and two held Workers reach the unchanged production 12-second timeout at 12,056.5 / 12,058.8 ms. Each target disappears, the old 500-row report is preserved in the checked cancel/preflight and first-timeout paths, and a same-page same-file retry after the second timeout succeeds with a fresh production Worker and 3 rows.
 - Main-control focus is retained, cancellation followed by a non-CSV preflight rejection creates no new Worker, and moving to the Demo control without activating it preserves that focus on timeout. These are controlled Chrome checks, not a manual system picker, natural iPhone timeout, VoiceOver or peak-memory result.
 - `npm run check` and `npm run build` passed; all existing parser, privacy, share/PNG, exact-capacity, over-capacity, locale and responsive checks remained passing. Dependencies were unchanged; no new audit/install was performed.
-- The existing external five-file fictional iPhone pack passed independent verification without regeneration or modification. The next device section is separately marked `NOT_RUN`, and checklist storage wording now reflects the already-approved language/seen-guide preferences; the immutable pack template remains untouched.
+- The existing external five-file fictional iPhone pack passed independent verification without regeneration or modification. At the 2026-09-05 checkpoint the next device section was `NOT_RUN`; its separate 2026-09-06 follow-up is recorded above. Checklist storage wording reflects the approved language/seen-guide preferences, and the immutable pack template remains untouched.
 - See `docs/IMPORT_RECOVERY_EVIDENCE_2026-09-05.md` for exact scope, measurements and remaining user-assisted gates. No real statement was read, no iPhone/LAN/VoiceOver setting was used, and no deployment was made.
 
 ### Checkpoint 0.18 share and copy recovery
@@ -203,13 +211,13 @@ Last updated: 2026-09-05
 
 ## Not yet verified
 
-Recovery items below refer to actual iPhone/Safari behavior. The controlled desktop-Chrome recovery result in checkpoint 0.19 does not close those device gates, and the historical checkpoint 0.15 observations do not certify the current build.
+The 2026-09-06 current-build follow-up closes bounded same-tab recovery UI checks on iOS 27.0. Controlled desktop results and historical 0.15 observations still do not establish other devices, internal Worker state or the remaining gates below.
 
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
 - Mixed MTM + Month/YTD is verified only for the repository's fully fictional, family-correct English full-account shapes. New broker layouts, partial Flex selections, non-empty Model slices, or structures that cannot be normalized exactly remain unsupported and fail closed.
 - Custom wide Flex NAV queries with omitted registered asset fields or a non-empty Model are not supported; only the tested full-field account-level layout is accepted.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
 - Exercise remains uncovered by a qualified real or independently proven CSV fixture. Official IBKR documentation confirms `Ex` and the lifecycle-field semantics, but the public samples are HTML and do not prove the completed-exercise CSV serialization; see `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
-- The iOS 27.0 Safari pass described above does not establish the supported iOS/Safari 16.4 floor. Device rotation, measured Safari/Worker peak memory, a fresh successful import after cancellation and after natural timeout, secure-context HTTPS native file sharing and its exact requested filename remain unverified. Protected-host headers, clipboard behavior and complete deployed Network/Storage inspection also remain deferred under the L deployment decision.
+- The iOS 27.0 Safari passes do not establish the supported iOS/Safari 16.4 floor. Device rotation, measured Safari/Worker peak memory, secure-context HTTPS native file sharing and its exact requested filename remain unverified. Exact manual naming also failed in the observed HTTP save route. Protected-host headers, clipboard behavior and complete deployed Network/Storage inspection remain deferred under the L deployment decision.
 - Blob streaming and incremental hashing are implemented, but the intentional two-pass design still reads the immutable Blob twice and retains the selective statement index, global FII alias states and final report. Browser-engine internal Blob caching, browser-Worker peak allocation and real-device peak-memory headroom remain unmeasured. This is not a single-pass parser or an iPhone/Safari memory guarantee.
 - VoiceOver was enabled for one visible cancellation path, but device audio was not captured and the complete navigation/dialog focus and spoken-reading order remains unverified. The desktop keyboard/focus pass, the 320 px simulated-width pass, and the visible VoiceOver cancellation result do not establish full real-device screen-reader accessibility.
