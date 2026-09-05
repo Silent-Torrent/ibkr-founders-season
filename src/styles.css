@@ -1272,6 +1272,7 @@ h2 {
 }
 
 .png-fallback-panel {
+  scroll-margin-top: 88px;
   margin-top: 14px;
   border: 1px solid rgba(104, 227, 173, 0.24);
   border-radius: 18px;
@@ -1318,18 +1319,53 @@ h2 {
   margin-top: -7px;
 }
 
-.png-filename-hint code {
+.png-fallback-panel code {
   color: var(--text);
   font: inherit;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
-.png-open-link {
+.png-open-link,
+.png-download-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-decoration: none;
+}
+
+.png-save-actions {
+  flex-wrap: wrap;
+}
+
+.png-save-actions a {
+  max-width: 100%;
+  min-height: 44px;
+  white-space: normal;
+  text-align: center;
+}
+
+.png-save-title {
+  margin: 18px 0 8px;
+  font-size: 13px;
+}
+
+.png-save-steps {
+  max-width: 680px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.png-save-steps li + li {
+  margin-top: 8px;
+}
+
+.png-fallback-panel .png-saved-copy-hint {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
 }
 
 .share-delivery-status {

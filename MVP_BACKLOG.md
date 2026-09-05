@@ -1,7 +1,9 @@
 # MVP backlog
 
-## Completed through checkpoint 0.19 — import recovery
+## Completed through checkpoint 0.20 — PNG save guidance
 
+- [x] Separate the full PNG filename from the extension-free Save as suggestion, explain Unknown/double-extension handling and Files/iCloud/saved-copy boundaries in all three locales, and add an explicit named-download anchor without changing the separate Safari-open route or native-share state machine.
+- [x] Reproduce actual 320 px preview heading/close-button obscuration before screenshot scrolling; repair with a scroll margin and verify visible, unobscured controls in all locales. Verify a real correctly named 1200×1500 PNG download, no unsolicited extra download, preserved report/preview and safe close/focus/revocation in production Chrome.
 - [x] Reproduce removed-retry-button focus loss in production Chrome and route all three file-picker entry points through the stable main Choose/Cancel control, including cancellation followed by preflight failure, without an asynchronous focus effect.
 - [x] Exercise real production-Worker cancellation and two controlled startup-stall 12-second timeouts, terminated targets, old-report preservation, same-page same-file successful retry, and retention of deliberately moved focus. These are controlled desktop checks; current-build native-picker cancellation and same-tab iPhone recovery are separately recorded in `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md`.
 - [x] Invalidate pending share/copy work on report/language changes and unmount; stop stale native-share failures before any additional preview/download, protect new results from old callbacks/timers, prevent duplicate in-flight clicks, and expose three-locale copy-pending/retry feedback.
@@ -122,8 +124,9 @@
 - [x] Verify real-iPhone acceptance at the exact 5 MiB / 100,000-row / 500-underlying / 1,000-event caps; the report rendered within approximately 9.6 seconds and the final underlying and lifecycle drawer remained usable.
 - [x] Verify real-iPhone fail-closed rejection at 501 underlyings and at 1,001 events; each preserved the prior accepted 500-underlying report.
 - [x] Directly verify current-build same-tab real-iPhone recovery after cancellation/native-picker cancellation and after natural timeout, plus capacity-error preservation and retry (2026-09-06, `8cf0496`, iPhone 17 Pro Max / iOS 27.0). These are visible UI outcomes, not internal Worker-termination or minimum-version proof; see `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md`.
-- [x] Recheck the current guide, three-locale privacy content and current PNG preview/save directly to Files/reopen on that device. The 1200×1500 PNG reopened successfully, but the HTTP Save as route appended another `.png` and did not preserve the manual name exactly.
-- [ ] Resolve the observed HTTP PNG filename usability limitation without claiming HTTPS naming has passed or reopening deployment.
+- [x] Recheck the 0.19 (`8cf0496`) guide, three-locale privacy content and PNG preview/save directly to Files/reopen on that device. The 1200×1500 PNG reopened successfully, but the HTTP Save as route appended another `.png` and did not preserve the manual name exactly. The changed 0.20 PNG surface is a separate gate below.
+- [x] Improve the observed HTTP PNG filename usability guidance and offer an explicit named-download attempt; see checkpoint 0.20 evidence. The app does not claim that a preview/download request proves system-file save completion.
+- [ ] Retest the changed 0.20 PNG surface on real iPhone: naming attempt and preserved Safari fallback, full/stem instructions, actual saved filename and current-build heading/close visibility. The historical double-extension failure remains open until a real save proves the result; no deployment is authorized by this gate.
 - [x] Recoverably delete the three identified local PNGs and, after explicit user consent, all four iCloud Downloads test objects; verify all in Recently Deleted, the Downloads sync status and unchanged SHA-256 values for 13 Mac backup files. Do not permanently purge or touch unrelated items.
 - [ ] Locate any old Photos test card with the user's help; prior bounded searches did not reliably identify it. Photos cleanup remains unverified, not proof that no card exists.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.

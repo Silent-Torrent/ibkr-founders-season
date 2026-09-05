@@ -17,6 +17,7 @@ import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
+import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
 import {
   generateSyntheticCapacityStatement,
   generateSyntheticOverEventStatement,
@@ -1471,6 +1472,9 @@ try {
     )
   }
 
+  const pngSaveGuidance = await testPngSaveGuidance({
+    cdp, evaluate, waitForPageValue, waitForAsyncCondition, downloadDirectory, inspectPng,
+  })
   const shareInteractions = await testShareInteractions((expression) => evaluate(expression, 30_000))
 
   const previewClearLifecycle = await evaluate(`(async () => {
@@ -2273,9 +2277,12 @@ try {
 
   await delay(250)
 
-  assert.equal(downloadStarts.length, 1, 'A delayed second browser download was observed.')
+  const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid]
+  assert.equal(new Set(expectedDownloadGuids).size, 2, 'The two explicit PNG downloads must have distinct GUIDs.')
+  assert.equal(downloadStarts.length, 2, 'An unrequested browser download was observed.')
+  assert.deepEqual(downloadStarts.map(({ guid }) => guid), expectedDownloadGuids)
   assert(
-    downloadProgress.every(({ guid }) => guid === expectedDownloadGuid),
+    downloadProgress.every(({ guid }) => expectedDownloadGuids.includes(guid)),
     `Download progress included an unexpected GUID: ${JSON.stringify(downloadProgress)}`,
   )
 
@@ -2383,6 +2390,7 @@ try {
     rows: ledgerDetails.rows,
     seasonPnl,
     shareInteractions,
+    pngSaveGuidance,
     importRecovery,
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
     workerTargets: workerTargets.length,

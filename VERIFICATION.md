@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.19 import recovery
+# Verification record — checkpoint 0.20 PNG save guidance
 
 Last updated: 2026-09-06
 
@@ -20,6 +20,14 @@ Last updated: 2026-09-06
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.20 PNG save guidance
+
+- The fast source contract reproduced the missing named-download control before implementation. Three-locale full/stem filename guidance and a distinct explicit Blob download link now pass it; the source gate is also invoked by the production browser suite.
+- Production Chrome rendered three actual 1200×1500 Blob previews with controlled iPhone capability detection, not Safari emulation. The named link produced exactly one new PNG in an isolated download subdirectory with the expected `pnl-arena-2026-season.png` name, 1,279,488 bytes, valid PNG structure and successful 1200×1500 decode. The existing first desktop download and this explicit second download have an exact two-GUID allowlist; unexpected downloads are not tolerated. The report and fallback preview remain intact after the named download.
+- The real first-focus state, before screenshot scrolling, initially hid the heading and close button behind the 62 px sticky topbar. A test failed on measured bounds and failed element hit-testing; adding 88 px scroll margin passed all three languages. Six unmodified 320×900 viewport screenshots (initial focus and subsequently scrolled end) were visually reviewed; header/close controls and all instruction text are reachable without horizontal overflow.
+- Locale text checks cover preview-not-saved, app-cannot-confirm-save, Unknown/no-repeat-extension, Files/iCloud sync, reopening/checking a single `.png` and external-copy deletion boundaries. Existing close/focus/Blob revocation and report/locale invalidation tests remain passing. The final `npm run check` and `npm run build` both passed after the scroll-margin fix and source-gate integration; exact scope is recorded in `docs/PNG_SAVE_GUIDANCE_EVIDENCE_2026-09-06.md`.
+- No parser/accounting, dependency, persistent-storage, native-share/cancellation-state-machine or deployment change was made. No iPhone/LAN session was restarted and no new phone test files were created. The changed 0.20 surface, original iPhone naming failure and all other physical-device/HTTPS gates remain explicitly unverified on this version.
 
 ### 2026-09-06 device follow-up on checkpoint 0.19
 
@@ -211,7 +219,9 @@ Last updated: 2026-09-06
 
 ## Not yet verified
 
-The 2026-09-06 current-build follow-up closes bounded same-tab recovery UI checks on iOS 27.0. Controlled desktop results and historical 0.15 observations still do not establish other devices, internal Worker state or the remaining gates below.
+The changed 0.20 PNG save guidance, named-download attempt, manual filename outcome and preview-heading visibility require targeted real-iPhone retesting under checklist section I. Desktop Chrome downloads and the historical 0.19 phone observations do not close this gate.
+
+The 2026-09-06 checkpoint 0.19 (`8cf0496`) follow-up closes bounded same-tab recovery UI checks on iOS 27.0. Controlled desktop results and historical 0.15 observations still do not establish other devices, internal Worker state or the remaining gates below.
 
 - The private source remains outside the repository. The synthetic current-schema fixture prevents regressions for the proven shapes but does not prove every IBKR variant.
 - Mixed MTM + Month/YTD is verified only for the repository's fully fictional, family-correct English full-account shapes. New broker layouts, partial Flex selections, non-empty Model slices, or structures that cannot be normalized exactly remain unsupported and fail closed.

@@ -248,15 +248,40 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           <img alt={t(locale, 'pngPreviewTitle')} src={visiblePngPreview.previewUrl} />
           <p>{t(locale, 'pngPreviewHint')}</p>
           <p className="png-filename-hint">
-            {t(locale, 'pngFilenameHint')} <code>{visiblePngPreview.filename}</code>
+            {t(locale, 'pngFilenameHint')} <code data-png-filename="full">{visiblePngPreview.filename}</code>
           </p>
-          <a
-            className="primary-button png-open-link"
-            href={visiblePngPreview.previewUrl}
-            target="_blank"
-          >
-            {t(locale, 'openPngInSafari')}
-          </a>
+          <div className="button-row png-save-actions">
+            <a
+              className="secondary-button png-download-link"
+              data-action="download-preview"
+              download={visiblePngPreview.filename}
+              href={visiblePngPreview.previewUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t(locale, 'downloadPngWithName')}
+            </a>
+            <a
+              className="primary-button png-open-link"
+              href={visiblePngPreview.previewUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {t(locale, 'openPngInSafari')}
+            </a>
+          </div>
+          <p>{t(locale, 'pngDownloadHint')}</p>
+          <h3 className="png-save-title">{t(locale, 'pngSaveStepsTitle')}</h3>
+          <ol className="png-save-steps">
+            <li>{t(locale, 'pngSaveOpenStep')}</li>
+            <li>
+              {t(locale, 'pngSaveNameStep')}{' '}
+              <code data-png-filename="stem">{visiblePngPreview.filename.replace(/\.png$/i, '')}</code>
+              {' '}{t(locale, 'pngSaveExtensionStep')}
+            </li>
+            <li>{t(locale, 'pngSaveCheckStep')}</li>
+          </ol>
+          <p className="png-saved-copy-hint">{t(locale, 'pngSavedCopyHint')}</p>
         </div>
       ) : null}
 
