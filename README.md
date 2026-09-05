@@ -4,7 +4,7 @@ Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Acti
 
 ## Current project state — checkpoint 0.19 import recovery
 
-Device follow-up on 2026-09-06: the unchanged production build passed bounded iPhone 17 Pro Max / iOS 27.0 cancellation/natural-timeout/capacity-error recovery, current guide/three-locale privacy checks and PNG save directly to Files/reopen. Exact PNG naming did not pass; rotation, full VoiceOver, the iOS 16.4 floor, memory measurement and deferred HTTPS/deployment gates remain open. Three local test PNGs were recoverably deleted; four iCloud test downloads were removed only from this phone, and cloud deletion/old Photos-card cleanup remain unresolved. The temporary server and test tabs are closed. See `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md`.
+Device follow-up on 2026-09-06: the unchanged production build passed bounded iPhone 17 Pro Max / iOS 27.0 cancellation/natural-timeout/capacity-error recovery, current guide/three-locale privacy checks and PNG save directly to Files/reopen. Exact PNG naming did not pass; rotation, full VoiceOver, the iOS 16.4 floor, memory measurement and deferred HTTPS/deployment gates remain open. Three local test PNGs and, after explicit cross-device consent, four iCloud Downloads test objects were recoverably deleted and verified in Recently Deleted; Mac independent backups remained unchanged. Old Photos-card cleanup remains unresolved. The temporary server and test tabs are closed. See `docs/IPHONE_SAFARI_EVIDENCE_2026-09-06.md`.
 
 The repository already contains:
 
@@ -242,7 +242,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Resolve the remaining cloud-deletion decision and old Photos-card location, then arrange physical rotation and user-assisted VoiceOver with fresh participation/permission. Section H of `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` now separates passed recovery/guide/privacy/PNG checks from those open gates. The HTTP PNG filename issue remains a local usability follow-up, not permission to deploy.
+1. Ask for the old Photos-card location if the user can identify it; cloud deletion is already authorized and completed recoverably. Arrange physical rotation and user-assisted VoiceOver with fresh participation/permission. Section H of `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` separates passed recovery/guide/privacy/PNG checks from those open gates. The HTTP PNG filename issue remains a local usability follow-up, not permission to deploy.
 2. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses. The iOS/Safari 16.4 floor, measured browser-Worker peak memory and complete VoiceOver behavior also remain separate open gates; a newer iPhone or desktop simulation cannot establish them.
 3. Keep all hosting work deferred under L. Secure-context HTTPS native sharing, exact requested filename, clipboard behavior, protected-host headers and deployed Network/Storage inspection remain deferred with hosting. Checkpoint 0.19 is not a deployment or release-readiness decision.
 4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.

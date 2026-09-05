@@ -161,7 +161,7 @@
 - [ ] 实际横竖屏：`NOT_AVAILABLE`，需用户转动手机
 - [ ] VoiceOver 真实听取及焦点验收：`NOT_AVAILABLE`，需用户参与；收尾核对 Off，本轮未启用
 
-后续开始前需要用户打开 iPhone 镜像和系统 Safari；如需临时局域网访问或系统权限，当场说明并确认。本轮三个测试标签及临时服务已关闭，4173 无监听，VoiceOver 已核对 Off。按用户要求，三张已确认的新旧本地测试 PNG 已可恢复删除并在 Recently Deleted 复核；四个 iCloud 测试对象仅移除了手机端下载，云端删除待确认。Photos 未可靠定位旧测试卡，清理仍待核实；不能宣称全机测试文件已清空。保留旧验收记录、Mac 原始归档及认证包的 `RESULTS_NOT_RUN.md`，结果另存包外。不清空其他 Recently Deleted 内容。
+后续开始前需要用户打开 iPhone 镜像和系统 Safari；如需临时局域网访问或系统权限，当场说明并确认。本轮三个测试标签及临时服务已关闭，4173 无监听，VoiceOver 已核对 Off。三张已确认的新旧本地测试 PNG 已可恢复删除；四个 iCloud 测试对象在先移除手机端下载后，另经用户明确同意跨设备删除，也已可恢复删除。四项已从 Downloads 消失，目录显示 8 项及 Synced with iCloud，Recently Deleted 中均可见且标记 iCloud Drive。没有永久清空回收区；删除前后 13 个 Mac 备份文件哈希一致，压力包及 ZIP/交接校验通过。Photos 未可靠定位旧测试卡，仍待用户协助；不能宣称全机测试文件已清空。保留旧验收记录、Mac 原始归档及认证包的 `RESULTS_NOT_RUN.md`，结果另存包外，不触碰无关文件。
 
 ## 发现问题时怎么记录
 

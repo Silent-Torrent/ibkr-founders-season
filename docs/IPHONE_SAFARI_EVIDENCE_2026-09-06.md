@@ -1,6 +1,6 @@
 # iPhone Safari 0.19 恢复与 PNG 真机证据（2026-09-06）
 
-状态：`FINAL_WITH_OPEN_GATES`。本文件记录本轮已完成的真机观察与收尾：本机三张 PNG 已可恢复删除，iCloud 四个测试对象已移除本机下载但保留云端原件，测试标签与临时服务已关闭，设备版本已核对。Photos 旧图仍未定位、iCloud 同步删除待用户确认，横竖屏与 VoiceOver 等门槛仍开放；不宣称全部测试文件已删除或全部发布门槛已通过。
+状态：`FINAL_WITH_OPEN_GATES`。本文件记录本轮已完成的真机观察与收尾：本机三张 PNG 已可恢复删除；iCloud 四个测试对象先移除本机下载，随后经用户明确同意，已执行删除并在 Recently Deleted 复核，均可恢复。测试标签与临时服务已关闭，设备版本已核对，手机最后回到 Home。Photos 旧图仍未定位，横竖屏与 VoiceOver 等门槛仍开放；不宣称全部测试文件已删除或全部发布门槛已通过。
 
 ## 测试边界
 
@@ -78,14 +78,21 @@
 | On My iPhone | `9a06432b-0e0f-4a33-914b-d2576b58c67c.png`，旧 Demo 卡约 `+$20,040` | `DELETED_RECOVERABLY`：已从原位置移除，并在 Recently Deleted 复核 |
 | On My iPhone | `pnl-arena-2026-season.png.PNG`，旧全虚构导入卡约 `+$740` | `DELETED_RECOVERABLY`：已从原位置移除，并在 Recently Deleted 复核 |
 | On My iPhone | `pnl-arena-test-20260906.png.png`，本轮新图 | `DELETED_RECOVERABLY`：已从原位置移除，并在 Recently Deleted 复核 |
-| iCloud Drive / Downloads | 旧全虚构小型 CSV、`iphone-stress-pack-2026-09-02` 目录和两份压力包 ZIP，共四个顶层对象 | `LOCAL_DOWNLOAD_REMOVED`：选中时显示 4 Items，执行 Remove Download 后四对象均显示云朵下载标记；云端原件保留，未删除 |
+| iCloud Drive / Downloads | `ibkr-current-schema-synthetic.csv`，Get Info 显示 13 KB | `DELETED_RECOVERABLY`：已从 Downloads 移除，在 Recently Deleted 看到该目标且来源标记 iCloud Drive |
+| iCloud Drive / Downloads | `iphone-stress-pack-2026-09-02` 目录，Get Info 显示 21 MB、0 KB on disk、10 items；目录列表曾显示 9 items | `DELETED_RECOVERABLY`：已从 Downloads 移除，在 Recently Deleted 看到该目标且来源标记 iCloud Drive；10/9 项显示差异仅按原样记录，未推测原因 |
+| iCloud Drive / Downloads | `iphone-stress-pack-2026-09-02-macos.zip`，Get Info 显示 998 KB | `DELETED_RECOVERABLY`：已从 Downloads 移除，在 Recently Deleted 看到该目标且来源标记 iCloud Drive |
+| iCloud Drive / Downloads | `iphone-stress-pack-2026-09-02.zip`，Get Info 显示 966 KB | `DELETED_RECOVERABLY`：已从 Downloads 移除，在 Recently Deleted 看到该目标且来源标记 iCloud Drive |
 | Photos | 旧轮次曾产生的测试卡副本；本轮有界查找未定位可确认对象，现存数量未知 | `NEEDS_USER_LOCATION / UNVERIFIED`：没有删除任何照片，不能据未搜到推定不存在 |
 
 Photos 的有界查找包括搜索 `740` 和 `pnl-arena`，均显示 No Results；`P&L` 和日期查询返回无关结果，Recent Saved 中可见缩略图也未定位到可确认的测试图片。这些查找不构成全库穷尽核查，也不能证明旧图不存在；尚需用户提供位置或帮助识别。没有删除任何照片，本轮也没有新保存图片到 Photos。
 
-本轮清理计数：On My iPhone 三张 PNG 可恢复删除；iCloud Downloads 四个顶层对象仅移除本机下载，其中一个对象是压力包目录，不能称为“四个文件已删除”；Photos 删除数为零；永久删除数为零。
+本轮清理计数：On My iPhone 三张 PNG 可恢复删除；iCloud Downloads 四个顶层对象可恢复删除，其中一个对象是压力包目录，不能称为“四个文件已删除”；Photos 删除数为零；永久删除数为零。三张本机 PNG 仍在 Recently Deleted，未因本次云端清理而永久删除。
 
-Remove Download 仅表示普通的本机下载移除，云端对象仍可见且可重新下载，不是云端删除，也不是安全擦除或所有缓存字节已不可恢复的证明。已向用户说明 iCloud 四对象的删除会跨设备同步并询问该范围，尚未收到答复；跨设备 iCloud 同步删除和永久删除均未执行。Mac 归档、仓库 fixture 和旧验收记录保留。
+清理先后顺序如下：首次仅对四个对象执行 Remove Download，四对象均出现云朵下载标记，当时云端原件仍保留。随后向用户说明删除会跨设备同步，并取得删除这四个 iCloud 对象的明确同意。删除前逐一通过 Files Get Info 核对上表完整名称及 Where = iCloud Drive > Downloads；四项选中时显示 4 Items，再点击垃圾桶。待列表稳定后，Downloads 剩余 8 个无关项并显示 Synced with iCloud；Recently Deleted 中可见全部四个目标，来源均标记 iCloud Drive。因此当前状态已由仅移除下载更新为云端可恢复删除，未永久删除，也未操作其他已删除项目。
+
+Remove Download 和随后执行的可恢复删除均不是安全擦除，也不能证明所有缓存字节已不可恢复。本次授权删除后未操作 Photos，旧图仍为 `NEEDS_USER_LOCATION / UNVERIFIED`。Mac 归档、仓库 fixture 和旧验收记录属于保留范围。
+
+Mac 独立路径的删除前基线与删除后只读复核均通过：外置压力包的 9 个文件、两份 Mac 压力包 ZIP、仓库内小型虚构 fixture、原始交接 ZIP，共 13 个文件的 SHA-256 前后全部一致。既有 `verify:iphone-stress-pack` 再次以退出码 0 完成；两份压力包 ZIP 与原始交接 ZIP 共 3 份压缩包均通过 `unzip -t`，原始交接 ZIP 还与其附带 SHA-256 校验值匹配。这些结果证明所核对的 Mac 独立副本内容未因本次 iCloud 删除而改变，不推及未核对路径或其他设备。
 
 ## 收尾与剩余边界
 
@@ -94,7 +101,8 @@ Remove Download 仅表示普通的本机下载移除，云端对象仍可见且�
 - 本轮设备型号与系统版本已现场核对为 iPhone 17 Pro Max / iOS 27.0。
 - Settings → Accessibility 显示 VoiceOver 为 Off；本轮没有开启或修改该设置。其他未明确识别的历史权限不据此宣称已撤回。
 - On My iPhone 的三张已识别测试 PNG 已可恢复删除，并在 Recently Deleted 复核；未永久删除或操作其他已删除项目。Mac 归档保持保留。
-- iCloud Downloads 四个顶层测试对象均已执行 Remove Download 并显示云朵下载标记；云端原件保留，未进行跨设备同步删除。普通移除下载不等于安全擦除。
+- iCloud Downloads 四个顶层测试对象先执行 Remove Download；获用户明确同意后已删除，Downloads 稳定为 8 个无关项并显示 Synced with iCloud。Recently Deleted 已逐一复核四个目标及 iCloud Drive 来源，状态为 `DELETED_RECOVERABLY`，未永久删除。
 - Photos 有界查找未定位可确认的旧测试图，没有删除任何照片；保留 `NEEDS_USER_LOCATION / UNVERIFIED`，不能宣称全部测试文件已清理。
+- 完成本次获授权的云端删除后，手机已回到 Home；没有重新启动网络服务或修改权限。上述 Mac 独立副本的删除前后 SHA-256、压力包校验及 ZIP 完整性复核均通过。
 - 三语隐私已完成上述核读及每语言一种关闭方法；横竖屏和 VoiceOver 验收仍未完成。本轮记录已收束，后续按尚开放的用户参与及清理项目继续。
 - iOS/Safari 16.4 支持下限、峰值内存、Worker 内部状态、完整 VoiceOver、HTTPS 原生分享/精确原定文件名、部署后 Network/Storage/响应头及合格真实 Exercise 样本仍未由本轮证明。
