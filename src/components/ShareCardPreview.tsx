@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatDate, pnlClass } from '../lib/format'
@@ -17,6 +17,8 @@ interface ShareCardPreviewProps {
   report: PortfolioReport
   locale: Locale
 }
+
+type ShareContext = ShareCardPreviewProps
 
 type PngPreviewState = Extract<SeasonCardDelivery, { kind: 'preview' }> & {
   locale: Locale
@@ -45,12 +47,18 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const [cardStatus, setCardStatus] = useState<CardDeliveryStatus>('idle')
   const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
+  const [manualCopyContext, setManualCopyContext] = useState<ShareContext | null>(null)
+  const manualCopyId = useId()
+  const manualButtonRef = useRef<HTMLButtonElement>(null)
+  const manualPanelRef = useRef<HTMLDivElement>(null)
+  const manualTextRef = useRef<HTMLTextAreaElement>(null)
+  const manualFocusRequestRef = useRef<{ context: ShareContext; trigger: HTMLElement } | null>(null)
   const copyResetTimerRef = useRef<number | null>(null)
   const downloadButtonRef = useRef<HTMLButtonElement>(null)
   const pngPreviewPanelRef = useRef<HTMLDivElement>(null)
   const pngPreviewUrlRef = useRef<string | null>(null)
   const mountedRef = useRef(true)
-  const activeRequestRef = useRef({ locale, report })
+  const activeRequestRef = useRef<ShareContext>({ locale, report })
   // A distinct context also invalidates A -> B -> A transitions while a browser API is pending.
   if (activeRequestRef.current.locale !== locale || activeRequestRef.current.report !== report) {
     activeRequestRef.current = { locale, report }
@@ -63,6 +71,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const visiblePngPreview = pngPreview?.report === report && pngPreview.locale === locale
     ? pngPreview
     : null
+  const visibleManualCopy = manualCopyContext === activeRequestRef.current ? manualCopyContext : null
 
   useLayoutEffect(
     () => {
@@ -71,6 +80,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         mountedRef.current = false
         downloadRequestRef.current?.abort()
         copyRequestRef.current?.abort()
+        manualFocusRequestRef.current = null
         if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
         if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
       }
@@ -85,14 +95,62 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
     copyRequestRef.current = null
     if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
     copyResetTimerRef.current = null
+    manualFocusRequestRef.current = null
+    setManualCopyContext(null)
     closePngPreview()
     setCardStatus('idle')
     setCopyStatus('idle')
   }, [locale, report])
 
   useEffect(() => {
-    if (visiblePngPreview) pngPreviewPanelRef.current?.focus()
+    // A late image result must not interrupt an explicit text selection or its controls.
+    if (visiblePngPreview && !manualPanelRef.current?.contains(document.activeElement)) {
+      pngPreviewPanelRef.current?.focus()
+    }
   }, [visiblePngPreview])
+
+  useLayoutEffect(() => {
+    const request = manualFocusRequestRef.current
+    manualFocusRequestRef.current = null
+    if (visibleManualCopy && request?.context === visibleManualCopy && document.activeElement === request.trigger) {
+      selectManualSummary()
+    }
+  }, [visibleManualCopy])
+
+  function selectManualSummary() {
+    const field = manualTextRef.current
+    if (!field) return
+    // Native textarea focus may reveal only a caret, leaving most of the field under navigation.
+    // This scroll is only reached by an explicit manual-selection action, never a late failure.
+    field.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' })
+    field.focus({ preventScroll: true })
+    field.select()
+  }
+
+  function openManualSummary() {
+    if (visibleManualCopy) {
+      selectManualSummary()
+      return
+    }
+    const trigger = manualButtonRef.current
+    if (trigger) {
+      trigger.focus()
+      manualFocusRequestRef.current = { context: activeRequestRef.current, trigger }
+    }
+    setManualCopyContext(activeRequestRef.current)
+  }
+
+  function closeManualSummary() {
+    // We cannot undo a system clipboard write, but its late result must not reopen this panel.
+    copyRequestRef.current?.abort()
+    copyRequestRef.current = null
+    if (copyResetTimerRef.current != null) window.clearTimeout(copyResetTimerRef.current)
+    copyResetTimerRef.current = null
+    manualFocusRequestRef.current = null
+    setCopyStatus('idle')
+    setManualCopyContext(null)
+    manualButtonRef.current?.focus()
+  }
 
   function closePngPreview(restoreFocus = false) {
     if (pngPreviewUrlRef.current) URL.revokeObjectURL(pngPreviewUrlRef.current)
@@ -154,6 +212,8 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
 
     if (!isCurrent()) return
     setCopyStatus(nextStatus)
+    // An automatic failure exposes the fallback without moving focus or selecting text.
+    if (nextStatus === 'failed') setManualCopyContext(requestedContext)
     const resetTimer = window.setTimeout(
       () => {
         if (
@@ -194,6 +254,17 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
                   : t(locale, 'copySummary')}
           </button>
           <button
+            aria-expanded={Boolean(visibleManualCopy)}
+            aria-controls={`${manualCopyId}-panel`}
+            className="secondary-button"
+            data-action="manual-summary"
+            onClick={openManualSummary}
+            ref={manualButtonRef}
+            type="button"
+          >
+            {t(locale, 'manualSummary')}
+          </button>
+          <button
             className="primary-button"
             data-action="download-card"
             disabled={cardStatus === 'preparing'}
@@ -214,6 +285,50 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
                 : ''}
         </span>
       </div>
+
+      {visibleManualCopy ? (
+        <div
+          aria-labelledby={`${manualCopyId}-title`}
+          className="manual-copy-panel"
+          id={`${manualCopyId}-panel`}
+          ref={manualPanelRef}
+          role="region"
+        >
+          <div className="manual-copy-heading">
+            <h3 id={`${manualCopyId}-title`}>{t(locale, 'manualSummaryTitle')}</h3>
+            <button
+              className="secondary-button"
+              data-action="close-manual-summary"
+              onClick={closeManualSummary}
+              type="button"
+            >
+              {t(locale, 'close')}
+            </button>
+          </div>
+          <p id={`${manualCopyId}-hint`}>{t(locale, 'manualSummaryHint')}</p>
+          <label className="sr-only" htmlFor={`${manualCopyId}-text`}>{t(locale, 'manualSummaryTitle')}</label>
+          <textarea
+            aria-describedby={`${manualCopyId}-hint`}
+            autoComplete="off"
+            className="manual-copy-text"
+            data-manual-summary
+            id={`${manualCopyId}-text`}
+            readOnly
+            ref={manualTextRef}
+            spellCheck={false}
+            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale)}
+          />
+          <button
+            className="secondary-button"
+            data-action="select-manual-summary"
+            onClick={selectManualSummary}
+            type="button"
+          >
+            {t(locale, 'selectSummaryText')}
+          </button>
+          <p>{t(locale, 'manualSummaryPrivacyHint')}</p>
+        </div>
+      ) : null}
 
       {cardStatus !== 'idle' && (
         <p aria-live="polite" className={`share-delivery-status ${cardStatus}`} role="status">

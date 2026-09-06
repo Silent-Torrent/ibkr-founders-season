@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
+import { testManualCopy } from './test-manual-copy.mjs'
 import {
   generateSyntheticCapacityStatement,
   generateSyntheticOverEventStatement,
@@ -1476,6 +1477,7 @@ try {
     cdp, evaluate, waitForPageValue, waitForAsyncCondition, downloadDirectory, inspectPng,
   })
   const shareInteractions = await testShareInteractions((expression) => evaluate(expression, 30_000))
+  const manualCopy = await testManualCopy({ cdp, evaluate, waitForPageValue })
 
   const previewClearLifecycle = await evaluate(`(async () => {
     const navigatorKeys = ['clipboard', 'canShare', 'maxTouchPoints', 'platform', 'share', 'userAgent'];
@@ -1606,6 +1608,8 @@ try {
         () => typeof rejectPendingShare === 'function' && typeof resolvePendingCopy === 'function',
         'pending share and copy before report clearing',
       );
+      document.querySelector('[data-action="manual-summary"]').click();
+      await waitUntil(() => Boolean(document.querySelector('.manual-copy-panel')), 'manual text before report clearing');
       HTMLAnchorElement.prototype.click = function () {
         if (this.download) lateDownloadCount += 1;
         else return Reflect.apply(nativeAnchorClick, this, []);
@@ -1626,7 +1630,8 @@ try {
       resolvePendingCopy();
       await new Promise((resolveWait) => setTimeout(resolveWait, 50));
       const clearedRequestFeedback = document.querySelector('[data-action="copy-summary"]')?.textContent?.trim() === 'Copy summary' &&
-        !document.querySelector('.share-delivery-status') && !document.querySelector('.png-fallback-panel');
+        !document.querySelector('.share-delivery-status') && !document.querySelector('.png-fallback-panel') &&
+        !document.querySelector('.manual-copy-panel');
 
       return {
         createdCount: createdUrls.length,
@@ -2390,6 +2395,7 @@ try {
     rows: ledgerDetails.rows,
     seasonPnl,
     shareInteractions,
+    manualCopy,
     pngSaveGuidance,
     importRecovery,
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,

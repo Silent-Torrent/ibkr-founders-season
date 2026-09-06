@@ -1,6 +1,9 @@
 # MVP backlog
 
-## Completed through checkpoint 0.20 — PNG save guidance
+## Completed through checkpoint 0.21 — manual summary selection
+
+- [x] Add a three-locale manual-summary entry and automatic copy-failure fallback using exactly the existing share summary in a labelled read-only field; explicit full selection performs no clipboard write, automatic failure does not move focus, and copy/selection/system-retention boundaries are stated honestly.
+- [x] Reproduce actual first-selection textarea obscuration at 320 px, centre the field only on explicit selection, and pass production-browser checks for full/repeated selection, clipboard absence/denial, close/locale/unmount/clear races, failure-timer persistence, delayed PNG focus protection and visible controls. Real iPhone selection and actual system-copy behavior remain separate open gates.
 
 - [x] Separate the full PNG filename from the extension-free Save as suggestion, explain Unknown/double-extension handling and Files/iCloud/saved-copy boundaries in all three locales, and add an explicit named-download anchor without changing the separate Safari-open route or native-share state machine.
 - [x] Reproduce actual 320 px preview heading/close-button obscuration before screenshot scrolling; repair with a scroll margin and verify visible, unobscured controls in all locales. Verify a real correctly named 1200×1500 PNG download, no unsolicited extra download, preserved report/preview and safe close/focus/revocation in production Chrome.
@@ -127,6 +130,7 @@
 - [x] Recheck the 0.19 (`8cf0496`) guide, three-locale privacy content and PNG preview/save directly to Files/reopen on that device. The 1200×1500 PNG reopened successfully, but the HTTP Save as route appended another `.png` and did not preserve the manual name exactly. The changed 0.20 PNG surface is a separate gate below.
 - [x] Improve the observed HTTP PNG filename usability guidance and offer an explicit named-download attempt; see checkpoint 0.20 evidence. The app does not claim that a preview/download request proves system-file save completion.
 - [ ] Retest the changed 0.20 PNG surface on real iPhone: naming attempt and preserved Safari fallback, full/stem instructions, actual saved filename and current-build heading/close visibility. The historical double-extension failure remains open until a real save proves the result; no deployment is authorized by this gate.
+- [ ] Test the 0.21 manual-summary fallback on real iPhone under checklist section J: actual read-only selection, native Copy and a user-approved local paste comparison, three-locale control visibility, honest unavailable-API feedback and lifecycle cleanup. Controlled desktop promises do not prove the real system clipboard or VoiceOver behavior. Use Demo; obtain consent before replacing the phone clipboard and clean only specifically created temporary content.
 - [x] Recoverably delete the three identified local PNGs and, after explicit user consent, all four iCloud Downloads test objects; verify all in Recently Deleted, the Downloads sync status and unchanged SHA-256 values for 13 Mac backup files. Do not permanently purge or touch unrelated items.
 - [ ] Locate any old Photos test card with the user's help; prior bounded searches did not reliably identify it. Photos cleanup remains unverified, not proof that no card exists.
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.

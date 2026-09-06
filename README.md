@@ -2,7 +2,9 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.20 PNG save guidance
+## Current project state — checkpoint 0.21 manual summary selection
+
+An always-available manual-selection action and an automatic copy-failure fallback now expose the same share summary in a labelled, read-only field. Only explicit selection focuses/selects text; automatic failure does not steal focus. Closing invalidates old callbacks, context changes remove old text, and a late PNG preview respects manual-panel focus. Selection is not a successful-copy claim; clearing the report cannot clear a previously copied system clipboard. Local acceptance is recorded in `docs/MANUAL_COPY_EVIDENCE_2026-09-06.md`. Actual iPhone selection/system-copy behavior still needs section J testing; no new phone/LAN or deployment session is implied.
 
 The PNG fallback now separates the expected full filename from the extension-free Save as suggestion and provides localized saving/verification and Files/iCloud/copy-retention guidance. An explicit named-download link supplements—not replaces—the Safari-open route. Production Chrome verifies the real named PNG download and three-locale 320 px rendering; an actual sticky-header overlap of the preview title/close control was reproduced and corrected with scroll margin. See `docs/PNG_SAVE_GUIDANCE_EVIDENCE_2026-09-06.md`. The changed save surface still needs targeted iPhone verification; this does not convert the old exact-filename failure into a pass.
 
@@ -214,6 +216,7 @@ docs/
   SHARE_RECOVERY_EVIDENCE_2026-09-05.md  checkpoint 0.18 share/copy races and delivery boundaries
   IMPORT_RECOVERY_EVIDENCE_2026-09-05.md  checkpoint 0.19 retry focus, controlled timeout, and same-file recovery
   PNG_SAVE_GUIDANCE_EVIDENCE_2026-09-06.md  checkpoint 0.20 named-download attempt, save guidance and visible preview focus
+  MANUAL_COPY_EVIDENCE_2026-09-06.md  checkpoint 0.21 read-only summary selection, copy denial and focus/lifecycle coverage
   IPHONE_SAFARI_EVIDENCE_2026-09-06.md  checkpoint 0.19 phone recovery, privacy, PNG and bounded cleanup
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
   OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required
@@ -245,7 +248,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Section I of `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` targets the changed 0.20 PNG save/focus surface, using Demo without re-transferring deleted CSV test packs; it remains unrun on iPhone. Section H retains the bounded 0.19 observations. Ask for fresh LAN/rotation/VoiceOver participation as needed and clean any newly saved test images afterwards. Cloud deletion is complete; the old Photos-card location alone still needs help. Exact iPhone PNG naming remains unproven, not permission to deploy.
+1. Sections I and J of `docs/IPHONE_SAFARI_TEST_CHECKLIST.md` target the changed 0.20 PNG save/focus and 0.21 manual-summary surfaces, using Demo without re-transferring deleted CSV test packs; both remain unrun on iPhone. Section H retains the bounded 0.19 observations. Ask for fresh LAN/rotation/VoiceOver participation and consent before replacing the system clipboard, and clean any new test images/temporary content afterwards. Cloud deletion is complete; the old Photos-card location alone still needs help. Exact iPhone PNG naming remains unproven, not permission to deploy.
 2. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses. The iOS/Safari 16.4 floor, measured browser-Worker peak memory and complete VoiceOver behavior also remain separate open gates; a newer iPhone or desktop simulation cannot establish them.
-3. Keep all hosting work deferred under L. Secure-context HTTPS native sharing, exact requested filename, clipboard behavior, protected-host headers and deployed Network/Storage inspection remain deferred with hosting. Checkpoint 0.20 is not a deployment or release-readiness decision.
+3. Keep all hosting work deferred under L. Secure-context HTTPS native sharing, exact requested filename, automatic clipboard permission behavior on that host, protected-host headers and deployed Network/Storage inspection remain deferred with hosting. Neither checkpoint 0.20 nor 0.21 is a deployment or release-readiness decision; manual text selection can be tested separately without deployment.
 4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.

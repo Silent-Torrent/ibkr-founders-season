@@ -47,6 +47,7 @@ body {
 
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -64,6 +65,7 @@ button {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
 select:focus-visible,
 summary:focus-visible,
 .data-table-wrap:focus-visible,
@@ -1222,6 +1224,67 @@ h2 {
 
 .share-section {
   margin-top: 42px;
+}
+
+.share-section > .section-heading .button-row {
+  flex-wrap: wrap;
+}
+
+.share-section > .section-heading button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.manual-copy-panel {
+  scroll-margin-top: 88px;
+  margin-top: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: var(--panel);
+  padding: 16px;
+}
+
+.manual-copy-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.manual-copy-heading h3 {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.manual-copy-panel p {
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.manual-copy-panel button {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.manual-copy-text {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  margin: 0 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  padding: 12px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.6;
+  resize: vertical;
+  scroll-margin-top: 88px;
+  scroll-margin-bottom: 90px;
 }
 
 .button-row,

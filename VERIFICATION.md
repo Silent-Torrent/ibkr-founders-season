@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.20 PNG save guidance
+# Verification record — checkpoint 0.21 manual summary selection
 
 Last updated: 2026-09-06
 
@@ -20,6 +20,13 @@ Last updated: 2026-09-06
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.21 manual summary selection
+
+- Source-contract red/green, type checking, locale and privacy contracts passed. An always-available manual action and automatic copy-failure fallback reuse exactly `buildSeasonSummary` in a labelled, read-only field. Explicit selection is distinct from system copying; automatic failure does not steal focus.
+- Production Chrome passed all three locales, full/repeated selection without clipboard writes or false `Copied`, controlled denial/missing API, text equality and privacy canaries, close/locale A→B→A/unmount/report-clear invalidation, a naturally expiring failure timer and late PNG focus protection. The new module used nine controlled clipboard calls; no real system clipboard was read or written.
+- The initial 320×900 run genuinely failed: textarea top/bottom 695.5/955.5 px crossed the bottom navigation at 825 px, persisting after two animation frames. Explicit selection now centres the field before focusing without an additional scroll. The rebuilt production-browser suite passed textarea/control visibility and hit testing; three ordinary viewport images were directly inspected. An internal-textarea scroll-to-end assertion was then added for final full-suite verification.
+- Final Node 22 `npm run check && npm run build` passed, including the added internal-textarea scroll-to-end assertion with unchanged value/selection/clipboard count. The new module recorded nine controlled copy calls and zero manual clipboard writes; the existing share suite, exactly two expected real PNG downloads and capacity/import recovery remained passing. All four diagnostic/acceptance screenshots were inspected and removed from their exact temporary directories. Full scope and final asset identities are recorded in `docs/MANUAL_COPY_EVIDENCE_2026-09-06.md`. The implementation changes no parser/accounting, dependencies, persistent financial storage, image rendering or hosting decisions. Real iPhone selection/menu/copy and VoiceOver remain unrun under checklist section J; no phone/LAN session or new phone test file was created.
 
 ### Checkpoint 0.20 PNG save guidance
 
@@ -218,6 +225,8 @@ Last updated: 2026-09-06
 - With VoiceOver enabled, a visible cancel at about 3.1 seconds returned the page to idle and no late report appeared over more than 29 seconds. The test tool could not capture device audio, and the complete navigation/dialog focus and spoken-reading order was not exercised; no claim is made that the cancellation announcement was heard. VoiceOver was turned off and the off state was visually rechecked after the test.
 
 ## Not yet verified
+
+The new 0.21 manual-summary selection and clipboard fallback require real-iPhone testing under checklist section J. Controlled desktop clipboard promises and DOM selection do not prove the native editing menu, actual system-copy result, VoiceOver or the minimum supported Safari version. System clipboard replacement needs informed user consent; closing/clearing the report cannot recall previously copied text.
 
 The changed 0.20 PNG save guidance, named-download attempt, manual filename outcome and preview-heading visibility require targeted real-iPhone retesting under checklist section I. Desktop Chrome downloads and the historical 0.19 phone observations do not close this gate.
 

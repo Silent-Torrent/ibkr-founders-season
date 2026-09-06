@@ -74,7 +74,7 @@ async function runShareInteractions() {
   }
   const settleCopy = async (entry, success) => {
     success ? entry.resolve() : entry.reject()
-    await wait(() => copyLabel() === (success ? 'Copied' : 'Copy failed. Please try again.'), 'copy outcome')
+    await wait(() => copyLabel() === (success ? 'Copied' : 'Copy failed. Use manual selection.'), 'copy outcome')
     expect(!button('copy-summary').disabled, 'Settled copy did not enable retry.')
   }
   const settleShare = async (entry, outcome, status) => {
@@ -127,6 +127,7 @@ async function runShareInteractions() {
     expect(copyLabel() === 'Copied', 'Old feedback timer cleared newer success feedback.')
     await roundTripLocale()
     expect(copyLabel() === 'Copy summary', 'Locale change retained old copy feedback.')
+    expect(!document.querySelector('.manual-copy-panel'), 'Locale change retained old manual-copy text.')
 
     const localeCopy = await start('copy-summary', copies)
     await roundTripLocale()
@@ -141,7 +142,8 @@ async function runShareInteractions() {
     const newCopy = await start('copy-summary', copies)
     oldCopy.reject()
     await pause()
-    expect(button('copy-summary').disabled && copyLabel() !== 'Copy failed. Please try again.', 'Old copy changed the newer pending request.')
+    expect(button('copy-summary').disabled && copyLabel() !== 'Copy failed. Use manual selection.', 'Old copy changed the newer pending request.')
+    expect(!document.querySelector('.manual-copy-panel'), 'Old copy failure reopened a stale manual-copy panel.')
     await settleCopy(newCopy, true)
     await roundTripLocale()
 
@@ -195,6 +197,7 @@ async function runShareInteractions() {
     await pause()
     noStaleOutput(...beforeUnmount)
     expect(copyLabel() === 'Copy summary' && !button('copy-summary').disabled, 'Unmounted copy restored obsolete feedback.')
+    expect(!document.querySelector('.manual-copy-panel'), 'Unmounted copy restored obsolete manual text.')
     await settleCopy(await start('copy-summary', copies), true)
     await roundTripLocale()
     expect(signature() === initialSignature, 'Share tests changed the imported report.')
