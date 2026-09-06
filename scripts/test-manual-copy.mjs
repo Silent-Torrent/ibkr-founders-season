@@ -8,9 +8,14 @@ export function checkManualCopySourceContract() {
   for (const marker of [
     'data-action="manual-summary"', 'className="manual-copy-panel"', 'data-manual-summary',
     'data-action="select-manual-summary"', 'data-action="close-manual-summary"',
+    'className="share-copy-feedback"', 'className="share-copy-status"', 'data-copy-status={copyStatus}',
   ]) assert(source.includes(marker), `Manual copy source contract missing: ${marker}`)
   assert.match(source, /readOnly/)
   assert.match(source, /spellCheck=\{false\}/)
+  assert.match(source, /data-action="copy-summary"[\s\S]*?>\s*\{t\(locale, 'copySummary'\)\}\s*<\/button>/,
+    'Copy action name must not change with feedback.')
+  assert.equal((source.match(/copyStatus === 'copying'\s*\?/g) ?? []).length, 1,
+    'Copy feedback must have one announcement source, separate from the action label.')
   console.log('Manual copy source contract passed.')
 }
 
@@ -25,9 +30,9 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     assert(metadata.isDirectory() && !metadata.isSymbolicLink(), 'MANUAL_COPY_QA_DIR must be an existing real directory.')
   }
   const locales = [
-    ['en', 'Select text manually', 'Copy failed. Use manual selection.', 'Copied'],
-    ['zh-CN', '手动选择文字', '复制失败，可手动选择文字。', '已复制'],
-    ['zh-TW', '手動選取文字', '複製失敗，可手動選取文字。', '已複製'],
+    ['en', 'Select text manually', 'Copy failed. Use manual selection.', 'Copied', 'Copy summary', 'Copying…'],
+    ['zh-CN', '手动选择文字', '复制失败，可手动选择文字。', '已复制', '复制摘要', '正在复制…'],
+    ['zh-TW', '手動選取文字', '複製失敗，可手動選取文字。', '已複製', '複製摘要', '正在複製…'],
   ]
   const readState = `(() => {
     const panel = document.querySelector('.manual-copy-panel');
@@ -49,6 +54,8 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
       spellcheck: field?.spellcheck, selected: field ? [field.selectionStart, field.selectionEnd] : [],
       focused: document.activeElement === field, focusAction: document.activeElement?.getAttribute('data-action') ?? '',
       copyLabel: document.querySelector('[data-action="copy-summary"]')?.textContent?.trim() ?? '',
+      copyFeedback: document.querySelector('[data-copy-status]')?.textContent?.trim() ?? '',
+      copyStatus: document.querySelector('[data-copy-status]')?.getAttribute('data-copy-status') ?? '',
       copyDisabled: document.querySelector('[data-action="copy-summary"]')?.disabled ?? false,
       manualLabel: document.querySelector('[data-action="manual-summary"]')?.textContent?.trim() ?? '',
       calls: globalThis.__manualCopyProbe.copies.length, legacyCalls: globalThis.__manualCopyProbe.legacyCalls,
@@ -68,6 +75,7 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
   })()`
   const initialReport = await evaluate(`document.querySelector('.data-table tbody')?.textContent ?? ''`)
   const summaries = {}
+  const stableActionLayouts = []
   let installed = false
 
   async function click(action) {
@@ -159,6 +167,8 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     assert.equal(state.panel, false, `${label} resurrected manual text.`)
     assert.equal(state.copyDisabled, false)
     assert.equal(state.copyLabel, 'Copy summary', `${label} restored stale copy feedback.`)
+    assert.equal(state.copyFeedback, '', `${label} restored stale copy feedback.`)
+    assert.equal(state.copyStatus, 'idle', `${label} restored stale copy state.`)
   }
 
   try {
@@ -194,12 +204,13 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     await cdp.send('Emulation.setDeviceMetricsOverride', {
       deviceScaleFactor: 1, height: 900, mobile: false, screenHeight: 900, screenWidth: 320, width: 320,
     })
-    for (const [locale, manualLabel, failedLabel, copiedLabel] of locales) {
+    for (const [locale, manualLabel, failedLabel, copiedLabel, copyLabel, copyingLabel] of locales) {
       await setLocale(locale)
       await evaluate(`document.querySelector('select.language-select').focus()`)
       const manual = await openSelected(false)
       assert.equal(manual.manualLabel, manualLabel)
-      assert.notEqual(manual.copyLabel, copiedLabel, 'Selecting text falsely reported a successful copy.')
+      assert.equal(manual.copyLabel, copyLabel)
+      assert.notEqual(manual.copyFeedback, copiedLabel, 'Selecting text falsely reported a successful copy.')
       summaries[locale] = manual.value
       if (qaDirectory) {
         const screenshot = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
@@ -235,7 +246,8 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
       const pending = await beginCopy()
       await evaluate(`document.querySelector('select.language-select').focus()`)
       await settle(pending)
-      const denied = await waitForPageValue(readState, (value) => value?.panel && value?.copyLabel === failedLabel, `${locale} automatic denial exposes manual text`)
+      const denied = await waitForPageValue(readState, (value) => value?.panel && value?.copyFeedback === failedLabel, `${locale} automatic denial exposes manual text`)
+      assert.equal(denied.copyLabel, copyLabel)
       assert.equal(denied.focused, false, 'Automatic denial stole focus into the textarea.')
       assert.equal(await evaluate(`document.activeElement === document.querySelector('select.language-select')`), true)
       assert.equal(denied.value, manual.value)
@@ -245,12 +257,97 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
         await evaluate('new Promise((resolve) => setTimeout(resolve, 3100))')
         const afterFailureTimer = await evaluate(readState)
         assert.equal(afterFailureTimer.copyLabel, 'Copy summary')
+        assert.equal(afterFailureTimer.copyFeedback, '')
         assert.equal(afterFailureTimer.panel, true, 'Failure feedback reset removed the manual fallback.')
         assert.equal(afterFailureTimer.focused, true)
         assert.equal(afterFailureTimer.value, manual.value)
         assert.deepEqual(afterFailureTimer.selected, [0, manual.value.length])
       }
       await close()
+
+      // Keep the same real pointer target through natural feedback transitions.
+      // Element .click() alone would silently follow a relocated Manual button.
+      await evaluate(`document.querySelector('.share-section > .section-heading .button-row').scrollIntoView({ block: 'center', behavior: 'auto' })`)
+      // Clear a previous locale's pointer hover and its 150 ms transform transition;
+      // this is harness setup, not a wait that skips any product feedback state.
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 })
+      await evaluate('new Promise((resolve) => setTimeout(resolve, 200))')
+      await evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
+      const readActionLayout = `(() => {
+        const geometry = (element) => {
+          const rect = element.getBoundingClientRect();
+          return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+        };
+        const actions = ['copy-summary', 'manual-summary', 'download-card'];
+        return {
+          scrollY, width: document.documentElement.scrollWidth,
+          controls: Object.fromEntries(actions.map((action) => {
+            const element = document.querySelector('[data-action="' + action + '"]');
+            return [action, { ...geometry(element), label: element.textContent.trim() }];
+          })),
+          feedback: geometry(document.querySelector('.share-copy-feedback')),
+          statuses: document.querySelectorAll('.share-copy-feedback [role="status"]').length,
+          sizingHidden: [...document.querySelectorAll('.share-copy-feedback-size')].every((element) =>
+            element.getAttribute('aria-hidden') === 'true' && getComputedStyle(element).visibility === 'hidden'),
+        };
+      })()`
+      const idleLayout = await evaluate(readActionLayout)
+      assert.equal(idleLayout.width, 320)
+      assert.equal(idleLayout.statuses, 1)
+      assert.equal(idleLayout.sizingHidden, true)
+      const assertStableLayout = async (phase) => {
+        await evaluate('new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
+        const layout = await evaluate(readActionLayout)
+        assert.equal(layout.width, 320, `${locale} ${phase} introduced horizontal overflow.`)
+        assert(Math.abs(layout.scrollY - idleLayout.scrollY) <= 0.5, `${locale} ${phase} moved the viewport.`)
+        for (const action of Object.keys(idleLayout.controls)) {
+          assert.equal(layout.controls[action].label, idleLayout.controls[action].label,
+            `${locale} ${phase} changed the ${action} action name.`)
+          for (const edge of ['left', 'top', 'right', 'bottom']) {
+            assert(Math.abs(layout.controls[action][edge] - idleLayout.controls[action][edge]) <= 0.5,
+              `${locale} ${phase} moved ${action} ${edge}: ${JSON.stringify({ before: idleLayout, after: layout })}`)
+          }
+        }
+        assert.deepEqual(layout.feedback, idleLayout.feedback, `${locale} ${phase} resized the reserved feedback space.`)
+        return layout
+      }
+      const layoutCopy = await beginCopy()
+      assert.equal((await evaluate(readState)).copyFeedback, copyingLabel)
+      await assertStableLayout('pending')
+      await settle(layoutCopy)
+      await waitForPageValue(readState, (value) => value?.copyFeedback === failedLabel, `${locale} layout denial`)
+      const failedLayout = await assertStableLayout('failed')
+      const oldManualPoint = {
+        x: (failedLayout.controls['manual-summary'].left + failedLayout.controls['manual-summary'].right) / 2,
+        y: (failedLayout.controls['manual-summary'].top + failedLayout.controls['manual-summary'].bottom) / 2,
+      }
+      const hitAtOldPoint = `document.elementFromPoint(${oldManualPoint.x}, ${oldManualPoint.y})?.closest('[data-action]')?.getAttribute('data-action')`
+      assert.equal(await evaluate(hitAtOldPoint), 'manual-summary', `${locale} failed Manual target is obscured.`)
+      await waitForPageValue(readState, (value) => value?.copyStatus === 'idle', `${locale} natural failure reset`)
+      await assertStableLayout('failure reset')
+      assert.equal(await evaluate(hitAtOldPoint), 'manual-summary', `${locale} old Manual point now hits another action.`)
+      const sharesBeforeOldPoint = await evaluate('globalThis.__manualCopyProbe.shares.length')
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...oldManualPoint })
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...oldManualPoint })
+      const oldPointSelection = await waitForPageValue(readState, (value) => value?.focused, `${locale} original Manual coordinate selects text`)
+      assert.deepEqual(oldPointSelection.selected, [0, oldPointSelection.value.length])
+      assert.equal(await evaluate('globalThis.__manualCopyProbe.shares.length'), sharesBeforeOldPoint,
+        `${locale} original Manual coordinate unexpectedly requested PNG sharing.`)
+      assert.equal(await evaluate(`Boolean(document.querySelector('.png-fallback-panel'))`), false)
+      await close()
+
+      await evaluate(`document.querySelector('.share-section > .section-heading .button-row').scrollIntoView({ block: 'center', behavior: 'auto' })`)
+      // The preceding real pointer click must not leave a hovered action at this baseline.
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 0, y: 0 })
+      await evaluate('new Promise((resolve) => setTimeout(resolve, 200))')
+      const successCopy = await beginCopy()
+      await settle(successCopy, true)
+      await waitForPageValue(readState, (value) => value?.copyFeedback === copiedLabel, `${locale} layout success`)
+      // Closing the panel can change the absolute scroll limit; compare this independent success run.
+      const copiedLayout = await evaluate(readActionLayout)
+      await waitForPageValue(readState, (value) => value?.copyStatus === 'idle', `${locale} natural success reset`)
+      assert.deepEqual(await evaluate(readActionLayout), copiedLayout, `${locale} success reset moved action targets.`)
+      stableActionLayouts.push({ locale, width: 320, pendingFailureReset: true, successReset: true, oldManualPointHit: 'manual-summary' })
     }
     assert.notEqual(summaries.en, summaries['zh-CN'])
     assert.notEqual(summaries['zh-CN'], summaries['zh-TW'])
@@ -259,7 +356,7 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     const beforeMissing = await evaluate('globalThis.__manualCopyProbe.copies.length')
     await evaluate(`Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined })`)
     await click('copy-summary')
-    const missing = await waitForPageValue(readState, (value) => value?.panel && value?.copyLabel === locales[0][2], 'Missing clipboard API exposes manual text')
+    const missing = await waitForPageValue(readState, (value) => value?.panel && value?.copyFeedback === locales[0][2], 'Missing clipboard API exposes manual text')
     assert.equal(missing.calls, beforeMissing)
     assert.equal(missing.focusAction, 'copy-summary')
     assert.equal(missing.value, summaries.en)
@@ -291,7 +388,7 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     const successful = await beginCopy()
     await openSelected()
     await settle(successful, true)
-    assert.equal((await evaluate(readState)).copyLabel, 'Copied')
+    assert.equal((await evaluate(readState)).copyFeedback, 'Copied')
     await close()
     const newer = await beginCopy()
     await openSelected()
@@ -299,7 +396,7 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     const afterOldTimer = await evaluate(readState)
     assert.equal(afterOldTimer.panel, true)
     assert.equal(afterOldTimer.copyDisabled, true)
-    assert.equal(afterOldTimer.copyLabel, 'Copying…', 'A closed-panel feedback timer changed a newer pending copy.')
+    assert.equal(afterOldTimer.copyFeedback, 'Copying…', 'A closed-panel feedback timer changed a newer pending copy.')
     await close()
     await settle(newer)
     await noStalePanel('Closed timer and newer callback')
@@ -321,7 +418,7 @@ export async function testManualCopy({ cdp, evaluate, waitForPageValue }) {
     assert.equal(await evaluate(`document.querySelector('.data-table tbody')?.textContent ?? ''`), initialReport)
     return { locales: locales.map(([locale]) => locale), controlledCopyCalls: await evaluate('globalThis.__manualCopyProbe.copies.length'),
       missingApiFallback: true, fullReadonlySelection: true, scrollToFinalLine: true, manualClipboardWrites: 0, staleCloseLocaleUnmount: 'passed',
-      delayedPngKeptManualFocus: true, width: 320 }
+      delayedPngKeptManualFocus: true, stableActionLayouts, width: 320 }
   } finally {
     try {
       if (installed) {

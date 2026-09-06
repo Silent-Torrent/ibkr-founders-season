@@ -1681,6 +1681,8 @@ try {
       resolvePendingCopy();
       await new Promise((resolveWait) => setTimeout(resolveWait, 50));
       const clearedRequestFeedback = document.querySelector('[data-action="copy-summary"]')?.textContent?.trim() === 'Copy summary' &&
+        document.querySelector('[data-copy-status]')?.getAttribute('data-copy-status') === 'idle' &&
+        document.querySelector('[data-copy-status]')?.textContent?.trim() === '' &&
         !document.querySelector('.share-delivery-status') && !document.querySelector('.png-fallback-panel') &&
         !document.querySelector('.manual-copy-panel');
 

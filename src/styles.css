@@ -1236,6 +1236,31 @@ h2 {
   white-space: normal;
 }
 
+.share-copy-feedback {
+  display: grid;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.share-copy-feedback > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.share-copy-feedback-size {
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.share-copy-status[data-copy-status="failed"] {
+  color: var(--warning);
+}
+
 .manual-copy-panel {
   scroll-margin-top: 88px;
   margin-top: 14px;

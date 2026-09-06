@@ -245,13 +245,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             onClick={copySummary}
             type="button"
           >
-            {copyStatus === 'copying'
-              ? t(locale, 'copying')
-              : copyStatus === 'copied'
-                ? t(locale, 'copied')
-                : copyStatus === 'failed'
-                  ? t(locale, 'copyFailed')
-                  : t(locale, 'copySummary')}
+            {t(locale, 'copySummary')}
           </button>
           <button
             aria-expanded={Boolean(visibleManualCopy)}
@@ -275,7 +269,13 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             {t(locale, 'downloadCard')}
           </button>
         </div>
-        <span aria-live="polite" className="sr-only" role="status">
+      </div>
+      <div className="share-copy-feedback">
+        {/* Reserve the tallest localized outcome without adding another announcement. */}
+        {(['copying', 'copied', 'copyFailed'] as const).map((key) => (
+          <span aria-hidden="true" className="share-copy-feedback-size" key={key}>{t(locale, key)}</span>
+        ))}
+        <p aria-atomic="true" aria-live="polite" className="share-copy-status" data-copy-status={copyStatus} role="status">
           {copyStatus === 'copying'
             ? t(locale, 'copying')
             : copyStatus === 'copied'
@@ -283,7 +283,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
               : copyStatus === 'failed'
                 ? t(locale, 'copyFailed')
                 : ''}
-        </span>
+        </p>
       </div>
 
       {visibleManualCopy ? (

@@ -16,6 +16,9 @@ async function runShareInteractions() {
   }
   const button = (action) => document.querySelector(`[data-action="${action}"]`)
   const copyLabel = () => button('copy-summary')?.textContent?.trim()
+  const copyFeedback = () => document.querySelector('[data-copy-status]')?.textContent?.trim() ?? ''
+  const idleCopy = () => copyLabel() === 'Copy summary' && copyFeedback() === '' &&
+    document.querySelector('[data-copy-status]')?.getAttribute('data-copy-status') === 'idle'
   const delivery = () => document.querySelector('.share-delivery-status')?.textContent?.trim() ?? ''
   const preview = () => document.querySelector('.png-fallback-panel')
   const signature = () => document.querySelector('.share-card-preview')?.textContent
@@ -74,7 +77,8 @@ async function runShareInteractions() {
   }
   const settleCopy = async (entry, success) => {
     success ? entry.resolve() : entry.reject()
-    await wait(() => copyLabel() === (success ? 'Copied' : 'Copy failed. Use manual selection.'), 'copy outcome')
+    await wait(() => copyFeedback() === (success ? 'Copied' : 'Copy failed. Use manual selection.'), 'copy outcome')
+    expect(copyLabel() === 'Copy summary', 'Copy feedback replaced the stable action name.')
     expect(!button('copy-summary').disabled, 'Settled copy did not enable retry.')
   }
   const settleShare = async (entry, outcome, status) => {
@@ -114,27 +118,27 @@ async function runShareInteractions() {
 
     // A clipboard denial must be recoverable, and same-turn repeated taps must do one write.
     await settleCopy(await start('copy-summary', copies, true), true)
-    await wait(() => copyLabel() === 'Copy summary', 'successful copy feedback reset')
+    await wait(idleCopy, 'successful copy feedback reset')
     await settleCopy(await start('copy-summary', copies), true)
     const pendingPastOldTimer = await start('copy-summary', copies)
     await pause(1500)
-    expect(button('copy-summary').disabled && copyLabel() === 'Copying…', 'Old feedback timer cleared a newer pending copy.')
+    expect(button('copy-summary').disabled && copyFeedback() === 'Copying…', 'Old feedback timer cleared a newer pending copy.')
     await settleCopy(pendingPastOldTimer, false)
     await settleCopy(await start('copy-summary', copies), true)
     await pause(750)
     await settleCopy(await start('copy-summary', copies), true)
     await pause(800)
-    expect(copyLabel() === 'Copied', 'Old feedback timer cleared newer success feedback.')
+    expect(copyFeedback() === 'Copied', 'Old feedback timer cleared newer success feedback.')
     await roundTripLocale()
-    expect(copyLabel() === 'Copy summary', 'Locale change retained old copy feedback.')
+    expect(idleCopy(), 'Locale change retained old copy feedback.')
     expect(!document.querySelector('.manual-copy-panel'), 'Locale change retained old manual-copy text.')
 
     const localeCopy = await start('copy-summary', copies)
     await roundTripLocale()
-    expect(copyLabel() === 'Copy summary' && !button('copy-summary').disabled, 'Locale change did not reset pending copy.')
+    expect(idleCopy() && !button('copy-summary').disabled, 'Locale change did not reset pending copy.')
     localeCopy.resolve()
     await pause()
-    expect(copyLabel() === 'Copy summary', 'Old copy result reappeared after locale A-B-A.')
+    expect(idleCopy(), 'Old copy result reappeared after locale A-B-A.')
 
     // Settling an invalidated request must not unlock or overwrite the newer request.
     const oldCopy = await start('copy-summary', copies)
@@ -142,7 +146,7 @@ async function runShareInteractions() {
     const newCopy = await start('copy-summary', copies)
     oldCopy.reject()
     await pause()
-    expect(button('copy-summary').disabled && copyLabel() !== 'Copy failed. Use manual selection.', 'Old copy changed the newer pending request.')
+    expect(button('copy-summary').disabled && copyFeedback() === 'Copying…', 'Old copy changed the newer pending request.')
     expect(!document.querySelector('.manual-copy-panel'), 'Old copy failure reopened a stale manual-copy panel.')
     await settleCopy(newCopy, true)
     await roundTripLocale()
@@ -196,7 +200,7 @@ async function runShareInteractions() {
     unmountedCopy.reject()
     await pause()
     noStaleOutput(...beforeUnmount)
-    expect(copyLabel() === 'Copy summary' && !button('copy-summary').disabled, 'Unmounted copy restored obsolete feedback.')
+    expect(idleCopy() && !button('copy-summary').disabled, 'Unmounted copy restored obsolete feedback.')
     expect(!document.querySelector('.manual-copy-panel'), 'Unmounted copy restored obsolete manual text.')
     await settleCopy(await start('copy-summary', copies), true)
     await roundTripLocale()

@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.22 Worker heap diagnostic
+# Verification record — checkpoint 0.23 copy-action geometry
 
 Last updated: 2026-09-06
 
@@ -20,6 +20,27 @@ Last updated: 2026-09-06
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.23 copy-action geometry
+
+- The localized Copy summary action label no longer changes with copying/success/failure. Feedback uses one separate visible, atomic polite status region; hidden, `aria-hidden` sizing text reserves the tallest localized outcome without duplicate announcements. The change is confined to presentation and its regressions, with no parser/accounting, capacity, storage, dependency or hosting-policy changes.
+- Node 22 `npm run check && npm run build` completed successfully. The manual-copy module made 15 controlled copy calls and zero manual clipboard writes; all three locales passed the 320 px stable-action-layout assertions. Existing browser/import/cancellation/capacity/PNG checks also passed, with the ordinary 15 Worker targets. This is controlled desktop evidence, not real clipboard or iPhone evidence for the new fix.
+- The ordinary exact-capacity import in this run was 1,422.1 ms; maximum long task was 70 ms, animation-frame gap 116.7 ms and timer gap 117.1 ms. These passed the existing desktop gates and are single-run measurements, not optimization or iPhone benchmark claims.
+- An independently rebuilt old production bundle failed the same coordinate tolerance (Copy right edge moved 24.796875 px). In four cases, an unchanged Manual coordinate hit Download after natural feedback reset without scrolling. Captured real pointer events confirmed the target while suppressing actual PNG creation. This proves the old layout defect, not the exact timing of the earlier phone mistap.
+- After isolating the test pointer's existing hover transition, the final `npm run test:browser && npm run build` also passed: 15 controlled manual-copy calls, zero manual clipboard writes, all three stable layouts and 15 ordinary Worker targets. Six unedited 320×900 in-app-browser failure/reset images were visually checked. Test tabs, overrides, helper files and temporary listeners were cleaned.
+- New production assets are `index-DkClqys4.js` and `index-DG_6n9rd.css`; the Worker remains `ibkrParser.worker-Dy6yjzTG.js` with its existing hash. Full before/after hashes, counterexample, final regression and visual scope are recorded in `docs/COPY_ACTION_STABILITY_EVIDENCE_2026-09-06.md`.
+- New-build iPhone action geometry/status transitions remain `NOT_RUN`. The following phone observations used the previous `7b61ab5` production assets and cannot certify the 0.23 change.
+
+### 2026-09-06 share follow-up on `7b61ab5`
+
+- Settings → General → About identified the connected device as iPhone 15 Plus / iOS 27.0, separately from the earlier iPhone 17 Pro Max. The unchanged 0.21/0.22 bundle was used throughout this Demo-only HTTP session, without CSV or private statements.
+- Named download created the actual `pnl-arena-2026-season.png` with one extension in iCloud Drive → Downloads. The independent Safari-open/Save to Files route used an extension-free numeric stem and created `202609060443.png` on On My iPhone. Both were inspected as PNG, system-displayed 2.1 MB and 1200×1500, then actually reopened as complete nonblank Demo cards. These two English save paths close their bounded HTTP naming checks, not HTTPS native sharing or every version/name variant.
+- All three locales' new-preview title/close visibility and saving/copy-retention guidance were observed. PNG close and regeneration worked, but screenshot positioning does not prove keyboard/VoiceOver focus returned to the generator; that item remains unverified.
+- Each locale passed read-only typing/reselection and actual Mirroring-forwarded system keyboard Copy/Paste into the temporary phone-local comparison page. English matched 256 UTF-16 units, Simplified/Traditional Chinese 121 each, all eight lines. Each paste field was cleared. This was actual phone keyboard copying, not Mac scripted input; the touch editing menu and complete VoiceOver remain unverified.
+- HTTP automatic copying visibly failed honestly without Copied, and the manual fallback appeared. Bounded close/locale/leave-Ledger cleanup was observed; the phone did not exercise controlled late-system-callback races. The possible feedback-reset/old-coordinate mistap sequence is not a reproduced phone failure or proof of the later fix.
+- Only the two new PNGs were recoverably deleted and verified in Recently Deleted; no permanent purge or old Photos deletion occurred. The two test tabs and temporary service were closed, helper fields cleared and three helper files/two empty directories removed. English and Home were restored. The system clipboard last contained the fictional Traditional Chinese summary and was not claimed cleared. Full build hashes, device-time distinctions and limits are in `docs/IPHONE_SHARE_EVIDENCE_2026-09-06.md`.
+
+The earlier checkpoint descriptions below keep their original scope. Their then-unrun HTTP PNG/keyboard-copy observations are partially superseded by the phone follow-up above; their old filename failures and device identities are not rewritten.
 
 ### Checkpoint 0.22 production-Chrome Worker heap diagnostic
 
@@ -233,9 +254,9 @@ Last updated: 2026-09-06
 
 ## Not yet verified
 
-The new 0.21 manual-summary selection and clipboard fallback require real-iPhone testing under checklist section J. Controlled desktop clipboard promises and DOM selection do not prove the native editing menu, actual system-copy result, VoiceOver or the minimum supported Safari version. System clipboard replacement needs informed user consent; closing/clearing the report cannot recall previously copied text.
+Checkpoint 0.23 action geometry and feedback need new-build iPhone testing. The `7b61ab5` session already observed three-language read-only selection/reselection, exact system-keyboard Copy/Paste and bounded fallback/cleanup under checklist J, but not the touch editing menu, controlled phone callback races, full VoiceOver or the minimum supported version. Future clipboard replacement still needs informed consent; closing/clearing cannot recall copied system text.
 
-The changed 0.20 PNG save guidance, named-download attempt, manual filename outcome and preview-heading visibility require targeted real-iPhone retesting under checklist section I. Desktop Chrome downloads and the historical 0.19 phone observations do not close this gate.
+Checklist I is partially completed on `7b61ab5`, iPhone 15 Plus / iOS 27.0: both HTTP naming/save/reopen routes and three-language preview visibility/guidance have direct evidence. Actual keyboard/VoiceOver focus return after PNG close remains unverified. These phone results do not certify the new 0.23 bundle or HTTPS sharing.
 
 The 2026-09-06 checkpoint 0.19 (`8cf0496`) follow-up closes bounded same-tab recovery UI checks on iOS 27.0. Controlled desktop results and historical 0.15 observations still do not establish other devices, internal Worker state or the remaining gates below.
 
@@ -244,6 +265,6 @@ The 2026-09-06 checkpoint 0.19 (`8cf0496`) follow-up closes bounded same-tab rec
 - Custom wide Flex NAV queries with omitted registered asset fields or a non-empty Model are not supported; only the tested full-field account-level layout is accepted.
 - Automated PDF parsing/reconciliation is not implemented; current PDF comparison remains manual.
 - Exercise remains uncovered by a qualified real or independently proven CSV fixture. Official IBKR documentation confirms `Ex` and the lifecycle-field semantics, but the public samples are HTML and do not prove the completed-exercise CSV serialization; see `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
-- The iOS 27.0 Safari passes do not establish the supported iOS/Safari 16.4 floor. Device rotation, measured Safari/Worker peak memory, secure-context HTTPS native file sharing and its exact requested filename remain unverified. Exact manual naming also failed in the observed HTTP save route. Protected-host headers, clipboard behavior and complete deployed Network/Storage inspection remain deferred under the L deployment decision.
+- The iOS 27.0 Safari passes do not establish the supported iOS/Safari 16.4 floor. Device rotation, measured Safari/Worker peak memory and secure-context HTTPS native sharing/exact naming remain unverified. Historical HTTP double-extension failures remain recorded, while the later `7b61ab5` two-path naming pass is separately bounded. Protected-host headers, automatic clipboard behavior on that host and complete deployed Network/Storage inspection remain deferred under L.
 - Blob streaming and incremental hashing are implemented, but the intentional two-pass design still reads the immutable Blob twice and retains the selective statement index, global FII alias states and final report. Browser-engine internal Blob caching, browser-Worker peak allocation and real-device peak-memory headroom remain unmeasured. This is not a single-pass parser or an iPhone/Safari memory guarantee.
 - VoiceOver was enabled for one visible cancellation path, but device audio was not captured and the complete navigation/dialog focus and spoken-reading order remains unverified. The desktop keyboard/focus pass, the 320 px simulated-width pass, and the visible VoiceOver cancellation result do not establish full real-device screen-reader accessibility.
