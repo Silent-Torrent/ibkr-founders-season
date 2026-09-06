@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.21 manual summary selection
+# Verification record — checkpoint 0.22 Worker heap diagnostic
 
 Last updated: 2026-09-06
 
@@ -20,6 +20,13 @@ Last updated: 2026-09-06
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
 ## Passed in the current workspace
+
+### Checkpoint 0.22 production-Chrome Worker heap diagnostic
+
+- The diagnostic changes scripts and evidence only; all three production JS/CSS/Worker assets remain identical to 0.21. Real sampling requires the explicit `--measure-worker-heap` flag and occurs only after the ordinary unprofiled browser checks. The normal suite asserts zero heap samplers, and includes the deterministic sampler unit tests instead.
+- Fourteen fake-clock/transport groups passed, including numeric maxima/gaps, one in-flight request, baseline/cross-release exclusions, missing versus zero fields, known session closure, real protocol failures, bounded timeout, stop races and invalid/backwards clocks. The independent fixture stage also passed three fake-helper checks for insufficient-coverage preservation and error cleanup.
+- The opt-in production-browser command exited successfully with the small current-schema, exact-capacity and 10,000-candidate-FII fixtures. All were genuinely accepted through the file input and their distinct production Worker targets disappeared. The small case had zero runtime samples (`insufficient`); the large cases had 13 and 24 (`limited`). Runtime sampled used-JS-heap maxima were 19.929 and 24.831 MiB, not true peaks or total-memory claims. No forced GC, result interception, extended Worker lifetime or modified 12-second bound was used.
+- Full numeric evidence, fixture/build hashes, Chrome/V8 versions and per-request times are retained in `docs/WORKER_HEAP_SAMPLES_2026-09-06.json`. Independent recalculation confirmed maxima/counts/gaps, distinct isolates, numeric-only content and source hashes. Final `npm run check && npm run build` passed under Node 22, including the normal browser route's zero-sampler assertion and all existing regression gates. Its 15 Worker targets remained separate from the opt-in run's 18. The byte-identical temporary evidence copy was removed, while the repository record remains. Interpretation is in `docs/BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md`; the real-iPhone/Safari peak/threshold requirement remains open.
 
 ### Checkpoint 0.21 manual summary selection
 

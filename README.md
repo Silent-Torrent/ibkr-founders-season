@@ -2,7 +2,9 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.21 manual summary selection
+## Current project state — checkpoint 0.22 Worker heap diagnostic
+
+An opt-in diagnostic now samples numeric heap counters from real production Chrome Worker isolates, separately from ordinary performance gates. Three fictional fixture shapes were exercised: the small control had insufficient runtime coverage, while the two large cases had 13 and 24 runtime samples. These observed maxima are not true peaks, total browser memory or iPhone/Safari safety limits. The product bundles and all privacy/deployment decisions are unchanged from 0.21. See `docs/BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md` and its numeric evidence file; the P0 device-memory threshold remains open.
 
 An always-available manual-selection action and an automatic copy-failure fallback now expose the same share summary in a labelled, read-only field. Only explicit selection focuses/selects text; automatic failure does not steal focus. Closing invalidates old callbacks, context changes remove old text, and a late PNG preview respects manual-panel focus. Selection is not a successful-copy claim; clearing the report cannot clear a previously copied system clipboard. Local acceptance is recorded in `docs/MANUAL_COPY_EVIDENCE_2026-09-06.md`. Actual iPhone selection/system-copy behavior still needs section J testing; no new phone/LAN or deployment session is implied.
 
@@ -115,6 +117,10 @@ Option events:       5
 
 The smoke suite also parses `tests/fixtures/ibkr-current-schema-synthetic.csv`. That fixture is fully invented and covers repeated and multiple header shapes, `Data`/`SubTotal`/`Total` rows, and the tested empty-record-type Total P/L row. Its MTM, statement-period P/L, and NAV-bridge checks must all return `PASS_EXACT`.
 
+### Optional browser-Worker heap diagnostic
+
+`npm run measure:browser-worker-memory` first runs the ordinary browser regression without heap sampling, then separately samples three fictional imports in their real production Chrome Worker isolates. It records only numeric heap counters, response gaps and coverage limits; short-lived Workers may yield insufficient observations. An observed sampled maximum is not the true continuous peak, total browser memory or an iPhone/Safari safety threshold. No GC or Worker-lifetime change is made. `npm run check` includes the deterministic sampler unit tests but does not enable actual sampling. See `docs/BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md` for results and the optional non-overwriting numeric-evidence output.
+
 ## MVP import contract
 
 The importer accepts only:
@@ -217,6 +223,8 @@ docs/
   IMPORT_RECOVERY_EVIDENCE_2026-09-05.md  checkpoint 0.19 retry focus, controlled timeout, and same-file recovery
   PNG_SAVE_GUIDANCE_EVIDENCE_2026-09-06.md  checkpoint 0.20 named-download attempt, save guidance and visible preview focus
   MANUAL_COPY_EVIDENCE_2026-09-06.md  checkpoint 0.21 read-only summary selection, copy denial and focus/lifecycle coverage
+  BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md  checkpoint 0.22 numeric Worker heap diagnostic and incomplete-coverage limits
+  WORKER_HEAP_SAMPLES_2026-09-06.json  fictional fixture identities, isolate counters and request/response samples
   IPHONE_SAFARI_EVIDENCE_2026-09-06.md  checkpoint 0.19 phone recovery, privacy, PNG and bounded cleanup
   IPHONE_SAFARI_TEST_CHECKLIST.md  beginner-safe real-device test steps using only fictional CSV data
   OPTION_EXERCISE_EVIDENCE_2026-08-30.md  official semantics review and exact evidence still required

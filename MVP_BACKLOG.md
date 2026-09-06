@@ -1,6 +1,8 @@
 # MVP backlog
 
-## Completed through checkpoint 0.21 — manual summary selection
+## Completed through checkpoint 0.22 — Worker heap sampling diagnostic
+
+- [x] Add an opt-in, numeric-only production-Chrome Worker-isolate heap diagnostic after the ordinary unprofiled browser gates, with isolated profiles, three fully fictional fixture shapes, exact target/isolate/hash provenance, single-request host sampling and explicit partial-coverage labels. Preserve immediate termination, the 12-second bound and all product/deployment decisions; do not reinterpret observed sample maxima as true peak memory or a Safari/iPhone threshold.
 
 - [x] Add a three-locale manual-summary entry and automatic copy-failure fallback using exactly the existing share summary in a labelled read-only field; explicit full selection performs no clipboard write, automatic failure does not move focus, and copy/selection/system-retention boundaries are stated honestly.
 - [x] Reproduce actual first-selection textarea obscuration at 320 px, centre the field only on explicit selection, and pass production-browser checks for full/repeated selection, clipboard absence/denial, close/locale/unmount/clear races, failure-timer persistence, delayed PNG focus protection and visible controls. Real iPhone selection and actual system-copy behavior remain separate open gates.
@@ -118,6 +120,7 @@
 - [x] Add parser-stage report-capacity exits for adversarial files at or below the byte/row ceilings, including separate known-code smoke coverage, direct post-mapping 256/257 exact-section boundaries, parser/Worker alignment for actual aggregate item/string budgets, and exact-5-MiB/100,000-row 501-symbol and 1,001-event production-Worker cases that preserve the prior report.
 - [x] Remove application-owned whole-file decoding and hashing buffers from the production Worker. The parser now reopens the Blob for two bounded-chunk passes, retains only selective section/FII state, and preserves all tested accounting/diagnostic results. This is intentionally not a single-pass parser.
 - [ ] Measure browser-Worker peak allocation and establish a supported real-iPhone/Safari memory threshold. Node process proxies and desktop Chrome are directional evidence only; they are not a hard release gate.
+  - Checkpoint 0.22 now records direct production-Chrome isolate samples: 13 and 24 runtime observations for the large capacity/mapping cases; the small control has insufficient runtime coverage. This improves the evidence beyond Node proxies but does not complete this gate. See `docs/BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md`.
 - [x] Verify on iPhone 17 Pro Max / iOS 27.0 Safari: production-page loading, the system file picker, fully fictional small-file Worker import, refresh clearing, and synthetic no-rank/no-trophy behavior.
 - [ ] Verify the actual supported floor on iOS 16.4 / Safari 16.4; the iOS 27.0 observation and production-target configuration do not establish this compatibility gate.
 - [x] Verify an imported-report local-HTTP PNG preview and save/reopen round trip through Photos to Files on “On My iPhone”; system Info reported PNG, approximately 2 MB, 1200×1500 and alpha. The resulting name was `pnl-arena-2026-season.png.PNG`, so exact requested-filename preservation did not pass.

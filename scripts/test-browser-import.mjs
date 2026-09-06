@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -13,14 +14,17 @@ import {
 } from 'node:fs'
 import { createServer as createNetServer } from 'node:net'
 import { tmpdir } from 'node:os'
-import { basename, join, resolve } from 'node:path'
+import { basename, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
+import { createWorkerHeapSampler } from './worker-heap-sampling.mjs'
+import { runBrowserWorkerHeapDiagnostic } from './test-browser-worker-heap.mjs'
 import {
   generateSyntheticCapacityStatement,
+  generateSyntheticFiiCandidateMappingsStatement,
   generateSyntheticOverEventStatement,
   generateSyntheticOverSymbolStatement,
   padSyntheticStatementToCapacity,
@@ -34,6 +38,15 @@ import {
 } from './synthetic-capacity-statement.mjs'
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const measureWorkerHeap = process.argv.includes('--measure-worker-heap')
+assert(process.argv.slice(2).every((argument) => argument === '--measure-worker-heap'), 'Unknown browser test argument.')
+const heapQaDirectory = process.env.WORKER_HEAP_QA_DIR
+if (heapQaDirectory) {
+  assert(measureWorkerHeap, 'WORKER_HEAP_QA_DIR requires --measure-worker-heap.')
+  assert(isAbsolute(heapQaDirectory), 'WORKER_HEAP_QA_DIR must be an explicit absolute path.')
+  const metadata = lstatSync(heapQaDirectory)
+  assert(metadata.isDirectory() && !metadata.isSymbolicLink(), 'WORKER_HEAP_QA_DIR must be an existing real directory.')
+}
 const fixedNowMs = Date.parse('2026-08-30T12:00:00+08:00')
 const fixedDateSource = `(() => {
   if (globalThis.__pnlArenaFixedDateInstalled) return;
@@ -69,6 +82,7 @@ const chromeCandidates = [
 const chromePath = chromeCandidates.find(existsSync)
 
 const children = new Set()
+const heapSamplers = new Set()
 let profileDirectory
 let browserArtifactDirectory
 let downloadDirectory
@@ -144,6 +158,8 @@ async function stopChild(child) {
 async function cleanup() {
   if (cleanupStarted) return
   cleanupStarted = true
+  nextWorkerHeap = null
+  await Promise.allSettled([...heapSamplers].map((sampler) => sampler.stop('harness-cleanup')))
   try {
     cdp?.close()
   } catch {
@@ -548,6 +564,16 @@ const asynchronousProtocolErrors = []
 const downloadStarts = []
 const downloadProgress = []
 let nextWorkerHold = null
+let nextWorkerHeap = null
+
+function armNextWorkerHeap(label) {
+  assert(measureWorkerHeap, 'Worker heap sampling requires the explicit diagnostic flag.')
+  assert.equal(nextWorkerHeap, null, 'A heap diagnostic is already armed.')
+  assert.equal(nextWorkerHold, null, 'Do not combine heap sampling with a stalled-Worker timeout test.')
+  const ticket = { label, ready: false, error: null, sampler: null, targetId: null, sessionId: null, isolateId: null }
+  nextWorkerHeap = ticket
+  return ticket
+}
 
 // Test-only gate: keep one real production Worker waiting at startup while
 // the unchanged page timer exercises its normal 12-second timeout path.
@@ -763,8 +789,11 @@ try {
 
   cdp.on('Target.attachedToTarget', async (params) => {
     const { sessionId, targetInfo } = params
+    let heapTicket = null
     try {
       if (targetInfo?.type === 'worker') {
+        heapTicket = nextWorkerHeap
+        nextWorkerHeap = null
         const hold = nextWorkerHold
         nextWorkerHold = null
         if (hold) {
@@ -796,9 +825,31 @@ try {
           hold.ready = true
           return
         }
+        if (heapTicket) {
+          const workerUrl = new URL(targetInfo.url)
+          assert.equal(workerUrl.origin, new URL(previewUrl).origin, 'Heap sampling targeted a non-local Worker.')
+          assert.match(workerUrl.pathname, /^\/assets\/ibkrParser\.worker-[A-Za-z0-9_-]+\.js$/)
+          heapTicket.sessionId = sessionId
+          heapTicket.targetId = targetInfo.targetId
+          const { id } = await cdp.send('Runtime.getIsolateId', {}, sessionId)
+          assert(typeof id === 'string' && id.length > 0, 'The Worker isolate identity is unavailable.')
+          heapTicket.isolateId = id
+          heapTicket.sampler = createWorkerHeapSampler({
+            send: (method, parameters) => cdp.send(method, parameters, sessionId, 2_000),
+            intervalMs: 50,
+            requestTimeoutMs: 2_000,
+          })
+          heapSamplers.add(heapTicket.sampler)
+          await heapTicket.sampler.start()
+        }
       }
       await cdp.send('Runtime.runIfWaitingForDebugger', {}, sessionId)
+      if (heapTicket) {
+        heapTicket.sampler.markExecutionReleased()
+        heapTicket.ready = true
+      }
     } catch (error) {
+      if (heapTicket) heapTicket.error = error
       const message = error instanceof Error ? error.message : String(error)
       // An intentionally cancelled or fail-closed Worker may disappear between
       // attachment and clock injection. Its lifecycle assertions still verify
@@ -2279,6 +2330,45 @@ try {
     fixturePath,
     invalidExtensionFixturePath,
   })
+
+  // Opt-in diagnostics run only after the ordinary, unprofiled timing gates.
+  // Sampling never changes production code, GC, result delivery or Worker termination.
+  let workerHeapDiagnostic
+  if (measureWorkerHeap) {
+    console.log('Starting separate CDP Worker heap sampling; observed maxima are not true peaks or Safari limits.')
+    const candidateFixturePath = join(browserArtifactDirectory, 'synthetic-candidate-fii-statement.csv')
+    const candidateStatement = generateSyntheticFiiCandidateMappingsStatement()
+    writeFileSync(candidateFixturePath, candidateStatement.text, { flag: 'wx' })
+    const fixtureMetadata = (label, path, expectedRows) => {
+      const bytes = readFileSync(path)
+      return { label, path, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), expectedRows }
+    }
+    const cases = await runBrowserWorkerHeapDiagnostic({
+      cdp, evaluate, waitForPageValue, waitForAsyncCondition, clickPrimaryNavigation,
+      resolveFileInputNodeId, navigateAndWait, previewUrl, armNextWorkerHeap,
+      fixtures: [
+        fixtureMetadata('small-current-schema', fixturePath, 3),
+        fixtureMetadata('exact-capacity-500-symbols-1000-events', capacityFixturePath, 500),
+        fixtureMetadata('10000-candidate-fii-mappings', candidateFixturePath, 1),
+      ],
+    })
+    const assetDirectory = resolve(projectRoot, 'dist/assets')
+    workerHeapDiagnostic = {
+      mode: 'Separate production Chrome Worker isolate samples; not a true peak or a release threshold',
+      browser: await cdp.send('Browser.getVersion'),
+      intervalMs: 50,
+      productionAssets: readdirSync(assetDirectory).filter((name) => /\.(js|css)$/.test(name)).sort().map((name) => ({
+        name, sha256: createHash('sha256').update(readFileSync(join(assetDirectory, name))).digest('hex'),
+      })),
+      cases,
+    }
+    console.log('Worker heap diagnostic evidence:')
+    console.log(JSON.stringify(workerHeapDiagnostic, (key, value) => ['samples', 'requests'].includes(key) ? undefined : value, 2))
+    if (heapQaDirectory) {
+      writeFileSync(join(heapQaDirectory, 'worker-heap-samples.json'), `${JSON.stringify(workerHeapDiagnostic, null, 2)}\n`, { flag: 'wx' })
+    }
+  }
+  if (!measureWorkerHeap) assert.equal(heapSamplers.size, 0, 'Ordinary browser gates must not enable heap sampling.')
 
   await delay(250)
 
