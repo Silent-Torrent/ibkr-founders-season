@@ -1,6 +1,6 @@
 # Verification record — checkpoint 0.23 copy-action geometry
 
-Last updated: 2026-09-06
+Last updated: 2026-09-09
 
 ## Frozen release decisions and execution status
 
@@ -29,7 +29,14 @@ Last updated: 2026-09-06
 - An independently rebuilt old production bundle failed the same coordinate tolerance (Copy right edge moved 24.796875 px). In four cases, an unchanged Manual coordinate hit Download after natural feedback reset without scrolling. Captured real pointer events confirmed the target while suppressing actual PNG creation. This proves the old layout defect, not the exact timing of the earlier phone mistap.
 - After isolating the test pointer's existing hover transition, the final `npm run test:browser && npm run build` also passed: 15 controlled manual-copy calls, zero manual clipboard writes, all three stable layouts and 15 ordinary Worker targets. Six unedited 320×900 in-app-browser failure/reset images were visually checked. Test tabs, overrides, helper files and temporary listeners were cleaned.
 - New production assets are `index-DkClqys4.js` and `index-DG_6n9rd.css`; the Worker remains `ibkrParser.worker-Dy6yjzTG.js` with its existing hash. Full before/after hashes, counterexample, final regression and visual scope are recorded in `docs/COPY_ACTION_STABILITY_EVIDENCE_2026-09-06.md`.
-- New-build iPhone action geometry/status transitions remain `NOT_RUN`. The following phone observations used the previous `7b61ab5` production assets and cannot certify the 0.23 change.
+- The separate 2026-09-09 phone follow-up below now establishes the bounded 0.23 HTTP failure/reset geometry and Manual-entry check. The older `7b61ab5` observations remain separate and cannot certify this change.
+
+### 2026-09-09 0.23 iPhone copy-action follow-up
+
+- The current `482c66d45b91aaf7887d8637dc615ff992183ee5` production page was actually opened on an iPhone 15 Plus / iOS 27.0, rechecked this session in Settings. All three production asset hashes match the existing 0.23 evidence. No product code or production asset was changed, no rebuild or full code-test rerun was performed; those passes remain the dated 2026-09-06 results.
+- English, Simplified Chinese and Traditional Chinese each showed the independent HTTP copy-failure feedback and natural reset with unchanged action positions. After closing the manual panel, clicking the same previously recorded Manual coordinate without scrolling reopened the manual selection, with visible blue text selection and no PNG mistap. The subsequent intentional selection scroll is not feedback-reset displacement; screenshots alone do not prove complete system copying.
+- These are actual Mirroring-forwarded phone interactions and session screenshots, not exported repository images or desktop simulation. HTTP automatic-copy success remains `NOT_AVAILABLE`; touch-native copying, PNG-close focus, complete VoiceOver and the supported-version floor are not passed by this check.
+- Tracker D05 alone changes to `CLOSED`: 12 → 11 open baseline gates (7 device/cleanup, 1 financial source, 3 deployment). The current phone/helper/service session is still in progress, so cleanup is not claimed complete. Full scope, coordinates and asset hashes are in `docs/IPHONE_COPY_ACTION_EVIDENCE_2026-09-09.md`.
 
 ### 2026-09-06 share follow-up on `7b61ab5`
 
@@ -254,7 +261,7 @@ The earlier checkpoint descriptions below keep their original scope. Their then-
 
 ## Not yet verified
 
-Checkpoint 0.23 action geometry and feedback need new-build iPhone testing. The `7b61ab5` session already observed three-language read-only selection/reselection, exact system-keyboard Copy/Paste and bounded fallback/cleanup under checklist J, but not the touch editing menu, controlled phone callback races, full VoiceOver or the minimum supported version. Future clipboard replacement still needs informed consent; closing/clearing cannot recall copied system text.
+Checkpoint 0.23 three-language HTTP failure/reset geometry and unchanged-coordinate Manual entry passed the separate 2026-09-09 `482c66d` iPhone observation; D05 is closed within that scope. Touch-native copying, controlled phone callback races, PNG focus, full VoiceOver and the minimum supported version remain open. The older `7b61ab5` session retains its three-language system-keyboard Copy/Paste and bounded fallback/cleanup evidence, not evidence for the new fix. Future clipboard replacement still needs informed consent; closing/clearing cannot recall copied system text. The 2026-09-09 session's helper/service cleanup is still in progress, separately from the completed old session.
 
 Checklist I is partially completed on `7b61ab5`, iPhone 15 Plus / iOS 27.0: both HTTP naming/save/reopen routes and three-language preview visibility/guidance have direct evidence. Actual keyboard/VoiceOver focus return after PNG close remains unverified. These phone results do not certify the new 0.23 bundle or HTTPS sharing.
 
