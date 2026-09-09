@@ -1,6 +1,13 @@
 # MVP backlog
 
-## Current checkpoint 0.23 — copy-action geometry
+## Current checkpoint 0.24 candidate — short-landscape sidebar reachability
+
+- [x] Reproduce L01 on the old 0.23 production bundle: at English 812×300 the sidebar privacy entry remains below the viewport after 12 real wheel attempts; the negative-control run exits 1. Repair only sidebar overflow/scroll containment/direct-child shrinking with six CSS lines; application JavaScript and Worker byte hashes remain unchanged.
+- [x] Pass the independent candidate bundle's real wheel/hit-tested pointer regression in three locales at 812×300, 812×375 and 932×375, then each locale's 375×812 bottom-navigation return. Verify all four page transitions, sidebar privacy open/close-focus, guide/report return and restored test state. Pass all 12 non-browser groups individually. See `docs/SHORT_LANDSCAPE_EVIDENCE_2026-09-09.md`.
+- [x] Pass the complete independent-output production-browser run (exit 0), including existing import/cancellation/capacity/PNG/manual-copy gates; reject external-output use without SKIP_BUILD or with a relative path. The aggregate `npm run check` was not invoked: its 12 non-browser groups and production-browser group ran separately to preserve the phone's unchanged 0.23 `dist`. Desktop test listeners and temporary candidate output are cleaned; phone 4173 deliberately remains on old 0.23 awaiting the user's rotation result. No current-build phone pass is claimed.
+- Remaining baseline gates stay 9 → 9 (device/cleanup 5, financial source 1, deployment 3). L01 belongs to D08 rather than becoming a thirteenth baseline gate; D03/D04/D05 retain their original evidence scope. L remains frozen.
+
+## Completed checkpoint 0.23 — copy-action geometry
 
 - [x] Keep the localized Copy summary action label fixed; expose transient copy feedback through one separate visible polite live region and reserve the tallest localized feedback height without duplicate announcements. Preserve parser/accounting, capacities, storage, dependencies and hosting decisions.
 - [x] Pass Node 22 `npm run check && npm run build`, including 15 controlled copy calls, zero manual clipboard writes, three-locale 320 px stable-action-layout checks and the existing import/Worker/capacity/PNG gates.
@@ -152,7 +159,7 @@
 - [x] Run desktop browser keyboard/focus checks for the privacy dialog and confirm its simulated 320 px layout.
 - [x] Verify that an import can be visibly cancelled with VoiceOver enabled and remains idle without a late report; VoiceOver was turned off and visually rechecked after the test.
 - [ ] Complete VoiceOver speech/focus-order and real-device accessibility checks on the supported iPhone Safari baseline; the test tooling could not capture spoken announcements.
-- [ ] Verify real-device rotation on the supported iPhone Safari baseline.
+- [ ] Verify real-device rotation on the supported iPhone Safari baseline. L01's short-height fixed-sidebar defect is repaired in the separate 0.24 candidate with desktop wheel/pointer evidence; the user has been invited to test four-page physical rotation on unchanged 0.23; observations are still awaited. D08 remains open; do not substitute desktop viewport checks or silently swap the phone bundle. See `docs/SHORT_LANDSCAPE_EVIDENCE_2026-09-09.md`.
 - [x] Verify three-locale privacy-dialog opening, scrolling and closing by the bottom acknowledgement button, top close button and backdrop on iPhone 17 Pro Max / iOS 27.0 system Safari.
 - [x] Verify exact-capacity Ledger search and lifecycle-drawer interaction on iPhone 17 Pro Max / iOS 27.0 system Safari.
 - [x] Verify close-tab/reopen clearing: the closed imported report did not persist and the newly opened tab returned to Demo data.

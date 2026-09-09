@@ -1,4 +1,4 @@
-# Verification record — checkpoint 0.23 copy-action geometry
+# Verification record — checkpoint 0.24 candidate short-landscape fix
 
 Last updated: 2026-09-09
 
@@ -18,6 +18,15 @@ Last updated: 2026-09-09
 - A first upload explicitly requested as Preview was classified by Vercel as Production and received the default production alias. It was immediately removed; both generated URLs were then verified as `404 DEPLOYMENT_NOT_FOUND`. This is a failed release-gate attempt, not a successful Preview or Production release.
 - The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
+
+## Current 0.24 candidate — independent-output desktop acceptance
+
+- Starting from `891fc36`, L01 was reproduced in old 0.23 production: English 812×300, privacy top/bottom 481.14/496.14 px, sidebar scrollTop 0, scrollHeight/clientHeight 573/300 px, hit test false after 12 real wheel attempts. The negative-control run exited 1. Six CSS lines add sidebar vertical scrolling, scroll containment and non-shrinking direct children; no application logic, Worker, financial, storage or deployment policy changed.
+- An independently built candidate output passed the new three-locale 812×300/812×375/932×375 real wheel/pointer checks and three 375×812 portrait-return stages: full visible/hit-tested controls, four actual page transitions, sidebar privacy open/close-focus, guide/report return and restored caller state. These are desktop Chromium observations, not phone rotation or minimum-version evidence.
+- All 12 non-browser groups passed individually: typecheck, parser, streaming, materialization, Worker, heap sampling, i18n, a11y, compatibility, policy, launchers and stress pack. The full independent-output production-browser run also exited 0, retaining the import/cancellation/capacity/PNG and 12-second recovery gates, 15 controlled copy calls, zero manual clipboard writes, three-locale 320 px geometry and actual 1200×1500 PNG checks. Exact-capacity duration was 872.2 ms; maximum long task 54 ms, animation-frame gap 16.8 ms and timer gap 86.4 ms. These are one-run desktop measurements, not iPhone peak-memory evidence. No aggregate `npm run check` or normal `dist` rebuild was run this round; its subgroups ran individually against the isolated production output.
+- Candidate application `index-D2xVCgsR.js` has unchanged bytes/SHA-256; the Worker is unchanged. Only the stylesheet changes to `index-W6y1gsmE.css`. Exact hashes, old-bundle failure, isolated-output parameter and test scope are in `docs/SHORT_LANDSCAPE_EVIDENCE_2026-09-09.md`.
+- External-output validation rejected missing SKIP_BUILD and a relative path. Desktop red/green harness listeners are stopped; the independent IAB session's final tab list is empty and viewport reset succeeded. The owned 4174 service was terminated and only this round's 6 reconstructible temporary output files/3 empty directories were deleted, with the temporary root verified absent. The detailed close-call limitation and exact scope remain in the evidence file.
+- The phone's active 4173 preview remains on original 0.23 assets, with all three hashes rechecked after desktop cleanup, for the invited four-page physical-rotation test; the user's observations are still awaited, test-start/completion is not confirmed, and the agent has not operated the phone again. Await that round's result and cleanup before switching its bundle. Remaining gates stay 9 → 9, with L01 recorded under open D08 and D03/D04/D05 unchanged. L remains frozen; desktop cleanup does not mean the still-active phone session is cleaned.
 
 ## Passed in the current workspace
 

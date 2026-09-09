@@ -138,11 +138,17 @@ h2 {
   display: flex;
   width: 244px;
   flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   border-right: 1px solid var(--border);
   background: rgba(7, 10, 15, 0.88);
   padding: 28px 20px 20px;
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
+}
+
+.sidebar > * {
+  flex-shrink: 0;
 }
 
 .brand {

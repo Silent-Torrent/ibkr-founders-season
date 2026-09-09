@@ -20,6 +20,7 @@ import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
+import { testShortLandscape } from './test-short-landscape.mjs'
 import { createWorkerHeapSampler } from './worker-heap-sampling.mjs'
 import { runBrowserWorkerHeapDiagnostic } from './test-browser-worker-heap.mjs'
 import {
@@ -38,6 +39,17 @@ import {
 } from './synthetic-capacity-statement.mjs'
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
+const externalDistDirectory = process.env.IBKR_BROWSER_IMPORT_DIST_DIR
+const productionDirectory = externalDistDirectory ?? resolve(projectRoot, 'dist')
+if (externalDistDirectory !== undefined) {
+  assert.equal(process.env.IBKR_BROWSER_IMPORT_SKIP_BUILD, '1',
+    'IBKR_BROWSER_IMPORT_DIST_DIR requires IBKR_BROWSER_IMPORT_SKIP_BUILD=1; the supplied output is read-only.')
+  assert(isAbsolute(externalDistDirectory), 'IBKR_BROWSER_IMPORT_DIST_DIR must be an explicit absolute path.')
+  const metadata = lstatSync(externalDistDirectory)
+  assert(metadata.isDirectory() && !metadata.isSymbolicLink(), 'IBKR_BROWSER_IMPORT_DIST_DIR must be an existing real, non-symlink directory.')
+  const indexMetadata = lstatSync(join(externalDistDirectory, 'index.html'))
+  assert(indexMetadata.isFile() && !indexMetadata.isSymbolicLink(), 'IBKR_BROWSER_IMPORT_DIST_DIR requires a regular index.html file.')
+}
 const measureWorkerHeap = process.argv.includes('--measure-worker-heap')
 assert(process.argv.slice(2).every((argument) => argument === '--measure-worker-heap'), 'Unknown browser test argument.')
 const heapQaDirectory = process.env.WORKER_HEAP_QA_DIR
@@ -600,8 +612,8 @@ async function releaseWorkerHold(ticket) {
 try {
   if (process.env.IBKR_BROWSER_IMPORT_SKIP_BUILD === '1') {
     assert(
-      existsSync(resolve(projectRoot, 'dist/index.html')),
-      'IBKR_BROWSER_IMPORT_SKIP_BUILD=1 requires an existing dist/index.html.',
+      existsSync(join(productionDirectory, 'index.html')),
+      'IBKR_BROWSER_IMPORT_SKIP_BUILD=1 requires an existing production index.html.',
     )
     console.log('Using the existing production bundle...')
   } else {
@@ -620,6 +632,7 @@ try {
     '--host', '127.0.0.1',
     '--port', String(previewPort),
     '--strictPort',
+    ...(externalDistDirectory !== undefined ? ['--outDir', productionDirectory] : []),
   ])
   const previewOutputRef = { value: '' }
   preview.stdout.on('data', (chunk) => {
@@ -1172,6 +1185,8 @@ try {
     /^\+(?:US)?\$740$/,
     `Unexpected rounded Season P&L display: ${seasonPnl}`,
   )
+
+  const shortLandscape = await testShortLandscape({ cdp, evaluate, waitForPageValue })
 
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     deviceScaleFactor: 1,
@@ -2354,7 +2369,7 @@ try {
         fixtureMetadata('10000-candidate-fii-mappings', candidateFixturePath, 1),
       ],
     })
-    const assetDirectory = resolve(projectRoot, 'dist/assets')
+    const assetDirectory = join(productionDirectory, 'assets')
     workerHeapDiagnostic = {
       mode: 'Separate production Chrome Worker isolate samples; not a true peak or a release threshold',
       browser: await cdp.send('Browser.getVersion'),
@@ -2488,6 +2503,7 @@ try {
     seasonPnl,
     shareInteractions,
     manualCopy,
+    shortLandscape,
     pngSaveGuidance,
     importRecovery,
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
