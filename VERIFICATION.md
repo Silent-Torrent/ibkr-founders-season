@@ -1,6 +1,6 @@
 # Verification record — checkpoint 0.24 candidate short-landscape fix
 
-Last updated: 2026-09-09
+Last updated: 2026-09-11
 
 ## Frozen release decisions and execution status
 
@@ -19,7 +19,15 @@ Last updated: 2026-09-09
 - The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
-## Current 0.24 candidate — independent-output desktop acceptance
+## 2026-09-11 current 0.24 candidate — phone connection failed, cleanup complete
+
+- Starting from clean `3863117`, initial checks found neither 4173 nor 4174 listening; their prior stop time is unknown. No product edit, rebuild or suite rerun occurred. The existing three 0.24 assets were rechecked; a new LAN-only 4174 service returned HTTP 200 for the entry/current references and all three matching asset hashes. A fresh About check confirmed iPhone 15 Plus / iOS 27.0.
+- Initial per-key input corrupted punctuation. One native-paste attempt then timed out with -10005 and displayed non-target prior test text; the field was visibly cleared without submitting it. Clipboard auto-restoration was not independently verified, and no original clipboard read was made to verify it. No claim is made that Safari suggestions sent no requests.
+- After explicit user approval, ABC was selected and read back, the complete correct URL was screenshot-checked and submitted, and Simplified Pinyin was read back. Safari showed a connection error; clicking reload left the same observed error, without second-request-level evidence. The local service still listened/returned HTTP 200. Read-only checks found firewall/block-all originally disabled, the same IPv4 /16/gateway and two unanswered ping packets. These do not diagnose client isolation or exclude other filtering; no network/VoiceOver settings were changed.
+- The sole failed test tab was closed, Start Page then Home verified. Exact PID 99204 was terminated, session 53676 exited 143, and combined 4173/4174 inspection found no listeners. Final asset hashes still matched 0.24. A final input-source check unexpectedly showed ABC after the earlier Pinyin readback; the cause is unknown. Another authorized switch immediately read back original SCIM.ITABC, with no later UI action. This does not prove clipboard restoration or continuous input-source stability. No PNG generation/save or file/photo deletion occurred.
+- Await the user's answer about a personal router or another phone hotspot and explicit permission before changing network/restarting tests. 0.24 phone loading/rotation did not pass; gates remain 9 OPEN/3 CLOSED, D03/D04/D05 retain their scopes and L remains frozen. Complete chronology and uncertainty are in `docs/IPHONE_REOPEN_EVIDENCE_2026-09-11.md`.
+
+## 2026-09-09 0.24 candidate — independent-output desktop acceptance and initial reopen
 
 - Starting from `891fc36`, L01 was reproduced in old 0.23 production: English 812×300, privacy top/bottom 481.14/496.14 px, sidebar scrollTop 0, scrollHeight/clientHeight 573/300 px, hit test false after 12 real wheel attempts. The negative-control run exited 1. Six CSS lines add sidebar vertical scrolling, scroll containment and non-shrinking direct children; no application logic, Worker, financial, storage or deployment policy changed.
 - An independently built candidate output passed the new three-locale 812×300/812×375/932×375 real wheel/pointer checks and three 375×812 portrait-return stages: full visible/hit-tested controls, four actual page transitions, sidebar privacy open/close-focus, guide/report return and restored caller state. These are desktop Chromium observations, not phone rotation or minimum-version evidence.
