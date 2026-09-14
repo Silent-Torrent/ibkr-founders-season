@@ -84,3 +84,23 @@ For complete per-request numeric evidence, set `WORKER_HEAP_QA_DIR` to an explic
 The P0 requirement to measure browser-Worker peak allocation and establish a supported real-iPhone/Safari threshold remains open. A sampled maximum is a lower-bound observation of the selected counter within this instrumented run, not the full true peak and not a bound on an unprofiled run. Short-lived Workers can provide insufficient coverage, and no extra pause is introduced to manufacture more samples.
 
 The iPhone 0.20 PNG and 0.21 manual-selection tests, iOS/Safari 16.4 floor, rotation, complete VoiceOver, qualified Exercise fixture and deferred HTTPS/deployed-boundary checks remain separate. The L hosting freeze and requirement for fresh phone/LAN/clipboard permissions are unchanged.
+
+## 2026-09-14 method review — snapshot/tracking names do not establish a true peak
+
+This dated, read-only follow-up does not alter the September 6 samples or claim a new measurement run. The existing sampler still requests current isolate counters about every 50 ms, retains incomplete-coverage flags and has an unobserved tail. Repeating its three inputs would not, by itself, remove that methodological limit.
+
+Three official upstream WebKit files were read on September 14:
+
+- The [Heap protocol](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/JavaScriptCore/inspector/protocol/Heap.json) lists worker targets and start/stop tracking commands, but describes snapshot data at the two endpoints. A worker target and a command named tracking are not promises of continuous high-water measurement.
+- [InspectorHeapAgent](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/JavaScriptCore/inspector/agents/InspectorHeapAgent.cpp), functions `startTracking` and `stopTracking`, calls `snapshot` at each endpoint. This path alone cannot prove an intermediate transient peak.
+- [InspectorMemoryAgent](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/inspector/agents/InspectorMemoryAgent.cpp), functions `startTracking` and `collectSample`, registers a resource observer and emits category samples through `trackingUpdate`. The inspected path does not establish a dedicated Worker's continuous peak or complete lifetime coverage.
+
+These are mutable upstream `main` sources, not a pinned implementation of the installed Safari or the supported Safari 16.4 floor. Any future adoption must verify the exact target implementation. The bounded conclusion is that neither inspected tracking name is sufficient evidence to close D01; this is not proof that every possible profiling method is unavailable.
+
+### Smallest next developer-owned method check
+
+Before another product-capacity run, qualify a candidate instrument using an isolated, fully fictional short-lived Worker. Use known counts of JavaScript objects and known ArrayBuffer byte lengths, without pretending their full engine/native overhead is known. Check target attribution, startup-to-termination coverage including the tail, counter definitions and measurement disturbance. Compare like counters at the same instant; do not add independent maxima or infer full browser memory from JavaScript heap alone.
+
+If the instrument yields only samples or endpoint snapshots, retain that descriptive label and reject its use as a true-peak proof. A calibration pass would establish only the tested measurement capability, not a universal peak guarantee or an iPhone capacity threshold. No arbitrary MiB acceptance limit is introduced.
+
+This review created no calibration harness, ran no new browser/Worker measurement, installed nothing, enabled no debugging permission and did not access the phone. Phone Web Inspector, device trust/pairing, network changes and actual supported-device measurements remain separately authorized steps. D01 remains OPEN with its original requirements; method qualification remains a developer responsibility rather than a task assigned wholly to the user.

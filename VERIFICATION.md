@@ -19,7 +19,20 @@ Last updated: 2026-09-14
 - The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
-## 2026-09-14 current later stage — welcome and Simplified Chinese Demo navigation observed
+## 2026-09-14 current completed stage — L01 USER_CONFIRMED and cleanup observed
+
+- Starting from clean `11a89b1`, the user replied “全部正常” to the full five-step physical-rotation/sidebar instructions. Record USER_CONFIRMED only for 0.24, iPhone 15 Plus / iOS 27.0, Simplified Chinese: left sidebar appears; its contents scroll bottom/top without transferring to the main page; all four sidebar entries work; privacy scroll/close and guide → “体验演示” work; portrait bottom navigation returns without obstruction. The main agent did not independently observe the physical sequence. This does not establish other untested scope, complete D08 or the actual iOS/Safari 16.4 floor.
+- After reconnecting Mirroring, the main agent directly saw portrait Simplified Chinese Demo Ledger with six underlyings and `+US$20,040`. This observation neither replaces nor upgrades the user's rotation report. The page locale was restored to English and English Ledger observed. Tab overview showed one identified Ledger — P&L Arena tab; after closing its × and reopening overview, only Start Page remained, followed by Home.
+- The exact PID `10582` command/binding was rechecked before TERM. Session `26584` exited 143, combined 4173/4174 inspection showed no listeners, final SCIM.ITABC was read back and all three 0.24 asset hashes remained unchanged. This independently closes the later session, not by reusing early session `26707` cleanup. No product edit/build/suite rerun, CSV import, new paste, PNG generation/save, file/photo deletion or network/VoiceOver change occurred. Earlier clipboard-restoration uncertainty remains unresolved.
+- No reply to this rotation checklist or cleanup is pending. D07 remains a separate informed VoiceOver/listening task; any fictional-file stage must be explained independently and a Demo-only subset cannot close it. D01's measurement-method verification still belongs to the developer. Gates remain 9 OPEN/3 CLOSED, with full D08/16.4 open, D03/D04/D05 scopes preserved and L frozen. See the final stage in `docs/IPHONE_REOPEN_EVIDENCE_2026-09-14.md`.
+
+### Separate read-only D01 method review on September 14
+
+The existing numerical sampler contract and three official upstream WebKit sources were checked without running a new measurement. Heap tracking's endpoint snapshots and Memory tracking's category samples are not sufficient evidence of a dedicated Worker's continuous peak. The next developer-owned step is candidate-instrument qualification on an isolated synthetic short-lived Worker, not another identical CSV sampling run. No calibration harness, new threshold, installation, debugging permission or product change was made. Upstream main is not Safari 16.4 runtime evidence; D01 remains open. Sources, limitations and the unexecuted next step are in the dated follow-up of `docs/BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md`.
+
+## 2026-09-14 historical reopening stage — welcome and Simplified Chinese Demo navigation observed
+
+The following bullets retain the then-open phone/service state and rotation invitation; the user response and final cleanup are recorded above.
 
 - After the user explicitly replied “已连接”, the stage began from clean `08fdb40`. Mac's current LAN address was again in the earlier /28 range; the agent did not change networks. New preview session `26584` / PID `10582` bound only the current LAN address on 4174. Its entry and JS/CSS/Worker assets all returned HTTP 200, and local/served SHA-256 values matched the existing 0.24 candidate. No product edit, rebuild or suite rerun occurred.
 - About freshly confirmed iPhone 15 Plus / iOS 27.0. Two incidental Carrier Settings Update prompts were both deferred with Not Now; no carrier update was installed. Existing ABC authorization was used for per-key URL entry, the complete URL was screenshot-checked before Return, and original SCIM.ITABC was restored/read back. This does not resolve September 11's separate clipboard-restoration uncertainty.
@@ -29,7 +42,7 @@ Last updated: 2026-09-14
 
 ## 2026-09-14 historical early stage — new-network connection failed, cleanup complete
 
-The following bullets retain that earlier stage's failure, then-current waiting condition and completed cleanup; they do not describe the later open Demo tab or session `26584` above.
+The following bullets retain that earlier stage's failure, then-current waiting condition and completed cleanup; they are not interchangeable with the separate reopening or final closure of session `26584` above.
 
 - Starting from clean `8894b7a`, the old session 47592 returned `Unknown process id` and neither 4173 nor 4174 listened. This establishes the old service was unavailable at this check, not who stopped it or when. Read-only checks found the currently selected networks and matching /20/gateway after both devices' network addresses changed again; the agent did not switch networks. The iPhone 15 Plus / iOS 27.0 identity remains the September 11 About observation, not a fresh September 14 version check.
 - New session 26707 / PID 9606 bound only the current LAN address on 4174. The entry and JS/CSS/Worker assets all returned HTTP 200; local and served hashes each matched the unchanged 0.24 candidate. No product edit, rebuild or full-suite rerun occurred.
