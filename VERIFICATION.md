@@ -1,6 +1,6 @@
 # Verification record — checkpoint 0.24 candidate short-landscape fix
 
-Last updated: 2026-09-11
+Last updated: 2026-09-14
 
 ## Frozen release decisions and execution status
 
@@ -19,13 +19,29 @@ Last updated: 2026-09-11
 - The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
-## 2026-09-11 current 0.24 candidate — phone connection failed, cleanup complete
+## 2026-09-14 current 0.24 candidate — new-network connection failed, cleanup complete
+
+- Starting from clean `8894b7a`, the old session 47592 returned `Unknown process id` and neither 4173 nor 4174 listened. This establishes the old service was unavailable at this check, not who stopped it or when. Read-only checks found the currently selected networks and matching /20/gateway after both devices' network addresses changed again; the agent did not switch networks. The iPhone 15 Plus / iOS 27.0 identity remains the September 11 About observation, not a fresh September 14 version check.
+- New session 26707 / PID 9606 bound only the current LAN address on 4174. The entry and JS/CSS/Worker assets all returned HTTP 200; local and served hashes each matched the unchanged 0.24 candidate. No product edit, rebuild or full-suite rerun occurred.
+- Safari initially retained the September 11 welcome page and language-selection menu. That old visible state is not today's successful load. Using the existing temporary ABC authorization, the agent entered today's correct URL, screenshot-checked it, submitted Return and restored/read back original SCIM.ITABC. The new URL then showed a connection failure; Mac HTTP 200 persisted at that time. Read-only system-firewall and block-all checks showed their pre-existing disabled states; no setting was changed and the cause was not diagnosed.
+- The sole failed tab was closed, tab overview reopened with only Start Page remaining, and Home observed. The exact PID 9606 command/binding was checked before TERM; session 26707 exited 143, both 4173/4174 were then unbound, final SCIM.ITABC was read back and all three asset hashes remained unchanged. This is today's bounded cleanup, not a claim about when or how the old session 47592 ended.
+- No new paste, PNG generation/save, file/photo deletion or network/VoiceOver setting change occurred. September 11's clipboard-restoration uncertainty is not resolved by today's input-source restoration. Demo/navigation/rotation were not verified. Gates remain 9 OPEN/3 CLOSED with D03/D04/D05 in their original scopes and L frozen.
+- Next requires the user to arrange a mutually reachable network; agent-made network changes need applicable permission. ABC input authorization is not an outstanding blocker. Detailed current evidence is in `docs/IPHONE_REOPEN_EVIDENCE_2026-09-14.md`; September 11's distinct failure and later welcome-page observation remain below and in their dated record.
+
+## 2026-09-11 historical early stage — phone connection failed, early-stage cleanup complete
+
+The following bullets retain the early stage's then-current state and waiting condition; its closing input readback/no-later-UI statement is limited to that stage. The later welcome-page observation is recorded separately below, not retroactively merged into the early failure.
 
 - Starting from clean `3863117`, initial checks found neither 4173 nor 4174 listening; their prior stop time is unknown. No product edit, rebuild or suite rerun occurred. The existing three 0.24 assets were rechecked; a new LAN-only 4174 service returned HTTP 200 for the entry/current references and all three matching asset hashes. A fresh About check confirmed iPhone 15 Plus / iOS 27.0.
 - Initial per-key input corrupted punctuation. One native-paste attempt then timed out with -10005 and displayed non-target prior test text; the field was visibly cleared without submitting it. Clipboard auto-restoration was not independently verified, and no original clipboard read was made to verify it. No claim is made that Safari suggestions sent no requests.
 - After explicit user approval, ABC was selected and read back, the complete correct URL was screenshot-checked and submitted, and Simplified Pinyin was read back. Safari showed a connection error; clicking reload left the same observed error, without second-request-level evidence. The local service still listened/returned HTTP 200. Read-only checks found firewall/block-all originally disabled, the same IPv4 /16/gateway and two unanswered ping packets. These do not diagnose client isolation or exclude other filtering; no network/VoiceOver settings were changed.
 - The sole failed test tab was closed, Start Page then Home verified. Exact PID 99204 was terminated, session 53676 exited 143, and combined 4173/4174 inspection found no listeners. Final asset hashes still matched 0.24. A final input-source check unexpectedly showed ABC after the earlier Pinyin readback; the cause is unknown. Another authorized switch immediately read back original SCIM.ITABC, with no later UI action. This does not prove clipboard restoration or continuous input-source stability. No PNG generation/save or file/photo deletion occurred.
-- Await the user's answer about a personal router or another phone hotspot and explicit permission before changing network/restarting tests. 0.24 phone loading/rotation did not pass; gates remain 9 OPEN/3 CLOSED, D03/D04/D05 retain their scopes and L remains frozen. Complete chronology and uncertainty are in `docs/IPHONE_REOPEN_EVIDENCE_2026-09-11.md`.
+- At the end of this early stage, the next step was to await the user's answer about a personal router or another phone hotspot and explicit permission before changing network/restarting tests. 0.24 phone loading/rotation had not passed; gates remained 9 OPEN/3 CLOSED, D03/D04/D05 retained their scopes and L remained frozen. Complete chronology and uncertainty are in `docs/IPHONE_REOPEN_EVIDENCE_2026-09-11.md`.
+
+### 2026-09-11 historical later stage — English welcome page observed, further checks unverified
+
+- The devices were later observed on a different matching /28/gateway without agent-made network changes. New preview session 47592 / PID 535 returned HTTP 200 for its entry and three candidate-matching asset hashes. Under existing ABC permission the correct URL was entered and Simplified Pinyin restored. Safari directly displayed the English P&L Arena welcome page: this is actual September 11 entrance evidence, not September 14's successful loading or phone-side per-asset/Worker inspection.
+- Language selection was clicked but its outcome was not observed; Demo, navigation, sidebar scrolling and rotation were not confirmed. No PNG save or file deletion occurred, and this later stage's final page/service closure was not observed. Do not reuse early session 53676 cleanup as proof for session 47592. D08/L01/16.4 stayed open and gates stayed 9/3; see `docs/IPHONE_REOPEN_EVIDENCE_2026-09-11.md`.
 
 ## 2026-09-09 0.24 candidate — independent-output desktop acceptance and initial reopen
 
