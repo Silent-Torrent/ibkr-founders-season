@@ -19,7 +19,15 @@ Last updated: 2026-09-14
 - The A + C research created no alternate account, project, token, Git integration, deployment or billing relationship. Its candidate findings and proposed, unapproved gates are recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 - These configuration checks do not establish a real iOS/Safari 16.4 pass; only the production bundle may be used for that later version/device test.
 
-## 2026-09-14 current completed stage — L01 USER_CONFIRMED and cleanup observed
+## 2026-09-14 later developer stage — independent instrument calibration
+
+Starting from `dd8a7bf`, the new fictional desktop-only runner completed its final endpoint-bound run on Chrome 153.0.8010.36 / V8 15.3.76.10. Separate allocator/idle-control phase windows each contained 8/12/12 samples. Used-heap separation with retained objects was 5,977,952 bytes; buffer-stage backing separation was 8,388,608 bytes with zero corresponding idle-control separation. All three sampled short-lived controls completed known allocations but had only a pre-script baseline and zero runtime samples. These are held-response observations plus a coverage counterexample, not exact object overhead, total RAM, an overhead estimate, true peak, reclamation or an iPhone threshold.
+
+Independent review found and confirmed repairs for invalid/pre-release sample acceptance, debug-endpoint ownership and startup/interruption cleanup order. Nine new numeric-test groups, 14 existing sampler groups, all 3 actual SIGTERM lifecycle stages, policy/privacy and browser-compatibility contracts passed. The final numeric report was reopened and independently recomputed; current source hashes and eight distinct target/session/isolate identities match. Full records, first-run limitations, safety fixes and cleanup evidence are in `docs/WORKER_HEAP_CALIBRATION_EVIDENCE_2026-09-14.md`.
+
+No product source/manifest/dependency/sampler, app asset, phone/network/VoiceOver setting or deployment was changed. This stage did not run the full app suite/build. Temporary profiles and owned browser processes were cleaned and calibration/phone ports were unbound; numeric evidence is retained. D01 remains OPEN and developer-owned; D07 still requires consent/listening, all other scopes stand, and counts remain 9 OPEN/3 CLOSED under L.
+
+## 2026-09-14 completed phone stage — L01 USER_CONFIRMED and cleanup observed
 
 - Starting from clean `11a89b1`, the user replied “全部正常” to the full five-step physical-rotation/sidebar instructions. Record USER_CONFIRMED only for 0.24, iPhone 15 Plus / iOS 27.0, Simplified Chinese: left sidebar appears; its contents scroll bottom/top without transferring to the main page; all four sidebar entries work; privacy scroll/close and guide → “体验演示” work; portrait bottom navigation returns without obstruction. The main agent did not independently observe the physical sequence. This does not establish other untested scope, complete D08 or the actual iOS/Safari 16.4 floor.
 - After reconnecting Mirroring, the main agent directly saw portrait Simplified Chinese Demo Ledger with six underlyings and `+US$20,040`. This observation neither replaces nor upgrades the user's rotation report. The page locale was restored to English and English Ledger observed. Tab overview showed one identified Ledger — P&L Arena tab; after closing its × and reopening overview, only Start Page remained, followed by Home.
@@ -27,6 +35,8 @@ Last updated: 2026-09-14
 - No reply to this rotation checklist or cleanup is pending. D07 remains a separate informed VoiceOver/listening task; any fictional-file stage must be explained independently and a Demo-only subset cannot close it. D01's measurement-method verification still belongs to the developer. Gates remain 9 OPEN/3 CLOSED, with full D08/16.4 open, D03/D04/D05 scopes preserved and L frozen. See the final stage in `docs/IPHONE_REOPEN_EVIDENCE_2026-09-14.md`.
 
 ### Separate read-only D01 method review on September 14
+
+This was the earlier read-only stage. The subsequent implemented calibration is recorded above; the following paragraph preserves what had and had not run at that earlier point.
 
 The existing numerical sampler contract and three official upstream WebKit sources were checked without running a new measurement. Heap tracking's endpoint snapshots and Memory tracking's category samples are not sufficient evidence of a dedicated Worker's continuous peak. The next developer-owned step is candidate-instrument qualification on an isolated synthetic short-lived Worker, not another identical CSV sampling run. No calibration harness, new threshold, installation, debugging permission or product change was made. Upstream main is not Safari 16.4 runtime evidence; D01 remains open. Sources, limitations and the unexecuted next step are in the dated follow-up of `docs/BROWSER_WORKER_HEAP_EVIDENCE_2026-09-06.md`.
 
