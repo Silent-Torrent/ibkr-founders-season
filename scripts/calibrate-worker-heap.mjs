@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -8,6 +8,7 @@ import { basename, dirname, isAbsolute, join, parse, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createWorkerHeapSampler } from './worker-heap-sampling.mjs'
 import { analyzeHeldPhases, verifySampleReport } from './worker-heap-calibration-analysis.mjs'
+import { analyzeWorkerProcessAttribution } from './worker-process-attribution-analysis.mjs'
 
 // Explicit, fictional calibration only. This module does not import the app or
 // run its browser regression. Held allocations deliberately expose a plateau;
@@ -25,13 +26,14 @@ const flags = Object.freeze({
 const runnerPath = fileURLToPath(import.meta.url)
 const samplerPath = fileURLToPath(new URL('./worker-heap-sampling.mjs', import.meta.url))
 const analysisPath = fileURLToPath(new URL('./worker-heap-calibration-analysis.mjs', import.meta.url))
+const attributionAnalysisPath = fileURLToPath(new URL('./worker-process-attribution-analysis.mjs', import.meta.url))
 const hash = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const now = () => performance.now()
 const delay = (ms) => new Promise((done) => setTimeout(done, ms))
 
 function parseArguments(args) {
   if (args.length === 0) return null
-  assert.equal(args.length, 2, 'Usage: node scripts/calibrate-worker-heap.mjs [--output /absolute/new.json]')
+  assert.equal(args.length, 2, 'Usage: node scripts/calibrate-worker-heap.mjs [--attribute-processes] [--output /absolute/new.json]')
   assert.equal(args[0], '--output', 'Only --output is supported.')
   const output = args[1]
   assert(isAbsolute(output), '--output must be an absolute path.')
@@ -146,6 +148,7 @@ const samplers = new Map()
 const serverRequestCounts = { page: 0, script: 0, worker: 0, favicon: 0, rejected: 0 }
 let origin = null
 let chromeOutput = ''
+const methodCounts = Object.create(null)
 const fail = (error) => { fatalError ??= error instanceof Error ? error : new Error(String(error)) }
 function checkHealth() {
   if (fatalError) throw fatalError
@@ -220,6 +223,7 @@ class CdpConnection {
   }
 
   send(method, params = {}, sessionId, timeoutMs = 5_000) {
+    methodCounts[method] = (methodCounts[method] ?? 0) + 1
     const id = ++this.nextId
     return new Promise((accept, reject) => {
       const timer = setTimeout(() => {
@@ -492,8 +496,105 @@ async function shortCalibration(caseId, samplingEnabled) {
   return record
 }
 
+async function processAttribution({ pageTargetId, frameId }) {
+  // Identity-only probe: no retained allocation phases, heap sampler, native
+  // memory query or production app. The metadata trace itself has overhead.
+  const traceConfig = {
+    recordMode: 'recordUntilFull', traceBufferSizeInKb: 4_096,
+    enableSampling: false, enableSystrace: false,
+    includedCategories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing'],
+    excludedCategories: ['*'],
+  }
+  const traceEvents = []
+  let traceComplete = null
+  let traceBytes = 0
+  let traceEventCount = 0
+  let traceBatchCount = 0
+  const traceHash = createHash('sha256')
+  const markPrefix = `ibkr-process-attribution-${randomUUID()}-`
+  cdp.on('Tracing.dataCollected', ({ value }, sessionId) => {
+    assert.equal(sessionId, pageSessionId, 'Trace was not delivered to the owned page session.')
+    assert.equal(traceComplete, null, 'Trace data arrived after completion.')
+    assert(Array.isArray(value))
+    const encoded = `${JSON.stringify(value)}\n`
+    traceBytes += Buffer.byteLength(encoded)
+    traceEventCount += value.length
+    traceBatchCount += 1
+    assert(traceBytes <= 8 * 1_048_576 && traceEventCount <= 50_000, 'Identity trace exceeded its bounded collection budget.')
+    traceHash.update(encoded)
+    for (const event of value) {
+      if (['TracingStartedInBrowser', 'FrameCommittedInBrowser', 'TracingSessionIdForWorker'].includes(event.name) ||
+          (typeof event.name === 'string' && event.name.startsWith(markPrefix))) traceEvents.push(event)
+    }
+  })
+  cdp.on('Tracing.tracingComplete', (params, sessionId) => {
+    assert.equal(sessionId, pageSessionId)
+    assert.equal(traceComplete, null)
+    assert.equal(params.stream, undefined, 'Identity probe requires ReportEvents, not a stream.')
+    traceComplete = params
+  })
+  await cdp.send('Tracing.start', { transferMode: 'ReportEvents', traceConfig }, pageSessionId)
+  checkHealth()
+  const { id: pageIsolateId } = await cdp.send('Runtime.getIsolateId', {}, pageSessionId)
+  const page = { targetId: pageTargetId, sessionId: pageSessionId, frameId,
+    isolateId: pageIsolateId, markName: `${markPrefix}page` }
+  assert.equal(await evaluate(`performance.mark(${JSON.stringify(page.markName)}); true`), true)
+  const workers = []
+  for (const caseId of ['mapping-one', 'mapping-two']) {
+    const record = await createWorker(caseId, false)
+    record.markName = `${markPrefix}${caseId}`
+    const mark = await cdp.send('Runtime.evaluate', {
+      expression: `performance.mark(${JSON.stringify(record.markName)}); true`, returnByValue: true,
+    }, record.sessionId)
+    assert.equal(mark.exceptionDetails, undefined)
+    assert.equal(mark.result?.value, true)
+    workers.push(record)
+  }
+  const processesDuring = await cdp.send('SystemInfo.getProcessInfo')
+  assert.equal(processesDuring.processInfo.filter(({ type, id }) => type === 'browser' && id === chrome.pid).length, 1,
+    'Process inventory is not bound to the owned browser PID.')
+  const targetsDuring = await cdp.send('Target.getTargets')
+  for (const worker of workers) {
+    assert(targetsDuring.targetInfos.some(({ targetId, type, url }) =>
+      targetId === worker.targetId && type === 'worker' && url === worker.workerUrl))
+  }
+  for (const worker of workers) {
+    await command(worker, 'finish')
+    expectedCounts(await marker(worker, 'finished'), false, false)
+    await finishRecord(worker)
+  }
+  const processesAfter = await cdp.send('SystemInfo.getProcessInfo')
+  const finalFrameTree = await cdp.send('Page.getFrameTree', {}, pageSessionId)
+  assert.equal(finalFrameTree.frameTree.frame.id, frameId)
+  assert.equal(finalFrameTree.frameTree.frame.url, `${origin}/`)
+  await cdp.send('Tracing.end', {}, pageSessionId)
+  await waitFor(() => traceComplete, 'complete identity trace flush', 5_000)
+  checkHealth()
+  assert.equal(traceComplete.dataLossOccurred, false, 'Identity trace reports data loss.')
+  assert.equal(samplers.size, 0)
+  assert.equal(methodCounts['Runtime.getHeapUsage'] ?? 0, 0)
+  assert.equal(methodCounts['Tracing.requestMemoryDump'] ?? 0, 0)
+  assert(Object.keys(methodCounts).every((method) => !method.startsWith('HeapProfiler.')))
+  const input = { page, workers, traceEvents, dataLossOccurred: traceComplete.dataLossOccurred,
+    processesDuring, processesAfter }
+  let analysis
+  let analysisError = null
+  try { analysis = analyzeWorkerProcessAttribution(input) }
+  catch (error) { analysisError = error.message; analysis = null }
+  return { ...input, analysis, analysisError, status: analysis ? 'attributed' : 'inconclusive', traceConfig,
+    traceCollection: { traceBytes, traceEventCount, traceBatchCount,
+      serializedEventBatchesSha256: traceHash.digest('hex'), retainedEventCount: traceEvents.length,
+      complete: true, retention: 'Only frame/Worker metadata and explicit unique performance marks; other trace events discarded after counting and hashing.' },
+    methodCounts: { ...methodCounts }, heapSamplersCreated: samplers.size,
+    scope: 'Identity-only: two idle fictional module Workers and one owned page. No intentional allocation pulse, native memory query, heap-sampling command, snapshot, forced GC, production CSV or phone. Trace overhead is not measured. PID presence after Worker closure is not process-start identity, physical reclamation or a final memory reading.',
+  }
+}
+
 async function run() {
-  const outputPath = parseArguments(process.argv.slice(2))
+  const args = process.argv.slice(2)
+  const attributionMode = args[0] === '--attribute-processes'
+  if (attributionMode) args.shift()
+  const outputPath = parseArguments(args)
   assert.equal(process.platform, 'darwin', 'This explicitly scoped runner currently supports macOS only.')
   assert.equal(Number(process.versions.node.split('.')[0]), 22, 'Use the existing Node.js 22 runtime.')
   assert.equal(typeof WebSocket, 'function', 'Built-in Node WebSocket is required.')
@@ -502,9 +603,11 @@ async function run() {
     '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
   ].filter(Boolean).find(existsSync)
   assert(chromeExecutable && isAbsolute(chromeExecutable), 'An existing absolute Chrome executable is required.')
+  const attributionInputs = attributionMode ? Object.fromEntries(
+    [runnerPath, attributionAnalysisPath].map((path) => [path, hash(readFileSync(path))])) : null
   deadline = now() + config.overallTimeoutMs
   temporaryRoot = mkdtempSync(join(realpathSync(tmpdir()), 'ibkr-worker-heap-calibration-'))
-  const allowedCaseIds = new Set(['held-allocator', 'held-idle-control',
+  const allowedCaseIds = new Set(attributionMode ? ['mapping-one', 'mapping-two'] : ['held-allocator', 'held-idle-control',
     ...Array.from({ length: config.pairs }, (_, index) => [`short-${index + 1}-off`, `short-${index + 1}-on`]).flat()])
   httpServer = createServer((request, response) => {
     try {
@@ -612,6 +715,46 @@ async function run() {
   checkHealth()
   assert.equal(navigation.errorText, undefined)
   await waitFor(async () => evaluate('typeof createCalibrationWorker === "function"'), 'standalone page readiness')
+  if (attributionMode) {
+    const frameTree = await cdp.send('Page.getFrameTree', {}, pageSessionId)
+    assert.equal(frameTree.frameTree.frame.id, navigation.frameId)
+    assert.equal(frameTree.frameTree.frame.url, `${origin}/`)
+    const attribution = await processAttribution({ pageTargetId, frameId: navigation.frameId })
+    checkHealth()
+    assert.equal(serverRequestCounts.rejected, 0)
+    assert.equal(serverRequestCounts.worker, 2)
+    for (const [path, expected] of Object.entries(attributionInputs)) assert.equal(hash(readFileSync(path)), expected,
+      'Attribution implementation changed during the run.')
+    const schema = (domain, name, group = 'commands') => {
+      const item = protocol.domains.find((item) => item.domain === domain)?.[group]?.find((item) => (item.name ?? item.id) === name)
+      assert(item, `Live protocol omits ${domain}.${name}`)
+      return item
+    }
+    const result = {
+      schemaVersion: 1, kind: 'worker-process-attribution', flags,
+      environment: { browserVersion, protocolSha256: hash(protocolBytes), nodeVersion: process.version,
+        ownedBrowserPid: chrome.pid, chromeExecutable,
+        schemas: { getProcessInfo: schema('SystemInfo', 'getProcessInfo'), processInfo: schema('SystemInfo', 'ProcessInfo', 'types'),
+          traceStart: schema('Tracing', 'start'), traceConfig: schema('Tracing', 'TraceConfig', 'types'),
+          traceComplete: schema('Tracing', 'tracingComplete', 'events'), targetInfo: schema('Target', 'TargetInfo', 'types') },
+        endpointBinding: { method: 'owned-profile-active-port-and-exact-browser-websocket', ...endpoint,
+          pageCreatedOnOwnedBrowser: true, pageTargetId, pageSessionId } },
+      provenance: { runnerSha256: attributionInputs[runnerPath], analysisSha256: attributionInputs[attributionAnalysisPath],
+        inputsUnchangedAtEnd: true, workerSourceSha256: hash(workerSource), pageSourceSha256: hash(pageSource) },
+      attribution, serverRequestCounts,
+    }
+    await cleanup()
+    if (fatalError) throw fatalError
+    result.cleanup = { browserProcessExited: true, loopbackServerClosed: true, temporaryProfileRemoved: true }
+    const serialized = `${JSON.stringify(result, null, 2)}\n`
+    if (outputPath) {
+      parseArguments(['--output', outputPath])
+      writeFileSync(outputPath, serialized, { flag: constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, mode: 0o600 })
+    }
+    process.stdout.write(serialized)
+    if (attribution.status !== 'attributed') process.exitCode = 1
+    return
+  }
   const held = await heldCalibration()
   const shortLivedPairs = []
   for (let index = 0; index < config.pairs; index++) {

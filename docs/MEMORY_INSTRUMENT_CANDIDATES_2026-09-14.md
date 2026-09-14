@@ -4,6 +4,8 @@ Starting HEAD: `7a040fc`. This is developer-only method qualification, not anoth
 
 ## Result and decision
 
+Subsequent [exact browser-attribution experiment](WORKER_PROCESS_ATTRIBUTION_EVIDENCE_2026-09-14.md) resolved the next investigation proposed below: the owned page and two distinct Workers shared a renderer PID. The process ledger is therefore not Worker-exclusive; stop that substitution route without another allocation sweep. The native observations below retain their original self-process scope, and D01 remains OPEN.
+
 A kernel-maintained **self-process physical-footprint lifetime high-water counter** retained the short native pulses tested here, even though the current counter had returned to baseline before the second query. This addresses the endpoint-miss problem for this specific process ledger. It does **not** establish browser-Worker attribution, JavaScript allocation peaks, complete browser memory or an iPhone safety threshold. No production parser was measured.
 
 The earlier Chrome sampler's short-task counterexample remains valid. Source inspection did not qualify the three additional Chrome interfaces below as replacements for D01's original complete Worker-peak requirement. Do not rerun rejected methods merely under a new name or lower D01 to fit the available instrument.

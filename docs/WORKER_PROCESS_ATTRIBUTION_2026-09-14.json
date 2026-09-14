@@ -1,0 +1,836 @@
+{
+  "schemaVersion": 1,
+  "kind": "worker-process-attribution",
+  "flags": {
+    "truePeakMeasured": false,
+    "fullCoverageProven": false,
+    "finalReclamationProven": false,
+    "deviceThresholdEstablished": false,
+    "causalOverheadEstimate": false
+  },
+  "environment": {
+    "browserVersion": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/153.0.8010.36",
+      "revision": "@507c6ee3e2f3b2ca0e660547e5b9ea4820c67f4c",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+      "jsVersion": "15.3.76.10"
+    },
+    "protocolSha256": "0ae391988e275ef33802c71ed3b964152cb3a6a1257c4d35f808527a65fda5ff",
+    "nodeVersion": "v22.23.2",
+    "ownedBrowserPid": 13894,
+    "chromeExecutable": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "schemas": {
+      "getProcessInfo": {
+        "name": "getProcessInfo",
+        "description": "Returns information about all running processes.",
+        "returns": [
+          {
+            "name": "processInfo",
+            "description": "An array of process info blocks.",
+            "type": "array",
+            "items": {
+              "$ref": "ProcessInfo"
+            }
+          }
+        ]
+      },
+      "processInfo": {
+        "id": "ProcessInfo",
+        "description": "Represents process info.",
+        "type": "object",
+        "properties": [
+          {
+            "name": "type",
+            "description": "Specifies process type.",
+            "type": "string"
+          },
+          {
+            "name": "id",
+            "description": "Specifies process id.",
+            "type": "integer"
+          },
+          {
+            "name": "cpuTime",
+            "description": "Specifies cumulative CPU usage in seconds across all threads of the\nprocess since the process start.",
+            "type": "number"
+          }
+        ]
+      },
+      "traceStart": {
+        "name": "start",
+        "description": "Start trace events collection.",
+        "parameters": [
+          {
+            "name": "categories",
+            "description": "Category/tag filter",
+            "experimental": true,
+            "deprecated": true,
+            "optional": true,
+            "type": "string"
+          },
+          {
+            "name": "options",
+            "description": "Tracing options",
+            "experimental": true,
+            "deprecated": true,
+            "optional": true,
+            "type": "string"
+          },
+          {
+            "name": "bufferUsageReportingInterval",
+            "description": "If set, the agent will issue bufferUsage events at this interval, specified in milliseconds",
+            "experimental": true,
+            "optional": true,
+            "type": "number"
+          },
+          {
+            "name": "transferMode",
+            "description": "Whether to report trace events as series of dataCollected events or to save trace to a\nstream (defaults to `ReportEvents`).",
+            "optional": true,
+            "type": "string",
+            "enum": [
+              "ReportEvents",
+              "ReturnAsStream"
+            ]
+          },
+          {
+            "name": "streamFormat",
+            "description": "Trace data format to use. This only applies when using `ReturnAsStream`\ntransfer mode (defaults to `json`).",
+            "optional": true,
+            "$ref": "StreamFormat"
+          },
+          {
+            "name": "streamCompression",
+            "description": "Compression format to use. This only applies when using `ReturnAsStream`\ntransfer mode (defaults to `none`)",
+            "experimental": true,
+            "optional": true,
+            "$ref": "StreamCompression"
+          },
+          {
+            "name": "traceConfig",
+            "optional": true,
+            "$ref": "TraceConfig"
+          },
+          {
+            "name": "perfettoConfig",
+            "description": "Base64-encoded serialized perfetto.protos.TraceConfig protobuf message\nWhen specified, the parameters `categories`, `options`, `traceConfig`\nare ignored.",
+            "experimental": true,
+            "optional": true,
+            "type": "binary"
+          },
+          {
+            "name": "tracingBackend",
+            "description": "Backend type (defaults to `auto`)",
+            "experimental": true,
+            "optional": true,
+            "$ref": "TracingBackend"
+          },
+          {
+            "name": "screenshotMaxSize",
+            "description": "Maximum width and height (in pixels) of each captured screenshot.\nOnly used when the `disabled-by-default-devtools.screenshot` category is\nenabled. Defaults to 500. The combined memory footprint of screenshots\n(`screenshotMaxSize` * `screenshotMaxSize` * 4 * `screenshotMaxCount`)\nis clamped to the existing per-session budget.",
+            "experimental": true,
+            "optional": true,
+            "type": "integer"
+          },
+          {
+            "name": "screenshotMaxCount",
+            "description": "Maximum number of screenshots captured during a single tracing session.\nOnly used when the `disabled-by-default-devtools.screenshot` category is\nenabled. Defaults to 450. Clamped together with `screenshotMaxSize` to\nstay within the per-session screenshot memory budget.",
+            "experimental": true,
+            "optional": true,
+            "type": "integer"
+          }
+        ]
+      },
+      "traceConfig": {
+        "id": "TraceConfig",
+        "type": "object",
+        "properties": [
+          {
+            "name": "recordMode",
+            "description": "Controls how the trace buffer stores data. The default is `recordUntilFull`.",
+            "experimental": true,
+            "optional": true,
+            "type": "string",
+            "enum": [
+              "recordUntilFull",
+              "recordContinuously",
+              "recordAsMuchAsPossible",
+              "echoToConsole"
+            ]
+          },
+          {
+            "name": "traceBufferSizeInKb",
+            "description": "Size of the trace buffer in kilobytes. If not specified or zero is passed, a default value\nof 200 MB would be used.",
+            "experimental": true,
+            "optional": true,
+            "type": "number"
+          },
+          {
+            "name": "enableSampling",
+            "description": "Turns on JavaScript stack sampling.",
+            "experimental": true,
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "enableSystrace",
+            "description": "Turns on system tracing.",
+            "experimental": true,
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "enableArgumentFilter",
+            "description": "Turns on argument filter.",
+            "experimental": true,
+            "optional": true,
+            "type": "boolean"
+          },
+          {
+            "name": "includedCategories",
+            "description": "Included category filters.",
+            "optional": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludedCategories",
+            "description": "Excluded category filters.",
+            "optional": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "syntheticDelays",
+            "description": "Configuration to synthesize the delays in tracing.",
+            "experimental": true,
+            "optional": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memoryDumpConfig",
+            "description": "Configuration for memory dump triggers. Used only when \"memory-infra\" category is enabled.",
+            "experimental": true,
+            "optional": true,
+            "$ref": "MemoryDumpConfig"
+          }
+        ]
+      },
+      "traceComplete": {
+        "name": "tracingComplete",
+        "description": "Signals that tracing is stopped and there is no trace buffers pending flush, all data were\ndelivered via dataCollected events.",
+        "parameters": [
+          {
+            "name": "dataLossOccurred",
+            "description": "Indicates whether some trace data is known to have been lost, e.g. because the trace ring\nbuffer wrapped around.",
+            "type": "boolean"
+          },
+          {
+            "name": "stream",
+            "description": "A handle of the stream that holds resulting trace data.",
+            "optional": true,
+            "$ref": "IO.StreamHandle"
+          },
+          {
+            "name": "traceFormat",
+            "description": "Trace data format of returned stream.",
+            "optional": true,
+            "$ref": "StreamFormat"
+          },
+          {
+            "name": "streamCompression",
+            "description": "Compression format of returned stream.",
+            "optional": true,
+            "$ref": "StreamCompression"
+          }
+        ]
+      },
+      "targetInfo": {
+        "id": "TargetInfo",
+        "type": "object",
+        "properties": [
+          {
+            "name": "targetId",
+            "$ref": "TargetID"
+          },
+          {
+            "name": "type",
+            "description": "List of types: https://source.chromium.org/chromium/chromium/src/+/main:content/browser/devtools/devtools_agent_host_impl.cc?ss=chromium&q=f:devtools%20-f:out%20%22::kTypeTab%5B%5D%22",
+            "type": "string"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "url",
+            "type": "string"
+          },
+          {
+            "name": "attached",
+            "description": "Whether the target has an attached client.",
+            "type": "boolean"
+          },
+          {
+            "name": "parentId",
+            "description": "Id of the parent target, if any. For example, \"iframe\" target may have a \"page\" parent.",
+            "optional": true,
+            "$ref": "TargetID"
+          },
+          {
+            "name": "openerId",
+            "description": "Opener target Id",
+            "optional": true,
+            "$ref": "TargetID"
+          },
+          {
+            "name": "canAccessOpener",
+            "description": "Whether the target has access to the originating window.",
+            "experimental": true,
+            "type": "boolean"
+          },
+          {
+            "name": "openerFrameId",
+            "description": "Frame id of originating window (is only set if target has an opener).",
+            "experimental": true,
+            "optional": true,
+            "$ref": "Page.FrameId"
+          },
+          {
+            "name": "parentFrameId",
+            "description": "Id of the parent frame, present for \"iframe\" and \"worker\" targets. For nested workers,\nthis is the \"ancestor\" frame that created the first worker in the nested chain.",
+            "experimental": true,
+            "optional": true,
+            "$ref": "Page.FrameId"
+          },
+          {
+            "name": "browserContextId",
+            "experimental": true,
+            "optional": true,
+            "$ref": "Browser.BrowserContextID"
+          },
+          {
+            "name": "subtype",
+            "description": "Provides additional details for specific target types. For example, for\nthe type of \"page\", this may be set to \"prerender\".",
+            "experimental": true,
+            "optional": true,
+            "type": "string"
+          },
+          {
+            "name": "embedderData",
+            "description": "Embedder-specific target metadata. This is only set for targets of\ntype \"tab\".",
+            "experimental": true,
+            "optional": true,
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "endpointBinding": {
+      "method": "owned-profile-active-port-and-exact-browser-websocket",
+      "port": 64469,
+      "browserWebSocketPath": "/devtools/browser/67146306-2f9a-4eaf-a20f-adb539792a07",
+      "activePortFileSha256": "c53ef68fa10ae563531dcf64d807169ee1d0de3d8a5380f8e02ad9a520cb3d0d",
+      "pageCreatedOnOwnedBrowser": true,
+      "pageTargetId": "A79A0AF689F41E2740AC969EDE61CA38",
+      "pageSessionId": "00E3FB700492E0970F170CBD7503C54D"
+    }
+  },
+  "provenance": {
+    "runnerSha256": "7b523876218f4611b3eb7aba51295378e0b254931dcaa06be8d526bff45155b6",
+    "analysisSha256": "e21d38c0e7769eef40ab5cbae9ca9c5d0298b71fda3b2fa2a9b4561fb961bb61",
+    "inputsUnchangedAtEnd": true,
+    "workerSourceSha256": "7e6022bbd7fed69c777381ab27fc2a957e339456b70dcc7c961d06598dbda07e",
+    "pageSourceSha256": "3ee3a5651aef32ffa5a52e7461c5167969feb0aeaeb4d5837a9fda5fb39704e2"
+  },
+  "attribution": {
+    "page": {
+      "targetId": "A79A0AF689F41E2740AC969EDE61CA38",
+      "sessionId": "00E3FB700492E0970F170CBD7503C54D",
+      "frameId": "A79A0AF689F41E2740AC969EDE61CA38",
+      "isolateId": "3a50e9df41c81615",
+      "markName": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-page"
+    },
+    "workers": [
+      {
+        "caseId": "mapping-one",
+        "samplingEnabled": false,
+        "targetId": "5AE4471AC397B66CD866288FE72AACAB",
+        "sessionId": "DBCE178FAD9EB9B317FB325EFE9061FD",
+        "isolateId": "365876cb7bbcefe5",
+        "workerUrl": "http://127.0.0.1:64467/worker.js?case=mapping-one",
+        "attachedAtMs": 1590.951708,
+        "releaseAcknowledgedAtMs": 1593.018,
+        "attachmentReady": true,
+        "markers": [
+          {
+            "caseId": "mapping-one",
+            "name": "ready",
+            "workerElapsedMs": 0.19999998807907104,
+            "count": 0,
+            "objectChecksum": 0,
+            "byteLength": 0,
+            "bufferChecksum": 0,
+            "hostReceivedAtMs": 1596.0085
+          },
+          {
+            "caseId": "mapping-one",
+            "name": "finished",
+            "workerElapsedMs": 41.10000002384186,
+            "count": 0,
+            "objectChecksum": 0,
+            "byteLength": 0,
+            "bufferChecksum": 0,
+            "hostReceivedAtMs": 1636.442792
+          }
+        ],
+        "commandSends": [
+          {
+            "name": "finish",
+            "hostSentAtMs": 1635.4845
+          }
+        ],
+        "closure": {
+          "eventKind": "Target.detachedFromTarget",
+          "hostObservedAtMs": 1638.856458,
+          "targetAbsent": true,
+          "absenceCheckedAtMs": 1658.742708
+        },
+        "heap": null,
+        "markName": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-mapping-one"
+      },
+      {
+        "caseId": "mapping-two",
+        "samplingEnabled": false,
+        "targetId": "8AE71D67916EDD0801467426941660A7",
+        "sessionId": "945492B77C38A367C38DF63F7AC10D74",
+        "isolateId": "252c24241163ffec",
+        "workerUrl": "http://127.0.0.1:64467/worker.js?case=mapping-two",
+        "attachedAtMs": 1613.491667,
+        "releaseAcknowledgedAtMs": 1614.8335,
+        "attachmentReady": true,
+        "markers": [
+          {
+            "caseId": "mapping-two",
+            "name": "ready",
+            "workerElapsedMs": 0,
+            "count": 0,
+            "objectChecksum": 0,
+            "byteLength": 0,
+            "bufferChecksum": 0,
+            "hostReceivedAtMs": 1615.707792
+          },
+          {
+            "caseId": "mapping-two",
+            "name": "finished",
+            "workerElapsedMs": 44.10000002384186,
+            "count": 0,
+            "objectChecksum": 0,
+            "byteLength": 0,
+            "bufferChecksum": 0,
+            "hostReceivedAtMs": 1659.997125
+          }
+        ],
+        "commandSends": [
+          {
+            "name": "finish",
+            "hostSentAtMs": 1659.276792
+          }
+        ],
+        "closure": {
+          "eventKind": "Target.detachedFromTarget",
+          "hostObservedAtMs": 1660.112042,
+          "targetAbsent": true,
+          "absenceCheckedAtMs": 1682.334167
+        },
+        "heap": null,
+        "markName": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-mapping-two"
+      }
+    ],
+    "traceEvents": [
+      {
+        "args": {
+          "data": {
+            "frameTreeNodeId": 5,
+            "frames": [
+              {
+                "frame": "A79A0AF689F41E2740AC969EDE61CA38",
+                "isInPrimaryMainFrame": true,
+                "isOutermostMainFrame": true,
+                "name": "",
+                "processId": 13909,
+                "url": "http://127.0.0.1:64467/"
+              }
+            ],
+            "persistentIds": true
+          }
+        },
+        "cat": "disabled-by-default-devtools.timeline",
+        "name": "TracingStartedInBrowser",
+        "ph": "I",
+        "pid": 13894,
+        "s": "t",
+        "tid": 5922645,
+        "ts": 448034639372,
+        "tts": 540702
+      },
+      {
+        "args": {
+          "data": {
+            "callTime": 448034640542,
+            "navigationId": "60582A2ECE765813A8297C2367EB5FD3",
+            "sampleTraceId": 3540513597862422,
+            "startTime": 110
+          }
+        },
+        "cat": "blink.user_timing",
+        "name": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-page",
+        "ph": "I",
+        "pid": 13909,
+        "s": "t",
+        "tid": 5922873,
+        "ts": 448034640528,
+        "tts": 78077
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "A79A0AF689F41E2740AC969EDE61CA38",
+            "url": "http://127.0.0.1:64467/worker.js?case=mapping-one",
+            "workerId": "5AE4471AC397B66CD866288FE72AACAB",
+            "workerThreadId": 5922990
+          }
+        },
+        "cat": "disabled-by-default-devtools.timeline",
+        "name": "TracingSessionIdForWorker",
+        "ph": "I",
+        "pid": 13909,
+        "s": "t",
+        "tid": 5922990,
+        "ts": 448034646460,
+        "tts": 946
+      },
+      {
+        "args": {
+          "data": {
+            "callTime": 448034665326,
+            "sampleTraceId": 3540513597862451,
+            "startTime": 20
+          }
+        },
+        "cat": "blink.user_timing",
+        "name": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-mapping-one",
+        "ph": "I",
+        "pid": 13909,
+        "s": "t",
+        "tid": 5922990,
+        "ts": 448034665323,
+        "tts": 3073
+      },
+      {
+        "args": {
+          "data": {
+            "frame": "A79A0AF689F41E2740AC969EDE61CA38",
+            "url": "http://127.0.0.1:64467/worker.js?case=mapping-two",
+            "workerId": "8AE71D67916EDD0801467426941660A7",
+            "workerThreadId": 5922991
+          }
+        },
+        "cat": "disabled-by-default-devtools.timeline",
+        "name": "TracingSessionIdForWorker",
+        "ph": "I",
+        "pid": 13909,
+        "s": "t",
+        "tid": 5922991,
+        "ts": 448034669277,
+        "tts": 955
+      },
+      {
+        "args": {
+          "data": {
+            "callTime": 448034690053,
+            "sampleTraceId": 3540513597862604,
+            "startTime": 21.90000003576279
+          }
+        },
+        "cat": "blink.user_timing",
+        "name": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-mapping-two",
+        "ph": "I",
+        "pid": 13909,
+        "s": "t",
+        "tid": 5922991,
+        "ts": 448034690051,
+        "tts": 2322
+      }
+    ],
+    "dataLossOccurred": false,
+    "processesDuring": {
+      "processInfo": [
+        {
+          "type": "browser",
+          "id": 13894,
+          "cpuTime": 0.889643
+        },
+        {
+          "type": "renderer",
+          "id": 13912,
+          "cpuTime": 0.087947
+        },
+        {
+          "type": "renderer",
+          "id": 13910,
+          "cpuTime": 0.089678
+        },
+        {
+          "type": "renderer",
+          "id": 13909,
+          "cpuTime": 0.107853
+        },
+        {
+          "type": "renderer",
+          "id": 13908,
+          "cpuTime": 0.080221
+        },
+        {
+          "type": "renderer",
+          "id": 13911,
+          "cpuTime": 0.094667
+        },
+        {
+          "type": "renderer",
+          "id": 13905,
+          "cpuTime": 0.27011
+        },
+        {
+          "type": "GPU",
+          "id": 13900,
+          "cpuTime": 0.317901
+        },
+        {
+          "type": "network.mojom.NetworkService",
+          "id": 13901,
+          "cpuTime": 0.100553
+        },
+        {
+          "type": "storage.mojom.StorageService",
+          "id": 13902,
+          "cpuTime": 0.057648
+        },
+        {
+          "type": "tracing.mojom.TracingService",
+          "id": 13914,
+          "cpuTime": 0.042555
+        }
+      ]
+    },
+    "processesAfter": {
+      "processInfo": [
+        {
+          "type": "browser",
+          "id": 13894,
+          "cpuTime": 0.896813
+        },
+        {
+          "type": "renderer",
+          "id": 13912,
+          "cpuTime": 0.087947
+        },
+        {
+          "type": "renderer",
+          "id": 13910,
+          "cpuTime": 0.089678
+        },
+        {
+          "type": "renderer",
+          "id": 13909,
+          "cpuTime": 0.111448
+        },
+        {
+          "type": "renderer",
+          "id": 13908,
+          "cpuTime": 0.080221
+        },
+        {
+          "type": "renderer",
+          "id": 13911,
+          "cpuTime": 0.094667
+        },
+        {
+          "type": "renderer",
+          "id": 13905,
+          "cpuTime": 0.27011
+        },
+        {
+          "type": "GPU",
+          "id": 13900,
+          "cpuTime": 0.321461
+        },
+        {
+          "type": "network.mojom.NetworkService",
+          "id": 13901,
+          "cpuTime": 0.100824
+        },
+        {
+          "type": "storage.mojom.StorageService",
+          "id": 13902,
+          "cpuTime": 0.057648
+        },
+        {
+          "type": "tracing.mojom.TracingService",
+          "id": 13914,
+          "cpuTime": 0.04294
+        }
+      ]
+    },
+    "analysis": {
+      "schemaVersion": 1,
+      "kind": "worker-process-attribution",
+      "dataLossOccurred": false,
+      "page": {
+        "targetId": "A79A0AF689F41E2740AC969EDE61CA38",
+        "frameId": "A79A0AF689F41E2740AC969EDE61CA38",
+        "isolateId": "3a50e9df41c81615",
+        "markName": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-page",
+        "processId": 13909,
+        "threadId": 5922873,
+        "markEventCount": 1,
+        "frameMappingEventCount": 1,
+        "rendererPresentDuring": true,
+        "rendererPresentAfter": true
+      },
+      "workers": [
+        {
+          "caseId": "mapping-one",
+          "targetId": "5AE4471AC397B66CD866288FE72AACAB",
+          "sessionId": "DBCE178FAD9EB9B317FB325EFE9061FD",
+          "isolateId": "365876cb7bbcefe5",
+          "workerUrl": "http://127.0.0.1:64467/worker.js?case=mapping-one",
+          "markName": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-mapping-one",
+          "processId": 13909,
+          "threadId": 5922990,
+          "metadataEventCount": 1,
+          "markEventCount": 1,
+          "sharesPageProcess": true,
+          "rendererPresentDuring": true,
+          "rendererPresentAfter": true
+        },
+        {
+          "caseId": "mapping-two",
+          "targetId": "8AE71D67916EDD0801467426941660A7",
+          "sessionId": "945492B77C38A367C38DF63F7AC10D74",
+          "isolateId": "252c24241163ffec",
+          "workerUrl": "http://127.0.0.1:64467/worker.js?case=mapping-two",
+          "markName": "ibkr-process-attribution-4509e9da-3032-4924-ad4c-6efe7cd9ea0e-mapping-two",
+          "processId": 13909,
+          "threadId": 5922991,
+          "metadataEventCount": 1,
+          "markEventCount": 1,
+          "sharesPageProcess": true,
+          "rendererPresentDuring": true,
+          "rendererPresentAfter": true
+        }
+      ],
+      "topology": {
+        "distinctRendererProcessIds": [
+          13909
+        ],
+        "rendererProcessCount": 1,
+        "processGroups": [
+          {
+            "processId": 13909,
+            "includesPage": true,
+            "workerCaseIds": [
+              "mapping-one",
+              "mapping-two"
+            ],
+            "workerCount": 2,
+            "rendererPresentDuring": true,
+            "rendererPresentAfter": true
+          }
+        ],
+        "allWorkersSharePageProcess": true,
+        "anyWorkerSharesPageProcess": true,
+        "anyWorkersShareProcess": true,
+        "allWorkersShareOneProcess": true
+      },
+      "flags": {
+        "memoryMeasured": false,
+        "workerMemoryExclusive": false,
+        "truePeakMeasured": false,
+        "fullLifetimeCoverageProven": false,
+        "finalReclamationProven": false,
+        "deviceThresholdEstablished": false,
+        "processStartIdentityProven": false
+      },
+      "scope": "Observed target/frame/mark-to-renderer topology only. Renderer presence after is a PID-list observation, not memory reclamation or proof against PID reuse. No allocation or memory counter is analyzed."
+    },
+    "analysisError": null,
+    "status": "attributed",
+    "traceConfig": {
+      "recordMode": "recordUntilFull",
+      "traceBufferSizeInKb": 4096,
+      "enableSampling": false,
+      "enableSystrace": false,
+      "includedCategories": [
+        "devtools.timeline",
+        "disabled-by-default-devtools.timeline",
+        "blink.user_timing"
+      ],
+      "excludedCategories": [
+        "*"
+      ]
+    },
+    "traceCollection": {
+      "traceBytes": 132274,
+      "traceEventCount": 815,
+      "traceBatchCount": 4,
+      "serializedEventBatchesSha256": "b49abb5465819a6fdeabcb7d9a8485933b47741bb9907f433953e13a3c2af25a",
+      "retainedEventCount": 6,
+      "complete": true,
+      "retention": "Only frame/Worker metadata and explicit unique performance marks; other trace events discarded after counting and hashing."
+    },
+    "methodCounts": {
+      "Browser.getVersion": 1,
+      "Target.createTarget": 1,
+      "Target.getTargetInfo": 1,
+      "Target.attachToTarget": 1,
+      "Runtime.enable": 3,
+      "Page.enable": 1,
+      "Network.enable": 1,
+      "Target.setDiscoverTargets": 1,
+      "Target.setAutoAttach": 1,
+      "Page.navigate": 1,
+      "Runtime.evaluate": 11,
+      "Page.getFrameTree": 2,
+      "Tracing.start": 1,
+      "Runtime.getIsolateId": 3,
+      "Runtime.addBinding": 2,
+      "Runtime.runIfWaitingForDebugger": 2,
+      "SystemInfo.getProcessInfo": 2,
+      "Target.getTargets": 3,
+      "Tracing.end": 1
+    },
+    "heapSamplersCreated": 0,
+    "scope": "Identity-only: two idle fictional module Workers and one owned page. No intentional allocation pulse, native memory query, heap-sampling command, snapshot, forced GC, production CSV or phone. Trace overhead is not measured. PID presence after Worker closure is not process-start identity, physical reclamation or a final memory reading."
+  },
+  "serverRequestCounts": {
+    "page": 1,
+    "script": 1,
+    "worker": 2,
+    "favicon": 0,
+    "rejected": 0
+  },
+  "cleanup": {
+    "browserProcessExited": true,
+    "loopbackServerClosed": true,
+    "temporaryProfileRemoved": true
+  }
+}
