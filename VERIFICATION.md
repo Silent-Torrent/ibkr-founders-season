@@ -2,6 +2,10 @@
 
 Last updated: 2026-09-14
 
+## Latest phone preflight — consent received, connection prerequisite blocked
+
+Starting from clean `a155d16`, the user explicitly consented to temporary VoiceOver/listening. Freshly checked iPhone 15 Plus / iOS 27.0 remained VoiceOver Off. Mac-side 0.24 HTTP/served-JavaScript checks passed, but phone Safari explicitly could not connect; read-only settings showed the devices on different networks. No speech, focus-order or application-page test occurred. The sole failed tab was closed to Start Page/Home, exact owned PID `14517` was verified then terminated (session `77258`, exit 143), ports 4173/4174 were unbound and original Pinyin was restored. No product/build/suite, network/security/deployment, import, file/photo or clipboard change occurred. The next boundary is a scoped network-change decision; prior VoiceOver consent-wait statements are historical. Full observations and limits: `docs/IPHONE_VOICEOVER_PREFLIGHT_2026-09-14.md`. Gates remain 9 OPEN/3 CLOSED; 0.24 and L are unchanged.
+
 ## Frozen release decisions and execution status
 
 - The supported baseline is iOS 16.4+ and Safari 16.4+.

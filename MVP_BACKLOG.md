@@ -2,6 +2,8 @@
 
 ## Current checkpoint 0.24 candidate — short-landscape sidebar reachability
 
+Latest 2026-09-14 phone preflight: temporary VoiceOver/listening consent is now received, but the phone could not reach the local 0.24 service; Mac/phone settings directly showed different networks. VoiceOver remained Off and no speech test ran. The failed tab/service were closed, original input source restored, and no network change was made. Await a scoped connectivity decision, not renewed VoiceOver consent; see `docs/IPHONE_VOICEOVER_PREFLIGHT_2026-09-14.md`. D07, 9/3 and L remain unchanged.
+
 Latest 2026-09-14 identity-only experiment: one owned page and two distinct Worker isolates mapped to the same renderer through exact live trace/mark identities. The process-footprint route therefore cannot substitute for Worker-exclusive peaks; its planned attribution question is resolved without a new memory pulse. Tests/review/cleanup passed; see `docs/WORKER_PROCESS_ATTRIBUTION_EVIDENCE_2026-09-14.md`. No product change or gate closure; 9/3 and L remain.
 
 Latest developer-only follow-up, 2026-09-14: screened additional memory instruments and completed nine bounded native self-process controls. Kernel lifetime footprint records retained the six short 32/64 MiB pulses; no-pulse controls had zero increase over the prior lifetime peak. This is process-ledger capability only, not Worker/JS peak or iPhone-threshold acceptance. Final input-bound evidence, independent reviews and cleanup are in `docs/MEMORY_INSTRUMENT_CANDIDATES_2026-09-14.md`. D01 remains OPEN and developer-owned; 0.24, 9/3 gates, phone settings and L are unchanged.
