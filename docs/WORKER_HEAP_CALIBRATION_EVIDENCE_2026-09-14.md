@@ -4,6 +4,8 @@ Starting repository HEAD: `dd8a7bf`. Scope: an independent, fully fictional desk
 
 ## Result and decision
 
+Later follow-up: [alternative-instrument screening and native self-process control](MEMORY_INSTRUMENT_CANDIDATES_2026-09-14.md) found a kernel process-footprint high-water response to short pulses. It does not replace the Worker/JS metric or close D01; the Chrome results and limitations below remain unchanged.
+
 The current 50 ms isolate sampler observes the deliberately held controls, but all three sampled short-lived controls completed their known allocations with **zero runtime heap samples**. Each had only its pre-script baseline. This is an actual counterexample to treating this instrument as a complete lifetime/true-peak measurement, not merely a theoretical warning.
 
 Retain `Runtime.getHeapUsage` as a limited numeric diagnostic. Do not use it to close D01, infer an iPhone budget, sum different counters' maxima, or claim reclamation after a Worker disappears. The next developer-owned requirement is to qualify a different instrument capable of the original peak-allocation scope, with explicit definitions/coverage and the same short-lived negative control. Repeating identical capacity inputs or reducing the sampling interval alone cannot establish that capability. Supported real-iPhone/Safari measurements and a justified threshold remain separately required; no new threshold or support-floor change is approved.
