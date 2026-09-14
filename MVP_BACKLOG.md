@@ -2,6 +2,8 @@
 
 ## Current checkpoint 0.24 candidate — short-landscape sidebar reachability
 
+Latest authorized same-Wi-Fi retest, 2026-09-14: the specific network consent was received and executed, but phone Safari still could not load 0.24 despite matching network/subnet configuration. No VoiceOver test ran. The failed tab/service were closed and input source restored. **Restoration of the original hotspot failed; the Mac remains on shared Wi-Fi without a running test service.** User help with original-hotspot availability is the immediate next step. No cause/gate pass is inferred; see `docs/IPHONE_SAME_WIFI_RETEST_2026-09-14.md`. 9/3, 0.24 and L are unchanged; previous consent waits are historical.
+
 Latest 2026-09-14 phone preflight: temporary VoiceOver/listening consent is now received, but the phone could not reach the local 0.24 service; Mac/phone settings directly showed different networks. VoiceOver remained Off and no speech test ran. The failed tab/service were closed, original input source restored, and no network change was made. Await a scoped connectivity decision, not renewed VoiceOver consent; see `docs/IPHONE_VOICEOVER_PREFLIGHT_2026-09-14.md`. D07, 9/3 and L remain unchanged.
 
 Latest 2026-09-14 identity-only experiment: one owned page and two distinct Worker isolates mapped to the same renderer through exact live trace/mark identities. The process-footprint route therefore cannot substitute for Worker-exclusive peaks; its planned attribution question is resolved without a new memory pulse. Tests/review/cleanup passed; see `docs/WORKER_PROCESS_ATTRIBUTION_EVIDENCE_2026-09-14.md`. No product change or gate closure; 9/3 and L remain.
