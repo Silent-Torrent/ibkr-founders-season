@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.36 file-boundary integrity and phone-test readiness
+# Verification record — checkpoint 0.37 account-boundary policy
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.37 — unverified BOA/EOA account boundaries
+
+The new wholly fictional parser red test first failed on an `MTMP,BOA` row with nonempty financial-looking cells: old code returned no diagnostic and a `good` report. Independent review then identified that even a blank `BOA`/`EOA` marker denotes an unverified begin/end-account boundary; the final single-account rule rejects either marker in the first or second CSV cell across sections, including Financial Instrument Information and otherwise unmaterialized sections. Parser smoke tests now cover both descriptors, populated/empty and first-/second-cell forms; they passed on the final source. This is an unsupported-layout decision, **not** broker authenticity or proof that a rejected file is forged. See [0.37 evidence](docs/ACCOUNT_BOUNDARY_PAYLOAD_037_EVIDENCE_2026-09-25.md) and the [official descriptor listing](https://www.ibkrguides.com/reportingreference/reportguide/delivery%20configuration%20and%20general%20configuration.htm).
+
+Final Node 22.23.2 `npm run check` exited 0 across all suites. The production-Chrome regression imported three newly generated fictional BOA/EOA variants through the built Worker, checked visible/accessible failure and recovery, and compared the original synthetic Ledger/source/P&L/rows afterward; the browser run reported 52 local requests and 34 Worker targets. Standalone `npm run build` exited 0 with `index-V9xW5-oC.js`, `ibkrParser.worker-C3hPa5Q4.js`, and `index-D6ARIZiW.css`; `npm audit --audit-level=high` reported zero vulnerabilities and `git diff --check` exited 0. A fresh iPhone Mirroring inventory again reported that the Mac was locked, so no 0.37 phone or spoken-audio result exists. The separate device, completed Exercise, Worker true-peak and deployment gates remain **9 OPEN / 3 CLOSED** under L freeze.
 
 ## 2026-09-25 checkpoint 0.36 — BOF/EOF structure, account and D07 preparation
 

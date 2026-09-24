@@ -2,6 +2,8 @@
 
 建立日期：2026-09-09。初始核对基线：checkpoint 0.23，提交 `482c66d`。
 
+2026-09-25 checkpoint 0.37 本地账户边界：完全虚构反例证明 `BOA`/`EOA` 记录可被静默跳过，报表仍显示 `good`。独立复核指出无载荷的开始/结束账户标记也无法核对配对与归属，因此单账户 MVP 现在跨区块拒绝**所有** `BOA`/`EOA`；其他受支持记录的空白尾列兼容性不变。IBKR 官方 Flex 说明在该页未给这些标记的字段布局，因此这是审慎的兼容性限制，不是认定报表造假或完成券商认证。生产 Chrome 真 Worker 覆盖虚构失败与旧账本保留；Mac 锁定使本轮未进行手机验收。见 [0.37 证据](ACCOUNT_BOUNDARY_PAYLOAD_037_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结。
+
 2026-09-25 checkpoint 0.36 本地文件控制行与 D07 准备：全虚构反例证明 BOF/EOF 越界或缺失字段、EOF 账户不一致此前可能被跳过且报表仍显示 `good`。按 IBKR 官方 Flex 已定义的字段和既有单账户规则，现在拒绝这些错误，正常控制行和空白尾列仍可用；生产 Chrome 增加真 Worker 拒绝与旧账本保留回归。D07 清单补全实听、焦点、原生选择器与应用取消的区别以及测试后清理记录，但所有新增实听项仍是 `NOT_RUN`，本轮因 Mac 锁定未进行手机验收。BOA/EOA 字段布局、报表真实性和其他独立门槛不因本轮完成。见 [0.36 证据](FILE_BOUNDARY_AND_VOICEOVER_PLAN_036_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结。
 
 2026-09-25 checkpoint 0.35 本地 Flex 控制行与生产 Worker：官方格式说明支持对 BOS/EOS 字段形状及 MTMP 金额校验默认 0 做有界检查；先前多塞字段或异常校验值被忽略的路径现拒绝导入。生产 Chrome 把五份全虚构异常 CSV 交给实际构建的 Worker，均显示错误与恢复提示，旧账本数据保持不变；320 px 下的 PNG 隐私告知亦被覆盖。这不核算真实 checksum、不认证券商文件，也没有 0.35 真机、16.4 或部署证据。见 [0.35 证据](PRODUCTION_WORKER_CONTROL_ROWS_035_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结不变。

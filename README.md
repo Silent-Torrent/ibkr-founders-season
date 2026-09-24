@@ -2,7 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.36 file-boundary integrity and phone-test readiness
+## Current project state — checkpoint 0.37 unverified account boundaries
+
+On 2026-09-25, wholly fictional counterexamples showed that `BOA`/`EOA` rows could disappear while a report still looked `good`. Independent review noted that even empty begin/end-account markers have unverified pairing and ownership. The single-account MVP now rejects **all** `BOA`/`EOA` records across sections rather than silently dropping them. The [official Flex guide](https://www.ibkrguides.com/reportingreference/reportguide/delivery%20configuration%20and%20general%20configuration.htm) names these descriptors but does not specify their payload fields on that page; this is an intentionally conservative compatibility limit, not broker-file authentication or a claim that a rejected genuine export is fake. Fictional production-Worker regressions check visible rejection and old-Ledger preservation. See [0.37 evidence](docs/ACCOUNT_BOUNDARY_PAYLOAD_037_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). No phone, completed Exercise, true Worker-peak or deployed-host gate closed; fixed gates remain **9 OPEN / 3 CLOSED**, decision **L frozen**.
+
+### Earlier checkpoint 0.36 — file-boundary integrity and phone-test readiness
 
 On 2026-09-25, wholly fictional counterexamples showed extra or missing Flex BOF/EOF fields, and an EOF naming another account, could leave a report looking `good`. The first-pass parser now rejects these bounded file-control conflicts against the [official BOF/EOF layouts](https://www.ibkrguides.com/reportingreference/reportguide/delivery%20configuration%20and%20general%20configuration.htm) without inventing a layout for BOA/EOA. The production Chrome regression checks those failed imports through the built Worker and preservation of the previous fictional Ledger. The D07 checklist now provides a step-by-step, still-unrun phone VoiceOver speech/focus procedure and exact cleanup record. See [0.36 evidence](docs/FILE_BOUNDARY_AND_VOICEOVER_PLAN_036_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). No 0.36 phone, broker-authenticity or deployment pass exists; fixed gates remain **9 OPEN / 3 CLOSED**, decision **L frozen**.
 

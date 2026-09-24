@@ -110,6 +110,9 @@ let conflictingStockUnderlyingFixturePath
 let expiryYearCollisionFixturePath
 let unrecognizedPnlColumnFixturePath
 let flexEosExtraCellFixturePath
+let flexBoaPayloadFixturePath
+let flexEoaPayloadFixturePath
+let flexEmptyBoaFixturePath
 let flexBofExtraCellFixturePath
 let flexEofExtraCellFixturePath
 let flexIncompleteBofFixturePath
@@ -767,6 +770,9 @@ try {
   expiryYearCollisionFixturePath = join(browserArtifactDirectory, 'synthetic-expiry-year-collision.csv')
   unrecognizedPnlColumnFixturePath = join(browserArtifactDirectory, 'synthetic-unrecognized-pnl-column.csv')
   flexEosExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-eos-extra-cell.csv')
+  flexBoaPayloadFixturePath = join(browserArtifactDirectory, 'synthetic-flex-boa-payload.csv')
+  flexEoaPayloadFixturePath = join(browserArtifactDirectory, 'synthetic-flex-eoa-payload.csv')
+  flexEmptyBoaFixturePath = join(browserArtifactDirectory, 'synthetic-flex-empty-boa.csv')
   flexBofExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-bof-extra-cell.csv')
   flexEofExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-eof-extra-cell.csv')
   flexIncompleteBofFixturePath = join(browserArtifactDirectory, 'synthetic-flex-incomplete-bof.csv')
@@ -820,6 +826,26 @@ try {
   writeFileSync(
     flexEosExtraCellFixturePath,
     `${codedFlexFixtureText.trimEnd()}\nMTMP,EOS,123,0,208.863355\n`,
+  )
+  const firstMtmHeaderPrefix = 'Mark-to-Market Performance Summary,Header,'
+  assert(canonicalFixtureText.includes(firstMtmHeaderPrefix), 'The fictional MTM header fixture changed unexpectedly.')
+  // These deliberately fabricated payloads test fail-closed handling; they do
+  // not assert an official BOA/EOA field layout.
+  for (const [filePath, descriptor] of [
+    [flexBoaPayloadFixturePath, 'BOA'],
+    [flexEoaPayloadFixturePath, 'EOA'],
+  ]) {
+    writeFileSync(
+      filePath,
+      canonicalFixtureText.replace(
+        firstMtmHeaderPrefix,
+        `Mark-to-Market Performance Summary,${descriptor},Stocks,ZZFICTA,Mark-to-Market P/L Total,999999\n${firstMtmHeaderPrefix}`,
+      ),
+    )
+  }
+  writeFileSync(
+    flexEmptyBoaFixturePath,
+    `${canonicalFixtureText.trimEnd()}\nCorporate Actions,BOA,,\n`,
   )
   writeFileSync(
     flexBofExtraCellFixturePath,
@@ -1463,6 +1489,9 @@ try {
     [expiryYearCollisionFixturePath, 'cannot distinguish them safely', 'Do not merge or edit the event rows by hand.', 'Two-/four-digit expiry-year event collision'],
     [unrecognizedPnlColumnFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated unrecognized P & L column'],
     [flexEosExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex EOS field'],
+    [flexBoaPayloadFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated Flex BOA payload'],
+    [flexEoaPayloadFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated Flex EOA payload'],
+    [flexEmptyBoaFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Empty BOA account boundary in an unmaterialized section'],
     [flexBofExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex BOF field'],
     [flexEofExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex EOF field'],
     [flexIncompleteBofFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Incomplete numeric-section-count Flex BOF'],

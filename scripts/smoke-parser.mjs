@@ -714,6 +714,38 @@ try {
       flexControlResult.report?.seasonPnl === 740.123456,
     'A populated Flex end-of-section checksum was treated as an accounting row.',
   )
+  for (const [label, controlRow] of [
+    ['MTMP BOA amount', 'MTMP,BOA,Stocks,ZZFICTA,999999'],
+    ['MTMP EOA conflicting account', 'MTMP,EOA,OTHER_SYNTHETIC_ACCOUNT'],
+    ['FII BOA mapping', 'Financial Instrument Information,BOA,Equity and Index Options,ZZFICTA,ZZFICTB'],
+    ['FII EOA amount', 'Financial Instrument Information,EOA,999999'],
+  ]) {
+    const parsed = parseIbkrActivityStatement(
+      `${codedBosFixture.trimEnd()}\n${controlRow}\n`,
+    )
+    assert(
+      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      `A populated ${label} control row was silently accepted: ${diagnosticsText(parsed)}`,
+    )
+  }
+  for (const controlRow of [
+    'MTMP,BOA',
+    'MTMP,EOA,,',
+    'Financial Instrument Information,BOA,,',
+    'Financial Instrument Information,EOA',
+    'Corporate Actions,BOA',
+    'Corporate Actions,EOA,OTHER_SYNTHETIC_ACCOUNT',
+    'BOA,OTHER_SYNTHETIC_ACCOUNT',
+    'EOA',
+  ]) {
+    const parsed = parseIbkrActivityStatement(
+      `${codedBosFixture.trimEnd()}\n${controlRow}\n`,
+    )
+    assert(
+      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      `An unsupported account-boundary control row was accepted: ${diagnosticsText(parsed)}`,
+    )
+  }
   for (const sectionCode of ['TRNT', 'TRNS', 'POST', 'POSS']) {
     const parsed = parseIbkrActivityStatement(
       `${codedBosFixture.trimEnd()}\n${sectionCode},EOS,123,456\n`,

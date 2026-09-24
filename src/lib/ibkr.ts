@@ -500,7 +500,7 @@ for (const alias of MATERIALIZED_SECTION_ALIASES) {
 }
 const MATERIALIZED_SECTION_KEYS = new Set(MATERIALIZED_SECTION_NAMES.keys())
 const CONTROL_RECORD_SECTIONS = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
-const MATERIALIZED_ACCOUNT_CONTROL_RECORD_TYPES = new Set(['BOA', 'EOA'])
+const ACCOUNT_BOUNDARY_RECORD_TYPES = new Set(['BOA', 'EOA'])
 const FLEX_NONZERO_AMOUNT_CHECKSUM_SECTION_CODES = new Set(['TRNT', 'TRNS', 'POST', 'POSS'])
 const TRADES_SECTION_KEY = normalizeKey('Trades')
 
@@ -569,6 +569,17 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       }
       if (accountId && eofAccountIds.size < 2) eofAccountIds.add(accountId)
     }
+    // BOA/EOA denote account boundaries, but the available Flex guide gives
+    // no payload or pairing layout. Even an empty marker cannot be assigned
+    // safely to the one supported account, including in an unused section.
+    if (
+      ACCOUNT_BOUNDARY_RECORD_TYPES.has(rawSectionUpper) ||
+      (row.length >= 2 &&
+        ACCOUNT_BOUNDARY_RECORD_TYPES.has(row[1].trim().toUpperCase()))
+    ) {
+      hasUnmappedNonemptyCells = true
+      return
+    }
 
     if (rawSection && !CONTROL_RECORD_SECTIONS.has(rawSectionUpper)) {
       const canonical = canonicalSectionName(rawSection)
@@ -634,10 +645,6 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       }
       return
     }
-    // BOA/EOA are recognized account boundaries, but their payload is not
-    // used as accounting data or asserted as a verified row layout here.
-    if (MATERIALIZED_ACCOUNT_CONTROL_RECORD_TYPES.has(descriptor)) return
-
     if (descriptor === 'HEADER') {
       const headers = uniqueHeaders(row.slice(2))
       headersBySection.set(sourceIdentity, {
