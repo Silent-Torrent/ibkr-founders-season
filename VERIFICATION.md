@@ -1,6 +1,14 @@
-# Verification record — checkpoint 0.35 Flex boundary and production Worker checks
+# Verification record — checkpoint 0.36 file-boundary integrity and phone-test readiness
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.36 — BOF/EOF structure, account and D07 preparation
+
+A wholly fictional BOF row with data after the official eighth field first produced a false-good report and failed the new red assertion. An independent fictional EOF probe also found a false-good row after its official second field; a follow-up red assertion caught short numeric-count BOF, while separate probes found bare and mismatched-account EOF accepted. Narrow source-backed guards now reject the extra/missing shapes as `accounting_section_conflict` and include the EOF account in single-account validation; a BOF/EOF control pair with blank trailing cells remains accepted. Node 22 parser smoke, typecheck and high-severity dependency audit passed after the parser change. The production-Chrome Worker regression now includes all five mutations and old-Ledger preservation checks. The [0.36 evidence](docs/FILE_BOUNDARY_AND_VOICEOVER_PLAN_036_EVIDENCE_2026-09-25.md) records scope; the official Flex guide supplies the BOF/EOF layouts but not a BOA/EOA payload layout.
+
+The [D07 phone checklist](docs/IPHONE_SAFARI_TEST_CHECKLIST.md#g-voiceover部分观察完整门槛尚未验证) now gives the next unlocked-device run an explicit actual-hearing sequence and per-step evidence fields. This is test preparation only: the fresh iPhone Mirroring inventory returned Mac locked, no phone run occurred, and the 0.33 speech reply is still absent. D07, the iOS/Safari 16.4 floor and all other fixed open gates remain **9 OPEN / 3 CLOSED** under L freeze.
+
+Final Node 22.23.2 `npm run check` exited 0 across all suites, including production Chrome with ten 0.35/0.36 fictional adversarial Worker imports and the existing capacity, cancellation, PNG and policy cases (49 local requests, 31 Worker targets in that run). Standalone `npm run build` exited 0 with `index-uHOCIWuA.js`, `ibkrParser.worker-Bx5zBiHo.js`, and `index-D6ARIZiW.css`; `npm audit --audit-level=high` reported zero vulnerabilities and `git diff --check` exited 0. The repository-external all-fictional phone stress pack passed its independent verifier on the Mac with its `NOT_RUN` results template intact. None of these desktop results is a phone-audio, iOS 16.4, broker-authenticity or deployed-host pass.
 
 ## 2026-09-25 checkpoint 0.35 — Flex section controls and adversarial Worker imports
 

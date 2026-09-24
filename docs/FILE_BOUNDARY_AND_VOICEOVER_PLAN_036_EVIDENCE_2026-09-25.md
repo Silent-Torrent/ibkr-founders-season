@@ -1,0 +1,23 @@
+# Checkpoint 0.36 — Flex file-control integrity and VoiceOver test readiness (2026-09-25)
+
+## Scope
+
+All CSV counterexamples in this checkpoint are wholly fictional mutations of `tests/fixtures/ibkr-current-schema-synthetic.csv`. No personal IBKR statement, phone file, external host or deployment was used. A fresh iPhone Mirroring inventory returned “The Mac is locked and automatic unlock could not unlock it”; no 0.36 phone observation or spoken-audio result exists.
+
+## Source-backed BOF/EOF boundary
+
+The [official IBKR Flex delivery guide](https://www.ibkrguides.com/reportingreference/reportguide/delivery%20configuration%20and%20general%20configuration.htm) specifies eight BOF columns (marker, account, section count, two period dates, generation time and two engine builds) and two EOF columns (marker, account). In the old parser, a populated extra field after either boundary was silently skipped while a fictional report still had no errors, `good` quality and unchanged P&L. The added red parser test failed on an overlong BOF row; an independent fictional probe also reproduced the overlong EOF case. Independent review then showed that a numeric-section-count BOF with only five fields, a bare `EOF`, and an EOF naming a different account also produced a false-good fictional report; the new red test failed on the short BOF before the repair.
+
+The first-pass index now treats any nonempty BOF cell after column eight or EOF cell after column two as `accounting_section_conflict` and returns no report. A BOF whose third field is a numeric Flex section count must have its other documented fields present; an EOF needs an account ID, and that ID participates in the existing single-account conflict check. The positive control keeps the eight-field BOF/two-field EOF shapes, including harmless blank trailing CSV cells, accepted. Non-Flex BOF period rows are not reinterpreted as Flex merely because they contain the `BOF` marker. These are bounded structural/identity checks: they do not authenticate the file, recompute section counts or checksums, require a BOF/EOF pair or ordering, or establish the meaning of every field inside a control row. The same official page lists `BOA`/`EOA` but gives no CSV payload layout; they are **not** claimed to be validated by this patch, and the remaining unverified shape is documented rather than guessed.
+
+## Production browser and phone-preparation scope
+
+The production-Chrome test now sends five more fictional file-control counterexamples—overlong BOF/EOF, short Flex BOF, missing EOF account, and mismatched EOF account—through the built browser Worker and checks visible rejection, the accessible error, recovery guidance and preservation of the previously accepted fictional Ledger. It uses DevTools to set the browser file input; it does not operate an iPhone native picker or prove VoiceOver speech.
+
+The [D07 iPhone Safari checklist](IPHONE_SAFARI_TEST_CHECKLIST.md#g-voiceover部分观察完整门槛尚未验证) now has a concrete, still-`NOT_RUN` sequence for spoken navigation, three-language privacy-modal focus isolation/return, native-picker dismissal versus in-progress cancellation, synthetic success/error, old-Ledger retention, manual-summary focus and exact post-test restoration/cleanup. Its evidence fields separate user-heard announcements from the developer's visual observations. This makes the next unlocked-phone session executable; it does **not** close D07 or the separate iOS/Safari 16.4 floor D02.
+
+The existing repository-external wholly fictional iPhone stress pack was independently reverified on the Mac with `npm run verify:iphone-stress-pack`; all five CSV identities, sizes and SHA-256 values passed, and its result template remains `NOT_RUN`. That does not establish that the files are currently on the phone or that any of its device cases passed.
+
+## Verification and release limit
+
+Node 22.23.2 `npm run check` passed all suites, including the production Chrome import/recovery, cancellation, capacity, PNG and policy cases. The browser run reported 49 local requests and 31 Worker targets; these are test-run counts, not deployed traffic. Standalone `npm run build` passed with `index-uHOCIWuA.js`, `ibkrParser.worker-Bx5zBiHo.js`, and `index-D6ARIZiW.css`; `npm audit --audit-level=high` reported zero vulnerabilities and `git diff --check` exited 0. See [VERIFICATION.md](../VERIFICATION.md) for the concise command record. Fixed release gates remain **9 OPEN / 3 CLOSED** under the user's **L deployment freeze**. D01/D02/D06–D08, F01 and R01–R03 remain independent open requirements; no local parser or desktop browser test is their substitute.

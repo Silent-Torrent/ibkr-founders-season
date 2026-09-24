@@ -2,7 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.35 Flex boundary and production Worker checks
+## Current project state — checkpoint 0.36 file-boundary integrity and phone-test readiness
+
+On 2026-09-25, wholly fictional counterexamples showed extra or missing Flex BOF/EOF fields, and an EOF naming another account, could leave a report looking `good`. The first-pass parser now rejects these bounded file-control conflicts against the [official BOF/EOF layouts](https://www.ibkrguides.com/reportingreference/reportguide/delivery%20configuration%20and%20general%20configuration.htm) without inventing a layout for BOA/EOA. The production Chrome regression checks those failed imports through the built Worker and preservation of the previous fictional Ledger. The D07 checklist now provides a step-by-step, still-unrun phone VoiceOver speech/focus procedure and exact cleanup record. See [0.36 evidence](docs/FILE_BOUNDARY_AND_VOICEOVER_PLAN_036_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). No 0.36 phone, broker-authenticity or deployment pass exists; fixed gates remain **9 OPEN / 3 CLOSED**, decision **L frozen**.
+
+### Earlier checkpoint 0.35 — Flex boundary and production Worker checks
 
 On 2026-09-25, an official IBKR Flex layout check exposed another local fail-open edge: extra financial content could hide in a known section's `BOS`/`EOS` control row, and a nonzero `MTMP` amount checksum could be accepted even though the documented default is zero outside Transaction/Position sections. Bounded validation now rejects these shapes while keeping documented checksum shapes, without claiming to recompute checksums or authenticate an IBKR file. The production Chrome suite now imports five wholly fictional adversarial variants through the built parser Worker and checks visible rejection plus preservation of the previous Ledger. Its 320 px check also covers the PNG asset-division privacy notice. See [0.35 evidence](docs/PRODUCTION_WORKER_CONTROL_ROWS_035_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). No 0.35 phone, broker-authenticity or deployment pass exists; fixed gates remain **9 OPEN / 3 CLOSED**, and decision **L remains frozen**.
 

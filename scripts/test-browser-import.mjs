@@ -110,6 +110,11 @@ let conflictingStockUnderlyingFixturePath
 let expiryYearCollisionFixturePath
 let unrecognizedPnlColumnFixturePath
 let flexEosExtraCellFixturePath
+let flexBofExtraCellFixturePath
+let flexEofExtraCellFixturePath
+let flexIncompleteBofFixturePath
+let flexMissingEofAccountFixturePath
+let flexMismatchedEofAccountFixturePath
 let invalidExtensionFixturePath
 let sameDateFixturePath
 let olderFixturePath
@@ -762,6 +767,11 @@ try {
   expiryYearCollisionFixturePath = join(browserArtifactDirectory, 'synthetic-expiry-year-collision.csv')
   unrecognizedPnlColumnFixturePath = join(browserArtifactDirectory, 'synthetic-unrecognized-pnl-column.csv')
   flexEosExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-eos-extra-cell.csv')
+  flexBofExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-bof-extra-cell.csv')
+  flexEofExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-eof-extra-cell.csv')
+  flexIncompleteBofFixturePath = join(browserArtifactDirectory, 'synthetic-flex-incomplete-bof.csv')
+  flexMissingEofAccountFixturePath = join(browserArtifactDirectory, 'synthetic-flex-missing-eof-account.csv')
+  flexMismatchedEofAccountFixturePath = join(browserArtifactDirectory, 'synthetic-flex-mismatched-eof-account.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
   sameDateFixturePath = join(browserArtifactDirectory, 'same-date-activity-statement.csv')
   olderFixturePath = join(browserArtifactDirectory, 'older-activity-statement.csv')
@@ -810,6 +820,26 @@ try {
   writeFileSync(
     flexEosExtraCellFixturePath,
     `${codedFlexFixtureText.trimEnd()}\nMTMP,EOS,123,0,208.863355\n`,
+  )
+  writeFileSync(
+    flexBofExtraCellFixturePath,
+    `BOF,SYNTHETIC_ACCOUNT_2026_A,3,20260101,20260815,20260816;071329,100,100,Mark-to-Market P/L Total,999999\n${canonicalFixtureText}`,
+  )
+  writeFileSync(
+    flexEofExtraCellFixturePath,
+    `${canonicalFixtureText.trimEnd()}\nEOF,SYNTHETIC_ACCOUNT_2026_A,Mark-to-Market P/L Total,999999\n`,
+  )
+  writeFileSync(
+    flexIncompleteBofFixturePath,
+    `BOF,SYNTHETIC_ACCOUNT_2026_A,3,20260101,20260815\n${canonicalFixtureText}`,
+  )
+  writeFileSync(
+    flexMissingEofAccountFixturePath,
+    `${canonicalFixtureText.trimEnd()}\nEOF\n`,
+  )
+  writeFileSync(
+    flexMismatchedEofAccountFixturePath,
+    `${canonicalFixtureText.trimEnd()}\nEOF,OTHER_SYNTHETIC_ACCOUNT\n`,
   )
   const canonicalAmountCell = ',740.123456,'
   assert(canonicalFixtureText.includes(canonicalAmountCell), 'The fictional total-amount fixture changed unexpectedly.')
@@ -1433,6 +1463,11 @@ try {
     [expiryYearCollisionFixturePath, 'cannot distinguish them safely', 'Do not merge or edit the event rows by hand.', 'Two-/four-digit expiry-year event collision'],
     [unrecognizedPnlColumnFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated unrecognized P & L column'],
     [flexEosExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex EOS field'],
+    [flexBofExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex BOF field'],
+    [flexEofExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex EOF field'],
+    [flexIncompleteBofFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Incomplete numeric-section-count Flex BOF'],
+    [flexMissingEofAccountFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Missing Flex EOF account'],
+    [flexMismatchedEofAccountFixturePath, 'accepts one IBKR account per statement', 'select exactly one account.', 'Mismatched Flex EOF account'],
   ]) {
     await assertProductionWorkerRejectedAndPreserved(
       path,

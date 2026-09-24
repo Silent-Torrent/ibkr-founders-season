@@ -2372,6 +2372,34 @@ try {
     )
   }
 
+  for (const [label, controlRow] of [
+    ['extra BOF fields', 'BOF,SYNTHETIC_ACCOUNT_2026_A,3,20260101,20260815,20260816;071329,100,100,Mark-to-Market P/L Total,999999'],
+    ['extra EOF fields', 'EOF,SYNTHETIC_ACCOUNT_2026_A,Mark-to-Market P/L Total,999999'],
+    ['incomplete Flex BOF', 'BOF,SYNTHETIC_ACCOUNT_2026_A,3,20260101,20260815'],
+    ['missing EOF account', 'EOF'],
+  ]) {
+    const parsed = parseIbkrActivityStatement(`${controlRow}\n${currentSchemaFixture}`)
+    assert(
+      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      `A file boundary with ${label} was accepted as a valid report.`,
+    )
+  }
+  const mismatchedEofAccount = parseIbkrActivityStatement(
+    `${currentSchemaFixture.trimEnd()}\nEOF,OTHER_SYNTHETIC_ACCOUNT\n`,
+  )
+  assert(
+    hasDiagnostic(mismatchedEofAccount, 'multi_account') && !mismatchedEofAccount.report,
+    'A mismatched EOF account was ignored instead of failing the single-account rule.',
+  )
+  const flexFileControlResult = parseIbkrActivityStatement(
+    `BOF,SYNTHETIC_ACCOUNT_2026_A,3,20260101,20260815,20260816;071329,100,100,,\n${currentSchemaFixture.trimEnd()}\nEOF,SYNTHETIC_ACCOUNT_2026_A,,\n`,
+  )
+  assert(
+    flexFileControlResult.errors.length === 0 &&
+      flexFileControlResult.report?.seasonPnl === 740.123456,
+    'Documented Flex BOF/EOF shapes with blank trailing cells were rejected.',
+  )
+
   const navTotalRow = currentSchemaFixture
     .split('\n')
     .find((line) => line.startsWith('Net Asset Value,Data,Total,'))

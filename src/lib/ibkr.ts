@@ -478,6 +478,7 @@ interface HeaderBlockState {
 
 interface StatementIndex {
   bofAccountIds: string[]
+  eofAccountIds: string[]
   bofPeriodConflict: boolean
   bofPeriodInvalid: boolean
   bofPeriodKeys: Set<string>
@@ -514,6 +515,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
   const sectionNames = new Set<string>()
   const headerBlockStates = new Map<string, HeaderBlockState>()
   const bofAccountIds = new Set<string>()
+  const eofAccountIds = new Set<string>()
   const bofPeriodKeys = new Set<string>()
   let bofPeriodConflict = false
   let bofPeriodInvalid = false
@@ -531,8 +533,20 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
     const rawSectionUpper = rawSection.toUpperCase()
 
     if (rawSectionUpper === 'BOF') {
+      // Official Flex BOF has eight fields. Extra populated cells are not
+      // account or period metadata and must not disappear before indexing.
+      if (row.slice(8).some((cell) => cell.trim())) hasUnmappedNonemptyCells = true
       const accountId = row[1]?.trim()
+      if (!accountId) hasUnmappedNonemptyCells = true
       if (accountId && bofAccountIds.size < 2) bofAccountIds.add(accountId)
+      // A numeric third field denotes the documented Flex section count.
+      // Retain the previously supported non-Flex BOF period interpretation,
+      // but reject an incomplete Flex file header rather than invent fields.
+      if (/^\d+$/.test(row[2]?.trim() ?? '') && (
+        row.length < 8 || row.slice(3, 8).some((cell) => !cell.trim())
+      )) {
+        hasUnmappedNonemptyCells = true
+      }
 
       if (row.length >= 5) {
         const start = parseDateFlexible(row[3])
@@ -545,6 +559,15 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
           else bofPeriodConflict = true
         }
       }
+    }
+    // Official Flex EOF has only the marker and account ID. The account is
+    // reconciled with other statement identities below, not silently dropped.
+    if (rawSectionUpper === 'EOF') {
+      const accountId = row[1]?.trim()
+      if (!accountId || row.slice(2).some((cell) => cell.trim())) {
+        hasUnmappedNonemptyCells = true
+      }
+      if (accountId && eofAccountIds.size < 2) eofAccountIds.add(accountId)
     }
 
     if (rawSection && !CONTROL_RECORD_SECTIONS.has(rawSectionUpper)) {
@@ -729,6 +752,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
     visit,
     finish: (rowCount) => ({
       bofAccountIds: [...bofAccountIds],
+      eofAccountIds: [...eofAccountIds],
       bofPeriodConflict,
       bofPeriodInvalid,
       bofPeriodKeys,
@@ -4285,6 +4309,9 @@ function financialInstrumentScanRequirements(
   for (const bofAccountId of statementIndex.bofAccountIds) {
     accountIds.add(bofAccountId)
   }
+  for (const eofAccountId of statementIndex.eofAccountIds) {
+    accountIds.add(eofAccountId)
+  }
 
   const lifecycleEventRecords = recordsForExclusive(
     store,
@@ -4585,6 +4612,9 @@ function parseIndexedStatement(
   // Flex files with head/trailer records can carry one BOF record per account.
   for (const bofAccountId of statementIndex.bofAccountIds) {
     accountIds.add(bofAccountId)
+  }
+  for (const eofAccountId of statementIndex.eofAccountIds) {
+    accountIds.add(eofAccountId)
   }
 
   if (accountIds.size === 0) {
