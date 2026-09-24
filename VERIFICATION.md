@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.31 local integrity
+# Verification record — checkpoint 0.32 Worker-source policy
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.32 — Worker-source CSP
+
+The old production and configured host policies both contained `worker-src 'self' blob:`. New policy assertions first failed against the old HTML. The production-Chrome negative-control probe created a tiny Blob Worker under that old policy; it sent its `executed` message once, so the new prohibition assertion failed on observed browser behavior. The probe terminates any created Worker and revokes its object URL. After changing both policies to `worker-src 'self'`, targeted policy and standalone Chrome suites passed: the browser observed a `worker-src` violation, no Blob execution message and no Blob Worker target; the actual same-origin IBKR parser Worker still imported the fictional statement. `img-src blob:` was not removed, and existing PNG/share checks passed.
+
+Final Node 22.23.2 `npm run check` exited 0 across all groups, including the production-browser probe. `npm run build` exited 0 with `index-X2MGWDPZ.js`, `ibkrParser.worker-Zpbk-44s.js` and `index-W6y1gsmE.css`; built HTML still has `worker-src 'self'` and `img-src ... blob:`. `npm audit --audit-level=high` found 0 vulnerabilities; `git diff --check` exited 0 before documentation. No private report, phone, deployment or network setting was involved. The configuration is not a deployed response-header observation; D02 and R01 stay open. Detailed [Worker CSP evidence](docs/WORKER_CSP_SCOPE_EVIDENCE_2026-09-25.md). Fixed ledger remains **9 OPEN/3 CLOSED**, L frozen.
 
 ## 2026-09-25 checkpoint 0.31 — cash badge and CSV row width
 

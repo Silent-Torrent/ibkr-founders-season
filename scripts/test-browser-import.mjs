@@ -2829,6 +2829,55 @@ try {
       cspProbeServer.close((error) => (error ? rejectClose(error) : resolveClose()))
     })
   }
+  const workerTargetsBeforeBlobProbe = workerTargets.length
+  let blobWorkerProbeResult
+  try {
+    await evaluate(`(() => {
+      const probe = { violations: [], messages: 0, errorName: '' };
+      window.__pnlArenaBlobWorkerProbe = probe;
+      probe.onViolation = (event) => {
+        probe.violations.push({ directive: event.effectiveDirective, blockedUri: event.blockedURI });
+      };
+      document.addEventListener('securitypolicyviolation', probe.onViolation);
+      probe.url = URL.createObjectURL(new Blob(["self.postMessage('executed')"], { type: 'text/javascript' }));
+      try {
+        probe.worker = new Worker(probe.url, { type: 'module' });
+        probe.worker.onmessage = () => { probe.messages += 1; };
+      } catch (error) {
+        probe.errorName = error?.name ?? 'UnknownError';
+      }
+      return true;
+    })()`)
+    await delay(350)
+    blobWorkerProbeResult = await evaluate(`(() => {
+      const probe = window.__pnlArenaBlobWorkerProbe;
+      return {
+        violations: probe.violations,
+        messages: probe.messages,
+        errorName: probe.errorName,
+      };
+    })()`)
+  } finally {
+    await evaluate(`(() => {
+      const probe = window.__pnlArenaBlobWorkerProbe;
+      if (!probe) return true;
+      probe.worker?.terminate();
+      if (probe.url) URL.revokeObjectURL(probe.url);
+      document.removeEventListener('securitypolicyviolation', probe.onViolation);
+      delete window.__pnlArenaBlobWorkerProbe;
+      return true;
+    })()`)
+  }
+  assert.equal(blobWorkerProbeResult.messages, 0, 'A Blob-backed production Worker executed.')
+  assert(
+    blobWorkerProbeResult.violations.some((violation) =>
+      violation.directive === 'worker-src' && violation.blockedUri.startsWith('blob')),
+    `The Blob-backed Worker was not demonstrably blocked by worker-src: ${JSON.stringify(blobWorkerProbeResult)}`,
+  )
+  assert(
+    workerTargets.slice(workerTargetsBeforeBlobProbe).every(({ url }) => !url.startsWith('blob:')),
+    'A Blob-backed production Worker target was created.',
+  )
   assert(
     workerTargets.some(({ url }) => url.includes('ibkrParser.worker')),
     `The dedicated parser Worker target was not observed: ${JSON.stringify(workerTargets)}`,

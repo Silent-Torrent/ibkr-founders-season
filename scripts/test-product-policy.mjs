@@ -486,11 +486,19 @@ try {
     productionMetaCsp.split(';').map((directive) => directive.trim()).includes("connect-src 'self'"),
     'The production page must restrict connection destinations to its own origin.',
   )
+  assert(
+    productionMetaCsp.split(';').map((directive) => directive.trim()).includes("worker-src 'self'"),
+    'The production page must not allow Blob-backed executable Workers.',
+  )
   const developmentHtml = await vite.transformIndexHtml('/', productionHtml)
   const developmentMetaCsp = developmentHtml.match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/)?.[1]
   assert(
     developmentMetaCsp?.split(';').map((directive) => directive.trim()).includes("connect-src 'self' ws:"),
     'The development page must retain Vite HMR WebSocket access without widening production CSP.',
+  )
+  assert(
+    developmentMetaCsp?.split(';').map((directive) => directive.trim()).includes("worker-src 'self'"),
+    'The development page must keep the same Worker-source boundary.',
   )
   const hostConfiguration = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'))
   const hostedCsp = hostConfiguration.headers?.flatMap((rule) => rule.headers ?? [])
@@ -499,6 +507,10 @@ try {
   assert(
     hostedCsp.split(';').map((directive) => directive.trim()).includes("connect-src 'self'"),
     'The configured host must restrict connection destinations to its own origin.',
+  )
+  assert(
+    hostedCsp.split(';').map((directive) => directive.trim()).includes("worker-src 'self'"),
+    'The configured host must not allow Blob-backed executable Workers.',
   )
   const functionalSourceFiles = readFunctionalSourceTree(new URL('../src/', import.meta.url))
   const functionalSource = functionalSourceFiles.map(({ source }) => source).join('\n')
