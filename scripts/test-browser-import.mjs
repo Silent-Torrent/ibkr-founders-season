@@ -101,6 +101,8 @@ let downloadDirectory
 let invalidFixturePath
 let invalidEventDateFixturePath
 let ambiguousEventFixturePath
+let malformedAmountFixturePath
+let malformedWhitespaceFixturePath
 let invalidExtensionFixturePath
 let sameDateFixturePath
 let olderFixturePath
@@ -654,6 +656,8 @@ try {
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
   invalidEventDateFixturePath = join(browserArtifactDirectory, 'synthetic-invalid-event-date.csv')
   ambiguousEventFixturePath = join(browserArtifactDirectory, 'synthetic-ambiguous-event.csv')
+  malformedAmountFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-amount.csv')
+  malformedWhitespaceFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-whitespace.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
   sameDateFixturePath = join(browserArtifactDirectory, 'same-date-activity-statement.csv')
   olderFixturePath = join(browserArtifactDirectory, 'older-activity-statement.csv')
@@ -669,6 +673,16 @@ try {
   )
   writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
   const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  const canonicalAmountCell = ',740.123456,'
+  assert(canonicalFixtureText.includes(canonicalAmountCell), 'The fictional total-amount fixture changed unexpectedly.')
+  writeFileSync(
+    malformedAmountFixturePath,
+    canonicalFixtureText.replace(canonicalAmountCell, ',7"40.123456",'),
+  )
+  writeFileSync(
+    malformedWhitespaceFixturePath,
+    canonicalFixtureText.replace(canonicalAmountCell, ',"\n740.123456\n",'),
+  )
   const datedTradeCell = '"2026-06-19, 16:00:00"'
   assert(canonicalFixtureText.includes(datedTradeCell), 'The fictional event-date fixture changed unexpectedly.')
   writeFileSync(
@@ -1272,6 +1286,68 @@ try {
   )
   assert.equal(preservedAfterAmbiguousEvent.source, 'Fully synthetic test')
   assert.equal(preservedAfterAmbiguousEvent.seasonPnl, seasonPnl)
+
+  await clickPrimaryNavigation('Import')
+  const malformedAmountNodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [malformedAmountFixturePath],
+    nodeId: malformedAmountNodeId,
+  })
+  const malformedAmountState = await waitForPageValue(
+    `(() => ({
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('The CSV structure is malformed.'),
+    'Malformed fictional financial amount through the production Worker',
+  )
+  assert(malformedAmountState.recovery.includes('Choose a fresh CSV exported directly from IBKR.'))
+  await clickPrimaryNavigation('Ledger')
+  const preservedAfterMalformedAmount = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Preserved report after malformed fictional financial amount',
+  )
+  assert.equal(preservedAfterMalformedAmount.source, 'Fully synthetic test')
+  assert.equal(preservedAfterMalformedAmount.seasonPnl, seasonPnl)
+
+  await clickPrimaryNavigation('Import')
+  const malformedWhitespaceNodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [malformedWhitespaceFixturePath],
+    nodeId: malformedWhitespaceNodeId,
+  })
+  const malformedWhitespaceState = await waitForPageValue(
+    `(() => ({
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('The IBKR all-assets YTD MTM total is missing'),
+    'Whitespace-wrapped fictional financial amount through the production Worker',
+  )
+  assert(malformedWhitespaceState.recovery.includes('Do not edit totals by hand.'))
+  await clickPrimaryNavigation('Ledger')
+  const preservedAfterMalformedWhitespace = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Preserved report after whitespace-wrapped fictional financial amount',
+  )
+  assert.equal(preservedAfterMalformedWhitespace.source, 'Fully synthetic test')
+  assert.equal(preservedAfterMalformedWhitespace.seasonPnl, seasonPnl)
 
   const shortLandscape = await testShortLandscape({ cdp, evaluate, waitForPageValue })
 

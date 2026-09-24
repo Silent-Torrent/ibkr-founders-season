@@ -226,6 +226,10 @@ try {
     'C1N2Y',
     '1e3',
     '1 2',
+    ' 740.123456',
+    '740.123456 ',
+    '\n740.123456\n',
+    '\t740.123456',
     '1,23',
     '(1,234.50',
     '1,234.50)',
@@ -256,7 +260,10 @@ try {
   for (const [raw, expected] of supportedPercentForms) {
     assert(parsePercent(raw) === expected, `A supported percent form was rejected: ${raw}`)
   }
-  const rejectedPercentForms = ['7%%', '$1%', 'USD 1%', '1% USD', '(7.5)%', '(7.5%)']
+  const rejectedPercentForms = [
+    '7%%', '$1%', 'USD 1%', '1% USD', '(7.5)%', '(7.5%)',
+    ' 7.5%', '7.5% ', '7.5 %', '\n7.5%\n',
+  ]
   for (const raw of rejectedPercentForms) {
     assert(parsePercent(raw) === undefined, `Malformed percent text was accepted: ${raw}`)
   }
@@ -3236,6 +3243,43 @@ try {
   assert(
     hasDiagnostic(malformedResult, 'csv_unterminated_quote'),
     'An unterminated quoted field was not rejected.',
+  )
+  const malformedAmountText = currentSchemaFixture.replace(
+    ',740.123456,',
+    ',7"40.123456",',
+  )
+  assert(
+    malformedAmountText !== currentSchemaFixture,
+    'The fictional total-amount quote fixture changed unexpectedly.',
+  )
+  const malformedAmountResult = parseIbkrActivityStatement(malformedAmountText)
+  assert(
+    hasDiagnostic(malformedAmountResult, 'csv_malformed') &&
+      !malformedAmountResult.report,
+    `A malformed quoted financial total was accepted: ${diagnosticsText(malformedAmountResult)}`,
+  )
+  for (const malformedCell of ['"\n740.123456\n"', ' 740.123456 ']) {
+    const malformedWhitespaceText = currentSchemaFixture.replace(
+      ',740.123456,',
+      `,${malformedCell},`,
+    )
+    const malformedWhitespaceResult = parseIbkrActivityStatement(malformedWhitespaceText)
+    assert(
+      hasDiagnostic(malformedWhitespaceResult, 'accounting_value_invalid') &&
+        !malformedWhitespaceResult.report,
+      `Whitespace-wrapped financial total was accepted: ${JSON.stringify(malformedCell)} ${diagnosticsText(malformedWhitespaceResult)}`,
+    )
+  }
+  const malformedReturnText = currentSchemaFixture.replace(
+    '7.654321%',
+    '"\n7.654321%\n"',
+  )
+  assert(malformedReturnText !== currentSchemaFixture, 'The fictional return fixture changed unexpectedly.')
+  const malformedReturnResult = parseIbkrActivityStatement(malformedReturnText)
+  assert(
+    hasDiagnostic(malformedReturnResult, 'accounting_value_invalid') &&
+      !malformedReturnResult.report,
+    `Whitespace-wrapped TWR was accepted: ${diagnosticsText(malformedReturnResult)}`,
   )
 
   const oversizedResult = parseIbkrActivityStatement('x'.repeat(10_000_001))

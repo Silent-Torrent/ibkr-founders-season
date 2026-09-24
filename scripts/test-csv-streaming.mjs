@@ -234,6 +234,11 @@ try {
     'Final,Data,\u5c3e\u884c,\ud83d\ude42',
   ].join('\r\n')
   const expectedTokenizerRows = parseCsvRows(tokenizerFixture)
+  assert.deepEqual(
+    parseCsvRows('Section,Data," 740 "\n   \nNext,Data,ok\n'),
+    [['Section', 'Data', ' 740 '], ['Next', 'Data', 'ok']],
+    'Quoted field edges must stay intact while a whitespace-only row is skipped.',
+  )
 
   for (const chunks of splitStringAtEveryCharacter(tokenizerFixture)) {
     assert.deepEqual(
@@ -259,6 +264,28 @@ try {
       () => tokenizeChunks(chunks),
       'csv_unterminated_quote',
       'CsvRowTokenizer.finish()',
+    )
+  }
+
+  for (const [label, malformed] of [
+    ['quote inside an unquoted amount', 'Statement,Data,7"40.123456"\n'],
+    ['text after a closing quote', 'Statement,Data,"740".123456\n'],
+    ['reopened quoted field', 'Statement,Data,"7"4"0.123456"\n'],
+    ['spaces after a closing quote', 'Statement,Data,"740"  \n'],
+    ['bare carriage return inside an amount', 'Statement,Data,7\r40.123456\n'],
+  ]) {
+    assertCsvFailure(() => parseCsvRows(malformed), 'csv_malformed', label)
+    for (const chunks of splitStringAtEveryCharacter(malformed)) {
+      assertCsvFailure(
+        () => tokenizeChunks(chunks),
+        'csv_malformed',
+        `${label} across a streaming split`,
+      )
+    }
+    assertCsvFailure(
+      () => tokenizeChunks(fixedStringChunks(malformed, 1)),
+      'csv_malformed',
+      `${label} one character at a time`,
     )
   }
 

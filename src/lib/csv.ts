@@ -10,6 +10,7 @@ type CsvParseFailureCode = Extract<
   | 'csv_too_many_fields'
   | 'csv_field_too_large'
   | 'csv_unterminated_quote'
+  | 'csv_malformed'
 >
 
 export class CsvParseFailure extends Error {
@@ -27,6 +28,8 @@ export class CsvRowTokenizer {
   private field = ''
   private inQuotes = false
   private pendingQuote = false
+  private afterClosingQuote = false
+  private pendingCr = false
   private rowCount = 0
   private atStart = true
   private finished = false
@@ -44,15 +47,16 @@ export class CsvRowTokenizer {
   }
 
   private appendField(): void {
-    this.row.push(this.field.trim())
+    this.row.push(this.field)
     this.field = ''
+    this.afterClosingQuote = false
     if (this.row.length > MAX_CSV_FIELDS_PER_ROW) {
       throw new CsvParseFailure('csv_too_many_fields')
     }
   }
 
   private appendNonEmptyRow(): void {
-    if (!this.row.some((value) => value !== '')) return
+    if (!this.row.some((value) => value.trim() !== '')) return
     this.rowCount += 1
     if (this.maxRows !== undefined && this.rowCount > this.maxRows) {
       throw new CsvParseFailure('csv_too_many_rows')
@@ -76,12 +80,22 @@ export class CsvRowTokenizer {
         index += 1
       } else {
         this.inQuotes = false
+        this.afterClosingQuote = true
       }
       this.pendingQuote = false
     }
 
     for (; index < chunk.length; index += 1) {
       const char = chunk[index]
+
+      if (this.pendingCr) {
+        if (char !== '\n') throw new CsvParseFailure('csv_malformed')
+        this.pendingCr = false
+        this.appendField()
+        this.appendNonEmptyRow()
+        this.row = []
+        continue
+      }
 
       if (this.inQuotes) {
         if (char === '"') {
@@ -92,6 +106,7 @@ export class CsvRowTokenizer {
             index += 1
           } else {
             this.inQuotes = false
+            this.afterClosingQuote = true
           }
         } else {
           this.appendCharacter(char)
@@ -99,7 +114,23 @@ export class CsvRowTokenizer {
         continue
       }
 
+      if (this.afterClosingQuote) {
+        if (char === ',') {
+          this.appendField()
+        } else if (char === '\n') {
+          this.appendField()
+          this.appendNonEmptyRow()
+          this.row = []
+        } else if (char === '\r') {
+          this.pendingCr = true
+        } else {
+          throw new CsvParseFailure('csv_malformed')
+        }
+        continue
+      }
+
       if (char === '"') {
+        if (this.field !== '') throw new CsvParseFailure('csv_malformed')
         this.inQuotes = true
       } else if (char === ',') {
         this.appendField()
@@ -107,7 +138,9 @@ export class CsvRowTokenizer {
         this.appendField()
         this.appendNonEmptyRow()
         this.row = []
-      } else if (char !== '\r') {
+      } else if (char === '\r') {
+        this.pendingCr = true
+      } else {
         this.appendCharacter(char)
       }
     }
@@ -120,10 +153,12 @@ export class CsvRowTokenizer {
     if (this.pendingQuote) {
       this.pendingQuote = false
       this.inQuotes = false
+      this.afterClosingQuote = true
     }
     if (this.inQuotes) {
       throw new CsvParseFailure('csv_unterminated_quote')
     }
+    if (this.pendingCr) throw new CsvParseFailure('csv_malformed')
     if (this.field !== '' || this.row.length > 0) {
       this.appendField()
       this.appendNonEmptyRow()
@@ -205,6 +240,7 @@ export function normalizeKey(value: string): string {
 export function parseNumber(value: string | undefined): number | undefined {
   if (value == null) return undefined
   const trimmed = value.trim()
+  if (value !== trimmed) return undefined
   if (!trimmed || trimmed === '-' || trimmed === '--') return undefined
 
   const startsWithParenthesis = trimmed.startsWith('(')
@@ -318,8 +354,9 @@ export function sumExactNumbers(values: number[]): number | undefined {
 export function parsePercent(value: string | undefined): number | undefined {
   if (value == null) return undefined
   const trimmed = value.trim()
+  if (value !== trimmed) return undefined
   if (!trimmed) return undefined
-  const numericText = trimmed.endsWith('%') ? trimmed.slice(0, -1).trim() : trimmed
+  const numericText = trimmed.endsWith('%') ? trimmed.slice(0, -1) : trimmed
   if (!numericText || numericText.includes('%') || /[()]/.test(numericText)) {
     return undefined
   }

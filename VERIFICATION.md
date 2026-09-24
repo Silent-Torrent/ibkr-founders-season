@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.27 candidate option-event identity integrity
+# Verification record — checkpoint 0.28 CSV structure and numeric-cell integrity
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.28 — CSV structure and numeric cells
+
+Fictional current-schema all-assets MTM totals with `7"40.123456"` or quoted leading/trailing line breaks previously yielded a good report after input characters were silently removed. New streaming and numeric tests failed on that behavior before the repairs. The tokenizer now enforces quote placement/closure and CRLF structure while retaining original cell edges; strict number, percentage and return paths reject surrounding whitespace. Valid BOM/CRLF/Unicode/doubled quotes/multiline quoted text still pass. Parser smoke tests require no report and the existing `csv_malformed` or `accounting_value_invalid` diagnostic for malformed financial cells. Production Chrome imports both generated fictional failures through the real Worker, observes localized recovery and keeps the earlier three-row synthetic Ledger, source badge and Season P&L.
+
+The final Node 22.23.2 `npm run check`, production build, dependency audit and `git diff --check` results are recorded in the dedicated [CSV integrity evidence](docs/CSV_QUOTE_INTEGRITY_EVIDENCE_2026-09-25.md). The diagnostic total remains 44. These local tests neither authenticate a broker statement nor establish real iPhone, iOS/Safari 16.4, Worker-exclusive peak or deployment acceptance.
 
 ## 2026-09-25 checkpoint 0.27 — option-event identity
 

@@ -2,7 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.27 candidate option-event identity
+## Current project state — checkpoint 0.28 CSV structure and numeric-cell integrity
+
+On 2026-09-25 fictional current-schema CSV tests exposed two silent normalizations: a misplaced quote inside a financial amount was removed, and whitespace surrounding a quoted amount could be trimmed away before numeric validation. The tokenizer now rejects illegal quote placement and bare CR, retains original field text, and the accounting-number and return parsers reject surrounding whitespace. Valid LF/CRLF, escaped quotes and multiline quoted *text* remain supported. The existing localized error/re-export paths reject these malformed financial cells without replacing the previous report. See [CSV integrity evidence](docs/CSV_QUOTE_INTEGRITY_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). These local checks do not authenticate broker files or close F01, phone/16.4 or L-frozen deployment gates; the fixed count remains **9 OPEN / 3 CLOSED**.
+
+### Earlier checkpoint 0.27 — candidate option-event identity
 
 On 2026-09-25 a fully fictional two-row Assignment exposed a separate false-good result: same-contract, same-day records with different time/quantity were silently collapsed. The parser now deduplicates only matching selected source-row content; when different rows share one supported event identity, it rejects the import with a specific three-locale explanation instead of guessing whether to count one or two events. Normalized capitalization/spacing and two strictly parsed standard contract spellings are covered; other contract spellings remain unproven and are not silently claimed equivalent. A real production-Chrome failed-import regression confirms the previously open fictional Ledger remains in place. See [option-event identity evidence](docs/OPTION_EVENT_IDENTITY_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). The fixed gates remain **9 OPEN / 3 CLOSED**; F01, phone/16.4 and L-frozen deployment are not closed.
 

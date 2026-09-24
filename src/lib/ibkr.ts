@@ -2648,6 +2648,7 @@ function getAccumulator(
 function parseReturnValue(value: string | undefined): number | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
+  if (value !== trimmed) return undefined
   const hasPercentSuffix = trimmed.endsWith('%')
   if (trimmed.includes('%') && !hasPercentSuffix) return undefined
   const parsed = hasPercentSuffix ? parsePercent(trimmed) : parseNumber(trimmed)
