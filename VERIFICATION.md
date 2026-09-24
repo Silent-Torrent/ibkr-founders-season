@@ -2,6 +2,12 @@
 
 Last updated: 2026-09-25
 
+## 2026-09-25 checkpoint 0.33 — bounded iPhone Safari / VoiceOver continuation
+
+The production build from clean `32d0b36` was served only at Mac private address `192.168.0.27:4174`, and the mirrored iPhone 15 Plus's Safari visibly loaded it. With VoiceOver visibly On, the English Import page, language selector and privacy dialog were opened. The repository's wholly fictional sample was selected from the native Files picker and displayed the local-import success notice plus `FULLY SYNTHETIC TEST`; a separate 68-byte fictional invalid CSV displayed the insufficient-rows error, and an explicit return to Ledger showed the prior synthetic source still present. Speech questions were sent to the user, but no **0.33** actual-hearing answer had been received when recorded; modal virtual-focus order, cancel and manual selection remain unproven. The OS version was not freshly checked, and this is not an iOS/Safari 16.4 pass.
+
+The two new phone downloads were moved to recoverable Recently Deleted, not permanently purged. The project Safari tab closed back to the pre-existing Start Page, VoiceOver was checked Off, Simplified Pinyin was restored, the temporary `dist` invalid file was removed, and the owned preview stopped with no port-4174 listener. No product source or external service was changed; the full check was not rerun in this phone-only segment. See [0.33 phone evidence](docs/IPHONE_VOICEOVER_033_EVIDENCE_2026-09-25.md). D07 and the fixed **9 OPEN/3 CLOSED** ledger remain unchanged; L frozen.
+
 ## 2026-09-25 checkpoint 0.33 — bounded parser retention
 
 The first-pass index now collapses only adjacent, cell-identical Trades `DATA` rows from the same source identity, after header-state and beyond-header-cell checks. It retains the first row number and still counts every raw CSV row. Contract mapping keeps all explicit alias/underlying conflict states, including unused aliases, but no longer retains unused inferred candidate entries or source references for unused explicit candidates. No financial metric, ranking rule, storage, network or trust-tier policy changed.
