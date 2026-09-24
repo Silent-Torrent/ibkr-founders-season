@@ -2,6 +2,10 @@
 
 Last updated: 2026-09-25
 
+## 2026-09-25 — read-only D01/F01 evidence boundary
+
+Official IBKR sources still did not establish a completed Exercise row in this project's supported English Activity Statement CSV. The `EXE` code found in IBKR's separately requested Reporting Integration Activity feed belongs to another file contract and cannot close F01; see [exercise-source review](docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md). For D01, Apple Instruments Allocations offers a possible event-level alternative to the failed interval-sampling path, but Safari attachment, JavaScript/Worker allocation coverage, single-Worker attribution and a real supported-iPhone threshold remain untested. The current Mac has only Command Line Tools; `xcrun -f instruments` found no utility. No Xcode installation, device trust/Web Inspector change, private report, or new measurement occurred. See [candidate method and stop rules](docs/WORKER_EVENT_TRACE_CANDIDATE_2026-09-25.md). D01/F01 and the separate D02 floor stay OPEN; fixed **9 OPEN/3 CLOSED**, L frozen.
+
 ## 2026-09-25 checkpoint 0.33 — bounded iPhone Safari / VoiceOver continuation
 
 The production build from clean `32d0b36` was served only at Mac private address `192.168.0.27:4174`, and the mirrored iPhone 15 Plus's Safari visibly loaded it. With VoiceOver visibly On, the English Import page, language selector and privacy dialog were opened. The repository's wholly fictional sample was selected from the native Files picker and displayed the local-import success notice plus `FULLY SYNTHETIC TEST`; a separate 68-byte fictional invalid CSV displayed the insufficient-rows error, and an explicit return to Ledger showed the prior synthetic source still present. Speech questions were sent to the user, but no **0.33** actual-hearing answer had been received when recorded; modal virtual-focus order, cancel and manual selection remain unproven. The OS version was not freshly checked, and this is not an iOS/Safari 16.4 pass.

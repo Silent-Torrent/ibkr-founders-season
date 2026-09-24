@@ -53,6 +53,8 @@
 
 2026-09-25 checkpoint 0.33：基于全虚构压力样本，解析器减少了相邻重复 Trades 与未使用合约推断的中间保留；完整结果摘要、冲突/来源测试及本地生产 Chrome 回归通过。单次 Node 结束时堆读数和耗时改善仅作方向性诊断，没有捕获完整浏览器 Worker 分配峰值，也没有受支持 iPhone/Safari 阈值。D01 原关闭条件与 `OPEN` 状态不变。见 [解析器保留量证据](PARSER_RETENTION_EVIDENCE_2026-09-25.md)。
 
+2026-09-25 后续只读方法筛查：Apple Instruments Allocations 事件追踪可能比 50 ms 抽样更适合短峰，但 Safari WebContent 可否附着、JS/Worker 分配覆盖及多 Worker 归属均未经校准。当前 Mac 仅有 Command Line Tools，无完整 Xcode/Instruments；未安装或修改手机设置。若继续，须先取得所需软件、真实受支持 iPhone/Safari 环境及当次调试权限，再做全虚构脉冲反例；不能预先宣称能关闭 D01。见 [事件追踪候选与停止规则](WORKER_EVENT_TRACE_CANDIDATE_2026-09-25.md)。D01/D02 均 `OPEN`。
+
 2026-09-14 后续实测：已完成独立虚构 Worker 校准，不再只是待执行计划。持续持有对象/缓冲时有读数，三个短任务却均仅留下启动前基线、没有运行期样本。因此现有抽样器不具备关闭本门槛所需的完整峰值证据。新增工具的时间归类、浏览器归属和中断收尾问题已修复并复测，临时环境已清理；下一步由开发方核验其他测量器，不把本项全部转交用户。见 [校准与反例证据](WORKER_HEAP_CALIBRATION_EVIDENCE_2026-09-14.md)。本项仍 `OPEN`，不新增编号或减少剩余 9 项，也未开启手机 VoiceOver。
 
 2026-09-14 再后续：筛查其他测量接口，并完成九次只查询自身的 macOS 原生对照。系统进程内存历史最高值保留了六次短暂的 32/64 MiB 脉冲；三次无脉冲对照没有新增历史最高值。它只证明本机进程级计量的该项能力，不是网页 Worker/JS 峰值、内存彻底回收或 iPhone 安全阈值。下一步由开发方核验专属隔离浏览器进程的归属和覆盖边界，不能直接替换本项原关闭条件。见 [候选工具与原生对照证据](MEMORY_INSTRUMENT_CANDIDATES_2026-09-14.md)。临时测试程序已清理，0.24、手机设置、L 与 9/3 数量不变；未开启 VoiceOver。
@@ -128,6 +130,7 @@
 - 依赖谁：可取得的官方 IBKR CSV/Flex 证据，或用户另行授权的含行权真实报表；开发方本地只读核验并编写独立虚构回归。
 - 已有证据：Assignment/Expiration 已有来源校准，官方资料证明行权语义，但已查资料未证明完成行权的准确 CSV 序列化。见 [行权来源要求](OPTION_EXERCISE_EVIDENCE_2026-08-30.md)。
 - 2026-09-25 补充：官方跨区块代码表另列 `AEx`、`MEx` 和“到期**或**指派”的 `GEA`，但没有证明它们在本 MVP 支持的 CSV 中的完整记录形状。0.29 的虚构测试对这些候选代码明确拒绝，不静默漏计，也不擅自算作已验证行权。见 [行权来源增补](OPTION_EXERCISE_EVIDENCE_2026-08-30.md) 与 [事件代码记录](OPTION_EVENT_TYPE_INTEGRITY_EVIDENCE_2026-09-25.md)。
+- 2026-09-25 再核：IBKR 另行申请的 Reporting Integration Activity 馈送虽有 `EXE` 行权代码并可用 `.csv` 扩展名，但不是此 MVP 的 Client Portal Activity Statement CSV，不能移植其记录布局。公开 Activity 样例仍是 HTML；详见 [独立馈送边界](OPTION_EXERCISE_EVIDENCE_2026-08-30.md#2026-09-25-separate-feed-boundary)。F01 继续 `OPEN`。
 - 真正关闭条件：获得可独立核验的准确节名、表头、记录类型及行形状，验证事件类型、日期、合约、底层映射、来源引用，且不重复增加盈亏；私有数据不入库，再以完全虚构内容覆盖已证形状。把 `Ep` 改成 `Ex` 或自行编造行不能关闭此项；此检查也不是报表真实性认证。
 
 ## 三、部署：3 项（当前全部受 L 冻结）
