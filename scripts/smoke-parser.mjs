@@ -2504,6 +2504,112 @@ try {
       `A Trades-fallback ${label} option-event date was accepted: ${diagnosticsText(result)}`,
     )
   }
+  const distinctSameDayAssignmentRow = canonicalAssignmentRow
+    .replace('16:00:00', '17:00:00')
+    .replace(',-1.000000,', ',-2.000000,')
+  const distinctSameDayAssignment = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      canonicalAssignmentRow,
+      `${canonicalAssignmentRow}\n${distinctSameDayAssignmentRow}`,
+    ),
+  )
+  assert(
+    hasDiagnostic(distinctSameDayAssignment, 'option_event_identity_conflict') &&
+      !distinctSameDayAssignment.report,
+    `Distinct same-day assignment rows were silently collapsed: ${diagnosticsText(distinctSameDayAssignment)}`,
+  )
+  for (const contractVariant of [
+    'zzficta 19jun26 125 p',
+    'ZZFICTA   19JUN26 125 P',
+    'ZZFICTA260619P00125000',
+  ]) {
+    const variantAssignmentRow = distinctSameDayAssignmentRow.replace(
+      'ZZFICTA 19JUN26 125 P',
+      contractVariant,
+    )
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        canonicalAssignmentRow,
+        `${canonicalAssignmentRow}\n${variantAssignmentRow}`,
+      ),
+    )
+    assert(
+      hasDiagnostic(result, 'option_event_identity_conflict') && !result.report,
+      `A same-contract spelling variant bypassed event collision detection: ${contractVariant}; ${diagnosticsText(result)}`,
+    )
+  }
+  for (const [spacedStrike, compactStrike] of [
+    ['125.5', '00125500'],
+    ['125.005', '00125005'],
+  ]) {
+    const spacedAssignmentRow = canonicalAssignmentRow.replace(
+      ' 125 P',
+      ` ${spacedStrike} P`,
+    )
+    const compactAssignmentRow = distinctSameDayAssignmentRow.replace(
+      'ZZFICTA 19JUN26 125 P',
+      `ZZFICTA260619P${compactStrike}`,
+    )
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        canonicalAssignmentRow,
+        `${spacedAssignmentRow}\n${compactAssignmentRow}`,
+      ),
+    )
+    assert(
+      hasDiagnostic(result, 'option_event_identity_conflict') && !result.report,
+      `An exact decimal strike pair bypassed event collision detection: ${spacedStrike}; ${diagnosticsText(result)}`,
+    )
+  }
+  for (const distinctContract of [
+    'ZZFICTA260626P00125000',
+    'ZZFICTA260619C00125000',
+    'ZZFICTA260619P00125500',
+  ]) {
+    const distinctContractRow = distinctSameDayAssignmentRow.replace(
+      'ZZFICTA 19JUN26 125 P',
+      distinctContract,
+    )
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        canonicalAssignmentRow,
+        `${canonicalAssignmentRow}\n${distinctContractRow}`,
+      ),
+    )
+    assert(
+      result.errors.length === 0 &&
+        result.report?.symbols.find((symbol) =>
+          symbol.symbol === 'ZZFICTA')?.assignmentCount === 2,
+      `Different option series were incorrectly merged: ${distinctContract}; ${diagnosticsText(result)}`,
+    )
+  }
+  const exactDuplicateAssignment = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      canonicalAssignmentRow,
+      `${canonicalAssignmentRow}\n${canonicalAssignmentRow}`,
+    ),
+  )
+  assert(
+    exactDuplicateAssignment.errors.length === 0 &&
+      exactDuplicateAssignment.report?.symbols.find((symbol) =>
+        symbol.symbol === 'ZZFICTA')?.assignmentCount === 1,
+    `An exact repeated assignment row changed existing deduplication: ${diagnosticsText(exactDuplicateAssignment)}`,
+  )
+  const distinctSameDayDedicatedRow = dedicatedEventRow.replace(
+    '2026-06-20',
+    '"2026-06-20, 17:00:00"',
+  )
+  const distinctSameDayDedicated = parseIbkrActivityStatement(
+    dedicatedLifecycleFixture.replace(
+      dedicatedEventRow,
+      `${dedicatedEventRow}\n${distinctSameDayDedicatedRow}`,
+    ),
+  )
+  assert(
+    hasDiagnostic(distinctSameDayDedicated, 'option_event_identity_conflict') &&
+      !distinctSameDayDedicated.report,
+    `Distinct same-day dedicated events were silently collapsed: ${diagnosticsText(distinctSameDayDedicated)}`,
+  )
   const subtotalOnlyLifecycleResult = parseIbkrActivityStatement(`${currentSchemaFixture}
 "Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
 "Options Exercises, Assignments and Expirations",SubTotal,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Assignment

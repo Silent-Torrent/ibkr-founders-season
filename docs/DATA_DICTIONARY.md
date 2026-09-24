@@ -152,7 +152,7 @@ Underlying、持仓和交易明细均不得出现在默认分享卡、URL、错�
 |---|---|---|---|---|---|
 | `symbol` | string | 规范化 underlying | S2 | LOCAL_SESSION | 作为标的键 |
 | `contract` | string/null | 事件行合约 | S2 | LOCAL_SESSION | 只本地显示；不进入默认分享 |
-| `date` | date/null | Trades/专用 event section | S2 | LOCAL_SESSION | 日粒度 |
+| `date` | date | Trades/专用 event section | S2 | LOCAL_SESSION | 必须是报表期间内的有效日期；显示为日粒度，同合约同日同类型但原始事件行不同则拒绝整份导入，不擅自合并或双计 |
 | `type` | enum | 事件文本/受支持 code | S1 | LOCAL_SESSION | `assignment` / `exercise` / `expiration` |
 | `sourceRefs` | object[] | 事件行与 mapping | S1 | LOCAL_SESSION | 不保留 raw row/value |
 

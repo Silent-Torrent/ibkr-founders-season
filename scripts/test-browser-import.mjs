@@ -100,6 +100,7 @@ let browserArtifactDirectory
 let downloadDirectory
 let invalidFixturePath
 let invalidEventDateFixturePath
+let ambiguousEventFixturePath
 let invalidExtensionFixturePath
 let sameDateFixturePath
 let olderFixturePath
@@ -652,6 +653,7 @@ try {
   downloadDirectory = join(browserArtifactDirectory, 'downloads')
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
   invalidEventDateFixturePath = join(browserArtifactDirectory, 'synthetic-invalid-event-date.csv')
+  ambiguousEventFixturePath = join(browserArtifactDirectory, 'synthetic-ambiguous-event.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
   sameDateFixturePath = join(browserArtifactDirectory, 'same-date-activity-statement.csv')
   olderFixturePath = join(browserArtifactDirectory, 'older-activity-statement.csv')
@@ -672,6 +674,21 @@ try {
   writeFileSync(
     invalidEventDateFixturePath,
     canonicalFixtureText.replace(datedTradeCell, '"2026-02-30, 16:00:00"'),
+  )
+  const assignmentRows = canonicalFixtureText.split('\n').filter((line) =>
+    line.startsWith('Trades,Data,Equity and Index Options,USD,ZZFICTA ') &&
+    line.endsWith(',A'),
+  )
+  assert.equal(assignmentRows.length, 1, 'The fictional assignment fixture changed unexpectedly.')
+  const secondAssignmentRow = assignmentRows[0]
+    .replace('16:00:00', '17:00:00')
+    .replace(',-1.000000,', ',-2.000000,')
+  writeFileSync(
+    ambiguousEventFixturePath,
+    canonicalFixtureText.replace(
+      assignmentRows[0],
+      `${assignmentRows[0]}\n${secondAssignmentRow}`,
+    ),
   )
   writeFileSync(
     sameDateFixturePath,
@@ -1224,6 +1241,37 @@ try {
   )
   assert.equal(preservedAfterInvalidEventDate.source, 'Fully synthetic test')
   assert.equal(preservedAfterInvalidEventDate.seasonPnl, seasonPnl)
+
+  await clickPrimaryNavigation('Import')
+  const ambiguousEventNodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [ambiguousEventFixturePath],
+    nodeId: ambiguousEventNodeId,
+  })
+  const ambiguousEventState = await waitForPageValue(
+    `(() => ({
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('cannot distinguish them safely'),
+    'Distinct same-day fictional option-event rows through the production Worker',
+  )
+  assert(ambiguousEventState.recovery.includes('Do not merge or edit the event rows by hand.'))
+  await clickPrimaryNavigation('Ledger')
+  const preservedAfterAmbiguousEvent = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Preserved report after ambiguous fictional option event',
+  )
+  assert.equal(preservedAfterAmbiguousEvent.source, 'Fully synthetic test')
+  assert.equal(preservedAfterAmbiguousEvent.seasonPnl, seasonPnl)
 
   const shortLandscape = await testShortLandscape({ cdp, evaluate, waitForPageValue })
 

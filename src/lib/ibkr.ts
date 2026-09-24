@@ -2718,16 +2718,69 @@ function parseOptionEventDate(value: string | undefined): string | undefined {
   return toIsoDate(parseDateFlexible(withTime[1]))
 }
 
+const OPTION_EXPIRY_MONTHS = [
+  'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+  'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC',
+]
+
+function optionEventContractIdentity(contract: string, underlying: string): string {
+  const normalized = normalizeInstrumentKey(contract)
+  const rawIdentity = JSON.stringify(['raw', normalized])
+  const normalizedUnderlying = normalizeInstrumentKey(underlying)
+
+  const spaced = normalized.match(
+    /^([A-Z.\-]{1,8})\s+(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2})\s+(\d{1,5})(?:\.(\d{1,3}))?\s+([CP])$/,
+  )
+  const occ = normalized.match(
+    /^([A-Z.\-]{1,8})(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/,
+  )
+  if (!spaced && !occ) return rawIdentity
+
+  const root = (spaced ?? occ)?.[1]
+  if (!root || root !== normalizedUnderlying) return rawIdentity
+  const year = Number(spaced ? spaced[4] : occ?.[2])
+  const month = spaced
+    ? OPTION_EXPIRY_MONTHS.indexOf(spaced[3]) + 1
+    : Number(occ?.[3])
+  const day = Number(spaced ? spaced[2] : occ?.[4])
+  const expiry = new Date(Date.UTC(2000 + year, month - 1, day))
+  if (
+    expiry.getUTCFullYear() !== 2000 + year ||
+    expiry.getUTCMonth() !== month - 1 ||
+    expiry.getUTCDate() !== day
+  ) return rawIdentity
+
+  const thousandths = spaced
+    ? Number(spaced[5]) * 1000 + Number((spaced[6] ?? '').padEnd(3, '0'))
+    : Number(occ?.[6])
+  if (!Number.isInteger(thousandths) || thousandths < 1 || thousandths > 99_999_999) {
+    return rawIdentity
+  }
+  return JSON.stringify([
+    'series',
+    root,
+    `${String(year).padStart(2, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`,
+    spaced ? spaced[7] : occ?.[5],
+    String(thousandths).padStart(8, '0'),
+  ])
+}
+
 function parseOptionEvents(
   eventRecords: SectionRecord[],
   symbols: Map<string, SymbolAccumulator>,
   instrumentIndex: InstrumentUnderlyingMapResult,
   startIso: string | undefined,
   endIso: string | undefined,
-): { capacityExceeded: boolean; invalidEventDate: boolean; events: OptionEvent[] } {
+): {
+  capacityExceeded: boolean
+  invalidEventDate: boolean
+  ambiguousEventIdentity: boolean
+  events: OptionEvent[]
+} {
   const events: OptionEvent[] = []
-  const seen = new Set<string>()
+  const seen = new Map<string, string>()
   let invalidEventDate = false
+  let ambiguousEventIdentity = false
 
   for (const record of eventRecords) {
     if (record.recordType !== 'DATA') continue
@@ -2774,12 +2827,34 @@ function parseOptionEvents(
       invalidEventDate = true
       continue
     }
-    const key = `${underlying}|${contract ?? ''}|${parsedDate}|${type}`
-    if (seen.has(key)) continue
-    if (events.length >= MAX_REPORT_EVENTS) {
-      return { capacityExceeded: true, invalidEventDate, events: [] }
+    const key = JSON.stringify([
+      normalizeInstrumentKey(underlying),
+      optionEventContractIdentity(contract ?? '', underlying),
+      parsedDate,
+      type,
+    ])
+    const rowSignature = JSON.stringify([
+      record.section,
+      record.headerSignature,
+      record.fields,
+    ])
+    const previousSignature = seen.get(key)
+    if (previousSignature !== undefined) {
+      // Repeated source rows with the same section, header and field values
+      // keep the existing deduplication behavior. Different rows must
+      // not silently disappear or be guessed to be independent events.
+      if (previousSignature !== rowSignature) ambiguousEventIdentity = true
+      continue
     }
-    seen.add(key)
+    if (events.length >= MAX_REPORT_EVENTS) {
+      return {
+        capacityExceeded: true,
+        invalidEventDate,
+        ambiguousEventIdentity,
+        events: [],
+      }
+    }
+    seen.set(key, rowSignature)
 
     const event: OptionEvent = {
       symbol: underlying,
@@ -2804,6 +2879,7 @@ function parseOptionEvents(
   return {
     capacityExceeded: false,
     invalidEventDate,
+    ambiguousEventIdentity,
     events: events.sort((a, b) => b.date.localeCompare(a.date)),
   }
 }
@@ -4976,6 +5052,9 @@ function parseIndexedStatement(
   const events = eventResult.events
   if (eventResult.invalidEventDate) {
     errors.push({ code: 'option_event_date_invalid' })
+  }
+  if (eventResult.ambiguousEventIdentity) {
+    errors.push({ code: 'option_event_identity_conflict' })
   }
   if (primaryYtdInstrumentMappingResult.hasConflicts) {
     errors.push({ code: 'instrument_alias_conflict' })

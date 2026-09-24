@@ -387,7 +387,7 @@ try {
     assert.ok(markup.includes(checkBoundary), `${locale} lost the separate calculation-check label.`)
   }
 
-  assert.equal(PARSER_DIAGNOSTIC_CODES.length, 43)
+  assert.equal(PARSER_DIAGNOSTIC_CODES.length, 44)
   for (const code of PARSER_DIAGNOSTIC_CODES) {
     const recoveryKey = importRecoveryKey(code)
     assert.equal(typeof recoveryKey, 'string', `No recovery category exists for ${code}.`)
@@ -396,6 +396,7 @@ try {
     }
   }
   assert.equal(importRecoveryKey('option_event_date_invalid'), 'recoveryEventDate')
+  assert.equal(importRecoveryKey('option_event_identity_conflict'), 'recoveryEventIdentity')
   for (const [locale, expected] of [
     ['en', 'missing, invalid or out-of-period date'],
     ['zh-CN', '日期缺失、无效或不在报表期间内'],
@@ -404,6 +405,16 @@ try {
     assert.ok(
       formatParserDiagnostic({ code: 'option_event_date_invalid' }, locale).includes(expected),
       `${locale} option-event date diagnostic is missing or misleading.`,
+    )
+  }
+  for (const [locale, expected] of [
+    ['en', 'cannot distinguish them safely'],
+    ['zh-CN', '无法安全区分'],
+    ['zh-TW', '無法安全區分'],
+  ]) {
+    assert.ok(
+      formatParserDiagnostic({ code: 'option_event_identity_conflict' }, locale).includes(expected),
+      `${locale} option-event identity diagnostic is missing or misleading.`,
     )
   }
   for (const [locale, refreshBoundary] of [
