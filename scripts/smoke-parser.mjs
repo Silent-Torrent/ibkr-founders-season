@@ -2429,6 +2429,54 @@ try {
   )
 
   const canonicalAssignmentRow = 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
+  for (const compatibleCode of ['A;P', 'A;A', 'Assignment;A']) {
+    const compatibleCodeRow = canonicalAssignmentRow.replace(/,A$/, `,${compatibleCode}`)
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(canonicalAssignmentRow, compatibleCodeRow),
+    )
+    assert(
+      result.errors.length === 0 &&
+        result.report?.symbols.find((symbol) =>
+          symbol.symbol === 'ZZFICTA')?.assignmentCount === 1,
+      `A compatible assignment code was rejected: ${compatibleCode}; ${diagnosticsText(result)}`,
+    )
+  }
+  for (const conflictingCode of [
+    'A;Ep', 'A;Ex', 'Ex;Ep', 'Assignment;Expired',
+    'A/Ep', 'A+Ep', 'A-Ep', 'A:Ep', 'A—Ep', 'A–Ep', 'A／Ep',
+    'A\u00a0Ep', 'A\u200bEp', 'A—P',
+    'Unassigned', 'No Assignment', 'Unexercised', 'Not Expired', 'Ex Date',
+    'ExDate', 'Cancelled Assignment', 'Exercise Reversal', 'A;X', 'Aep',
+    'AssignmentCancelled', 'Reassigned',
+    'AEx', 'MEx', 'GEA',
+  ]) {
+    const conflictingCodeRow = canonicalAssignmentRow.replace(/,A$/, `,${conflictingCode}`)
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(canonicalAssignmentRow, conflictingCodeRow),
+    )
+    assert(
+      hasDiagnostic(result, 'option_event_type_conflict') && !result.report,
+      `Conflicting Trades lifecycle codes were silently reduced to one type: ${conflictingCode}; ${diagnosticsText(result)}`,
+    )
+  }
+  const assignmentWithoutContract = canonicalAssignmentRow.replace(
+    ',ZZFICTA 19JUN26 125 P,ZZFICTA,',
+    ',,ZZFICTA,',
+  )
+  for (const [row, expectedCode, label] of [
+    [assignmentWithoutContract, 'accounting_section_conflict', 'missing contract'],
+    [assignmentWithoutContract.replace(/,A$/, ',A;Ep'), 'option_event_type_conflict', 'missing contract and conflicting codes'],
+    [canonicalAssignmentRow.replace('Trades,Data,Equity and Index Options,', 'Trades,Data,Stocks,'), 'instrument_alias_conflict', 'misclassified option contract'],
+    [canonicalAssignmentRow.replace('Trades,Data,Equity and Index Options,', 'Trades,Data,Stocks,').replace(/,A$/, ',A;Ep'), 'option_event_type_conflict', 'misclassified option contract and conflicting codes'],
+  ]) {
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(canonicalAssignmentRow, row),
+    )
+    assert(
+      hasDiagnostic(result, expectedCode) && !result.report,
+      `An option lifecycle row with ${label} silently disappeared: ${diagnosticsText(result)}`,
+    )
+  }
   const opaqueAssignmentRow = 'Trades,Data,Equity and Index Options,USD,OPAQUE-CONTRACT-A,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
   const dedicatedLifecycleFixture = `${currentSchemaFixture}
 "Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
@@ -2449,6 +2497,26 @@ try {
     'Dedicated lifecycle rows were combined with Trades and counted twice.',
   )
   const dedicatedEventRow = '"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Assignment'
+  const dedicatedWithConflictingFallback = parseIbkrActivityStatement(
+    dedicatedLifecycleFixture.replace(canonicalAssignmentRow, canonicalAssignmentRow.replace(/,A$/, ',A;Ep')),
+  )
+  assert(
+    hasDiagnostic(dedicatedWithConflictingFallback, 'option_event_type_conflict') &&
+      !dedicatedWithConflictingFallback.report,
+    `A conflicting unused Trades fallback was hidden by dedicated lifecycle precedence: ${diagnosticsText(dedicatedWithConflictingFallback)}`,
+  )
+  for (const conflictingCode of ['Assignment;Expired', 'A;Ex']) {
+    const result = parseIbkrActivityStatement(
+      dedicatedLifecycleFixture.replace(
+        dedicatedEventRow,
+        dedicatedEventRow.replace(/,Assignment$/, `,${conflictingCode}`),
+      ),
+    )
+    assert(
+      hasDiagnostic(result, 'option_event_type_conflict') && !result.report,
+      `Conflicting dedicated lifecycle codes were silently reduced to one type: ${conflictingCode}; ${diagnosticsText(result)}`,
+    )
+  }
   for (const date of ['June 20, 2026', 'June 20, 2026, 16:00:00']) {
     const result = parseIbkrActivityStatement(
       dedicatedLifecycleFixture.replace(

@@ -2679,27 +2679,38 @@ function findStatementPeriod(
   return firstBofPeriod ?? {}
 }
 
-function inferEventType(value: string | undefined): OptionEvent['type'] | undefined {
+function inferEventType(value: string | undefined): OptionEvent['type'] | 'conflict' | undefined {
   if (!value) return undefined
 
-  const normalized = normalizeSchemaKey(value)
-  if (!normalized) return undefined
-  if (normalized.includes('assign')) return 'assignment'
-  if (normalized.includes('exercise')) return 'exercise'
-  if (normalized.includes('expir')) return 'expiration'
-
-  // Activity Statements can combine terse codes, such as "A;P". Match
-  // complete code tokens so the letter A inside another word is not treated
-  // as an assignment.
+  // Match complete event words and code tokens. Substring matching would
+  // mistake "Cancelled Assignment" or "Exercise Reversal" for completed
+  // positive events. A;P is the supported assignment-plus-P form.
   const tokens = value
-    .split(/[;,|\s]+/)
-    .map((token) => token.trim().toLowerCase())
+    .split(/[^A-Za-z0-9]+/)
+    .map((token) => token.toLowerCase())
     .filter(Boolean)
+  const normalized = tokens.join('')
+  const containsLifecycleSignal = tokens.some((token) =>
+    ['a', 'ex', 'ep', 'exdate', 'aex', 'mex', 'gea'].includes(token) ||
+    /assign|exercis|expir/.test(token),
+  ) || /^(?:a|ex|ep){2,}$/.test(normalized)
+  if (!containsLifecycleSignal) return undefined
+  if (/[^\x20-\x7E]/.test(value) || value.trim() !== value) return 'conflict'
 
-  if (tokens.includes('a')) return 'assignment'
-  if (tokens.includes('ex')) return 'exercise'
-  if (tokens.includes('ep')) return 'expiration'
-  return undefined
+  const types = new Set<OptionEvent['type']>()
+  for (const token of tokens) {
+    if (['assignment', 'assigned', 'a'].includes(token)) {
+      types.add('assignment')
+    } else if (['exercise', 'exercised', 'ex'].includes(token)) {
+      types.add('exercise')
+    } else if (['expiration', 'expired', 'ep'].includes(token)) {
+      types.add('expiration')
+    } else if (token !== 'p') {
+      return 'conflict'
+    }
+  }
+  if (types.size !== 1) return 'conflict'
+  return types.values().next().value
 }
 
 function parseOptionEventDate(value: string | undefined): string | undefined {
@@ -2775,12 +2786,16 @@ function parseOptionEvents(
 ): {
   capacityExceeded: boolean
   invalidEventDate: boolean
+  conflictingEventType: boolean
+  invalidEventContract: boolean
   ambiguousEventIdentity: boolean
   events: OptionEvent[]
 } {
   const events: OptionEvent[] = []
   const seen = new Map<string, string>()
   let invalidEventDate = false
+  let conflictingEventType = false
+  let invalidEventContract = false
   let ambiguousEventIdentity = false
 
   for (const record of eventRecords) {
@@ -2788,9 +2803,17 @@ function parseOptionEvents(
     const codeMatch = fieldFor(record, ['Transaction Type', 'Type', 'Code'])
     const type = inferEventType(codeMatch?.value)
     if (!type) continue
+    if (type === 'conflict') {
+      conflictingEventType = true
+      continue
+    }
 
     const contractMatch = fieldFor(record, ['Symbol', 'Contract'])
     const contract = contractMatch?.value
+    if (!contract?.trim()) {
+      invalidEventContract = true
+      continue
+    }
     const asset = classifyAsset(valueFor(record, ['Asset Class', 'Asset Category']), contract ?? '')
     if (
       asset !== 'OPTION' &&
@@ -2851,6 +2874,8 @@ function parseOptionEvents(
       return {
         capacityExceeded: true,
         invalidEventDate,
+        conflictingEventType,
+        invalidEventContract,
         ambiguousEventIdentity,
         events: [],
       }
@@ -2880,6 +2905,8 @@ function parseOptionEvents(
   return {
     capacityExceeded: false,
     invalidEventDate,
+    conflictingEventType,
+    invalidEventContract,
     ambiguousEventIdentity,
     events: events.sort((a, b) => b.date.localeCompare(a.date)),
   }
@@ -2890,13 +2917,15 @@ function isOptionEventRecordCandidate(record: SectionRecord): boolean {
   const type = inferEventType(
     valueFor(record, ['Transaction Type', 'Type', 'Code']),
   )
-  const contract = valueFor(record, ['Symbol', 'Contract'])?.trim()
-  if (!type || !contract) return false
+  const contract = valueFor(record, ['Symbol', 'Contract'])?.trim() ?? ''
+  if (!type) return false
   return (
     classifyAsset(
       valueFor(record, ['Asset Class', 'Asset Category']),
       contract,
-    ) === 'OPTION' || /[CP]\d{8}$/.test(contract)
+    ) === 'OPTION' ||
+    inferOptionUnderlyingFromContract(contract) != null ||
+    /[CP]\d{8}$/.test(contract)
   )
 }
 
@@ -5020,6 +5049,13 @@ function parseIndexedStatement(
     ...lifecycleEventSection.records,
     ...tradeEventSection.records,
   ]
+  // Dedicated rows own the count, but a contradictory lifecycle code in the
+  // unused Trades fallback must not be hidden by source precedence.
+  const conflictingCodeInAnyEventSection = optionMappingEventRecords.some(
+    (record) =>
+      isOptionEventRecordCandidate(record) &&
+      inferEventType(valueFor(record, ['Transaction Type', 'Type', 'Code'])) === 'conflict',
+  )
   accountingSectionConflict ||=
     lifecycleEventSection.conflict || tradeEventSection.conflict
   accountingSectionConflict ||=
@@ -5053,6 +5089,12 @@ function parseIndexedStatement(
   const events = eventResult.events
   if (eventResult.invalidEventDate) {
     errors.push({ code: 'option_event_date_invalid' })
+  }
+  if (eventResult.conflictingEventType || conflictingCodeInAnyEventSection) {
+    errors.push({ code: 'option_event_type_conflict' })
+  }
+  if (eventResult.invalidEventContract) {
+    errors.push({ code: 'accounting_section_conflict' })
   }
   if (eventResult.ambiguousEventIdentity) {
     errors.push({ code: 'option_event_identity_conflict' })

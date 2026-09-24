@@ -32,6 +32,7 @@ export const PARSER_DIAGNOSTIC_CODES = Object.freeze([
   'accounting_value_invalid',
   'accounting_section_conflict',
   'option_event_date_invalid',
+  'option_event_type_conflict',
   'option_event_identity_conflict',
   'underlyings_missing',
   'mtm_total_missing',
@@ -115,6 +116,8 @@ const messages: Record<
       'The statement contains ambiguous or conflicting source sections, columns, or accounting totals. Export a fresh English Activity Statement CSV.',
     option_event_date_invalid:
       'An option assignment, exercise or expiration event has a missing, invalid or out-of-period date. Export a fresh English Activity Statement CSV.',
+    option_event_type_conflict:
+      'One option lifecycle row uses conflicting or unsupported event codes. Export a fresh English Activity Statement CSV; do not choose a type by hand.',
     option_event_identity_conflict:
       'Different option lifecycle rows share the same contract, date and event type. This version cannot distinguish them safely. Export a fresh English Activity Statement CSV.',
     underlyings_missing:
@@ -183,6 +186,8 @@ const messages: Record<
       '报表的来源区块、字段列或会计合计存在歧义或冲突。请重新导出英文版 Activity Statement CSV。',
     option_event_date_invalid:
       '期权指派、行权或到期事件的日期缺失、无效或不在报表期间内。请重新导出英文版 Activity Statement CSV。',
+    option_event_type_conflict:
+      '一条期权事件记录使用了相互冲突或尚未支持的类型代码。请重新导出英文版 Activity Statement CSV，不要手工选择事件类型。',
     option_event_identity_conflict:
       '同一合约、日期和事件类型出现内容不同的期权事件记录，当前版本无法安全区分。请重新导出英文版 Activity Statement CSV。',
     underlyings_missing: '无法从年初至今报表中解析出股票或期权标的行。',
@@ -240,6 +245,8 @@ const messages: Record<
       '報表的來源區塊、欄位或會計合計存在歧義或衝突。請重新匯出英文版 Activity Statement CSV。',
     option_event_date_invalid:
       '選擇權指派、行權或到期事件的日期缺失、無效或不在報表期間內。請重新匯出英文版 Activity Statement CSV。',
+    option_event_type_conflict:
+      '一條選擇權事件紀錄使用了相互衝突或尚未支援的類型代碼。請重新匯出英文版 Activity Statement CSV，不要手動選擇事件類型。',
     option_event_identity_conflict:
       '同一合約、日期和事件類型出現內容不同的選擇權事件紀錄，目前版本無法安全區分。請重新匯出英文版 Activity Statement CSV。',
     underlyings_missing: '無法從年初至今報表中剖析出股票或選擇權標的列。',

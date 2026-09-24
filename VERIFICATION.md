@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.28 CSV structure and numeric-cell integrity
+# Verification record — checkpoint 0.29 option-event code integrity
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.29 — option-event type codes
+
+Fully fictional current-schema rows reproduced a false-good result for `A;Ep`: the old parser selected Assignment and discarded the conflicting Expiration meaning. It also counted `Cancelled Assignment` and `Exercise Reversal` as completed events. The revised type classifier fails closed on contradictory, negated or unsupported candidate codes instead of inferring from substrings. A deliberately malformed unused Trades row is rejected even when dedicated lifecycle rows are authoritative for counting. New tests cover supported `A;P` and consistent repeated codes, punctuation/Unicode and negative wording, absent contract, misclassified asset and the distinct official `AEx`, `MEx` and ambiguous `GEA` codes; the latter are not treated as verified completed-Exercise CSV rows. The specific error and recovery text are mapped in three languages (45 current diagnostics). Production-Chrome accessibility-tree assertions cover the visible import failure, recovery control, success notice/focus and cancellation status/focus. These are computer checks, not actual iPhone speech or a D07 close. Detailed evidence: [event-code integrity](docs/OPTION_EVENT_TYPE_INTEGRITY_EVIDENCE_2026-09-25.md).
+
+Final Node 22.23.2 `npm run check`, `npm run build` and `git diff --check` exited 0; the build produced `index-BdVZYtmB.js`, `ibkrParser.worker-BXBB7hz7.js` and `index-W6y1gsmE.css`. `npm audit --audit-level=high` found 0 vulnerabilities. The iPhone Mirroring inventory returned “The Mac is locked and automatic unlock could not unlock it”; no phone test or setting change occurred. D01/D02/D06–D08, F01 and R01–R03 remain OPEN (9), with 3 CLOSED and L frozen.
 
 ## 2026-09-25 checkpoint 0.28 — CSV structure and numeric cells
 

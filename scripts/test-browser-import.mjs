@@ -101,6 +101,7 @@ let downloadDirectory
 let invalidFixturePath
 let invalidEventDateFixturePath
 let ambiguousEventFixturePath
+let conflictingEventCodeFixturePath
 let malformedAmountFixturePath
 let malformedWhitespaceFixturePath
 let invalidExtensionFixturePath
@@ -473,6 +474,44 @@ async function resolveFileInputNodeId() {
   return nodeId
 }
 
+async function accessibleNodeForSelector(selector, label) {
+  const { root } = await cdp.send('DOM.getDocument', { depth: 0, pierce: true })
+  const { nodeId } = await cdp.send('DOM.querySelector', {
+    nodeId: root.nodeId,
+    selector,
+  })
+  assert.notEqual(nodeId, 0, `${label}: DOM target is missing: ${selector}`)
+  const { node: domNode } = await cdp.send('DOM.describeNode', { nodeId })
+  const { nodes } = await cdp.send('Accessibility.getFullAXTree')
+  const byId = new Map(nodes.map((node) => [node.nodeId, node]))
+  const target = nodes.find((node) => node.backendDOMNodeId === domNode.backendNodeId)
+  assert(target, `${label}: target is missing from the Chrome accessibility tree: ${selector}`)
+  assert.equal(target.ignored, false, `${label}: target is ignored by the Chrome accessibility tree: ${selector}`)
+
+  const accessibleNames = []
+  const visited = new Set()
+  function visit(node) {
+    if (visited.has(node.nodeId)) return
+    visited.add(node.nodeId)
+    if (!node.ignored && typeof node.name?.value === 'string' && node.name.value.trim()) {
+      accessibleNames.push(node.name.value.trim())
+    }
+    for (const childId of node.childIds ?? []) {
+      const child = byId.get(childId)
+      if (child) visit(child)
+    }
+  }
+  visit(target)
+
+  return {
+    focused: target.properties?.some((property) =>
+      property.name === 'focused' && property.value?.value === true) ?? false,
+    name: target.name?.value ?? '',
+    role: target.role?.value ?? '',
+    text: accessibleNames.join(' '),
+  }
+}
+
 async function assertProductionWorkerCapacityFailure(filePath, label) {
   const startedAt = performance.now()
   await clickPrimaryNavigation('Import')
@@ -656,6 +695,7 @@ try {
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
   invalidEventDateFixturePath = join(browserArtifactDirectory, 'synthetic-invalid-event-date.csv')
   ambiguousEventFixturePath = join(browserArtifactDirectory, 'synthetic-ambiguous-event.csv')
+  conflictingEventCodeFixturePath = join(browserArtifactDirectory, 'synthetic-conflicting-event-code.csv')
   malformedAmountFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-amount.csv')
   malformedWhitespaceFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-whitespace.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
@@ -703,6 +743,10 @@ try {
       assignmentRows[0],
       `${assignmentRows[0]}\n${secondAssignmentRow}`,
     ),
+  )
+  writeFileSync(
+    conflictingEventCodeFixturePath,
+    canonicalFixtureText.replace(assignmentRows[0], assignmentRows[0].replace(/,A$/, ',A;Ep')),
   )
   writeFileSync(
     sameDateFixturePath,
@@ -1003,7 +1047,7 @@ try {
     return true;
   })()`)
   assert.equal(choseImport, true, 'Could not choose the first-use import path.')
-  const nodeId = await resolveFileInputNodeId()
+  await resolveFileInputNodeId()
   assert.equal(
     await evaluate('document.activeElement?.id ?? ""'),
     'main-content',
@@ -1066,9 +1110,22 @@ try {
     screenWidth: 320,
     width: 320,
   })
+  assert.equal(
+    await evaluate(`(() => {
+      const button = document.querySelector('[data-action="choose-file"]');
+      button?.focus();
+      return document.activeElement === button;
+    })()`),
+    true,
+    'The fictional error import could not start from the focused Choose CSV file control.',
+  )
+  const initialChooseAx = await accessibleNodeForSelector('[data-action="choose-file"]', 'Initial import action')
+  assert.equal(initialChooseAx.role, 'button')
+  assert.equal(initialChooseAx.name, 'Choose CSV file')
+  assert.equal(initialChooseAx.focused, true)
   await cdp.send('DOM.setFileInputFiles', {
     files: [invalidFixturePath],
-    nodeId,
+    nodeId: await resolveFileInputNodeId(),
   })
   const invalidMessageState = await waitForPageValue(
     `(() => {
@@ -1137,12 +1194,26 @@ try {
     invalidMessageState.recoveryLeft >= 0 && invalidMessageState.recoveryRight <= invalidMessageState.viewportWidth,
     `Import recovery escaped the 320 px viewport: ${JSON.stringify(invalidMessageState)}`,
   )
+  const invalidAlertAx = await accessibleNodeForSelector('.import-messages [role="alert"]', 'Invalid CSV alert')
+  assert.equal(invalidAlertAx.role, 'alert')
+  assert(
+    invalidAlertAx.text.replace(/\s+/g, ' ').includes(invalidMessageState.text.replace(/\s+/g, ' ')),
+    `Invalid CSV error is absent from the Chrome accessibility tree: ${JSON.stringify(invalidAlertAx)}`,
+  )
+  const recoveryActionAx = await accessibleNodeForSelector(
+    '[data-action="choose-file-after-error"]',
+    'Invalid CSV recovery action',
+  )
+  assert.equal(recoveryActionAx.role, 'button')
+  assert.equal(recoveryActionAx.name, 'Choose another CSV')
+  const chooseAfterErrorAx = await accessibleNodeForSelector('[data-action="choose-file"]', 'Choose after invalid CSV')
+  assert.equal(chooseAfterErrorAx.focused, true, 'The failed import lost focus from the stable Choose control.')
   await cdp.send('Emulation.clearDeviceMetricsOverride')
 
   console.log(`Selecting ${fixturePath.slice(projectRoot.length + 1)} through DevTools...`)
   await cdp.send('DOM.setFileInputFiles', {
     files: [fixturePath],
-    nodeId,
+    nodeId: await resolveFileInputNodeId(),
   })
 
   const ledgerState = await waitForPageValue(
@@ -1162,6 +1233,15 @@ try {
   )
   assert.equal(ledgerState.quality, 'Internal checks passed')
   assert(!ledgerState.text.includes('Self-reported'), 'The known synthetic fixture was labelled Self-reported.')
+  const importedNoticeAx = await accessibleNodeForSelector('.app-notice.success', 'Successful import notice')
+  assert.equal(importedNoticeAx.role, 'status')
+  assert(
+    importedNoticeAx.text.includes('Statement imported locally.'),
+    `The success notice is absent from the Chrome accessibility tree: ${JSON.stringify(importedNoticeAx)}`,
+  )
+  const importedMainAx = await accessibleNodeForSelector('#main-content', 'Imported Ledger focus')
+  assert.equal(importedMainAx.role, 'main')
+  assert.equal(importedMainAx.focused, true, 'Successful import did not move accessibility focus into Ledger.')
 
   const noticeDismissed = await evaluate(`(() => {
     const button = document.querySelector('[data-action="dismiss-notice"]');
@@ -1286,6 +1366,43 @@ try {
   )
   assert.equal(preservedAfterAmbiguousEvent.source, 'Fully synthetic test')
   assert.equal(preservedAfterAmbiguousEvent.seasonPnl, seasonPnl)
+
+  await clickPrimaryNavigation('Import')
+  const conflictingEventCodeNodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [conflictingEventCodeFixturePath],
+    nodeId: conflictingEventCodeNodeId,
+  })
+  const conflictingEventCodeState = await waitForPageValue(
+    `(() => ({
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('conflicting or unsupported event codes'),
+    'Conflicting fictional option-event codes through the production Worker',
+  )
+  assert(conflictingEventCodeState.recovery.includes('Do not merge or edit the event rows by hand.'))
+  const conflictingEventCodeAlertAx = await accessibleNodeForSelector(
+    '.import-messages [role="alert"]',
+    'Conflicting option-event code alert',
+  )
+  assert.equal(conflictingEventCodeAlertAx.role, 'alert')
+  assert(conflictingEventCodeAlertAx.text.includes('conflicting or unsupported event codes'))
+  await clickPrimaryNavigation('Ledger')
+  const preservedAfterConflictingEventCode = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Preserved report after conflicting fictional option-event codes',
+  )
+  assert.equal(preservedAfterConflictingEventCode.source, 'Fully synthetic test')
+  assert.equal(preservedAfterConflictingEventCode.seasonPnl, seasonPnl)
 
   await clickPrimaryNavigation('Import')
   const malformedAmountNodeId = await resolveFileInputNodeId()
@@ -2115,6 +2232,7 @@ try {
           return;
         }
         observer.disconnect();
+        liveButton.focus();
         liveButton.click();
         probe.clicked = true;
         probe.clickTime = performance.now();
@@ -2152,6 +2270,20 @@ try {
   )
   assert.equal(cancelledImportState.busy, 'false')
   assert.equal(cancelledImportState.probe.busyObserved, true)
+  const cancelledStatusAx = await accessibleNodeForSelector(
+    '.import-cancelled-message',
+    'Cancelled import status',
+  )
+  assert.equal(cancelledStatusAx.role, 'status')
+  assert(cancelledStatusAx.text.includes('Import cancelled.'))
+  assert(cancelledStatusAx.text.includes('report already open in this tab was not changed'))
+  const chooseAfterCancelAx = await accessibleNodeForSelector(
+    '[data-action="choose-file"]',
+    'Choose after cancelled import',
+  )
+  assert.equal(chooseAfterCancelAx.role, 'button')
+  assert.equal(chooseAfterCancelAx.name, 'Choose CSV file')
+  assert.equal(chooseAfterCancelAx.focused, true, 'Cancelling the import stranded focus on a removed control.')
   await waitForCondition(
     () => workerTargets.length > workerCountBeforeCancel,
     'Cancelled production Worker target creation',
