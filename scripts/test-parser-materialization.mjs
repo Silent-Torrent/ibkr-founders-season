@@ -148,6 +148,38 @@ try {
   assert.equal(duplicateTradesResult.report?.events.length, 1)
   assert.equal(duplicateTradesResult.report?.seasonPnl, 7)
   assert.equal(duplicateTradesResult.report?.symbols[0]?.assignmentCount, 1)
+  const firstTradeRowNumber = duplicateTrades.text
+    .split('\n')
+    .findIndex((row) => row.startsWith('Trades,Data,')) + 1
+  const tradeEventRefs = duplicateTradesResult.report.events[0].sourceRefs
+    .filter((ref) => ref.section === 'Trades')
+  assert(tradeEventRefs.length > 0)
+  assert(
+    tradeEventRefs.every((ref) => ref.rowNumber === firstTradeRowNumber),
+    'Consecutive duplicate Trades did not preserve the first source row.',
+  )
+  const duplicateTradeRow = duplicateTrades.text
+    .split('\n')[firstTradeRowNumber - 1]
+  const conflictingCodeAfterDuplicates = parseIbkrActivityStatement(
+    `${duplicateTrades.text}\n${duplicateTradeRow.replace(/,A$/, ',A;Ep')}`,
+    { accountComparisonSalt, currentDate: referenceTime },
+  )
+  assert(
+    conflictingCodeAfterDuplicates.errors.some(
+      (diagnostic) => diagnostic.code === 'option_event_type_conflict',
+    ) && !conflictingCodeAfterDuplicates.report,
+    'A conflicting code after 25,001 duplicate Trades rows was hidden.',
+  )
+  const narrowerHeaderAfterDuplicates = parseIbkrActivityStatement(
+    `${duplicateTrades.text}\nTrades,Header,Asset Class\n${duplicateTradeRow}`,
+    { accountComparisonSalt, currentDate: referenceTime },
+  )
+  assert(
+    narrowerHeaderAfterDuplicates.errors.some(
+      (diagnostic) => diagnostic.code === 'accounting_section_conflict',
+    ) && !narrowerHeaderAfterDuplicates.report,
+    'A changed header after 25,001 duplicate Trades rows was hidden.',
+  )
 
   const candidateMappings = generateSyntheticFiiCandidateMappingsStatement()
   assert.equal(candidateMappings.byteLength, SYNTHETIC_CAPACITY_TARGET_BYTES)

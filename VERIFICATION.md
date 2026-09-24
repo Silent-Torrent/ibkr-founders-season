@@ -1,6 +1,14 @@
-# Verification record — checkpoint 0.32 Worker-source policy
+# Verification record — checkpoint 0.33 parser retention
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.33 — bounded parser retention
+
+The first-pass index now collapses only adjacent, cell-identical Trades `DATA` rows from the same source identity, after header-state and beyond-header-cell checks. It retains the first row number and still counts every raw CSV row. Contract mapping keeps all explicit alias/underlying conflict states, including unused aliases, but no longer retains unused inferred candidate entries or source references for unused explicit candidates. No financial metric, ranking rule, storage, network or trust-tier policy changed.
+
+Before/after fixed-input SHA-256 digests of the complete JSON ParseResult were identical for the fully fictional 25,001-duplicate-Trades and 10,000-candidate-FII fixtures: `378a490f76f0dc69ee65fecf7486465890565a1e2021b9391a3cfb530564fd02` and `8c76dde94fed8401a2ac7191910f1c79e16d768f18821e227d10a155974c3755`. New tests cover first-row event provenance, an exact duplicate followed by a distinct same-day event, unused explicit alias conflicts both within Trades and against FII, changed header width, and a contradictory lifecycle code or narrowed header after the 25,001-row run. Node 22 full `npm run check` passed, including actual production-Chrome Worker import and capacity/recovery tests; `npm run build` passed with `ibkrParser.worker-Cjcd1XFM.js` and `index-TUGl6aEN.js`; `npm audit --audit-level=high` found 0 vulnerabilities. The extra pressure assertions were rerun after the full check and passed.
+
+One-run Node-only diagnostics on the duplicate fixture changed from 3,738.2 ms / 67.9 MiB post-parse heap to 243.1 ms / 33.7 MiB, and the candidate fixture's post-parse heap changed from 66.1 to 40.6 MiB. Those endpoint observations vary with runtime/GC, are not continuous or Worker-exclusive allocation peaks, and say nothing about an iPhone threshold. No private statement, iPhone, deployment or external host was tested on this build. D01 and the fixed **9 OPEN/3 CLOSED** gate ledger remain unchanged; L stays frozen. Detailed [retention evidence](docs/PARSER_RETENTION_EVIDENCE_2026-09-25.md).
 
 ## 2026-09-25 checkpoint 0.32 — Worker-source CSP
 

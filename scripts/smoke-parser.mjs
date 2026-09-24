@@ -2474,6 +2474,34 @@ try {
   )
 
   const canonicalAssignmentRow = 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
+  const underlyingTradeHeader = currentSchemaFixture
+    .split('\n')
+    .find((row) => row.startsWith('Trades,Header,Asset Class,Currency,Symbol,Underlying,'))
+  assert(underlyingTradeHeader, 'The synthetic Trades Underlying header is missing.')
+  const unusedTradeRow = canonicalAssignmentRow
+    .replace('ZZFICTA 19JUN26 125 P,ZZFICTA,', 'ZZUNUSED 19JUN26 1 C,ZZUNUSEDA,')
+    .replace(/,A$/, ',')
+  const conflictingUnusedTradeRow = unusedTradeRow.replace(
+    'ZZUNUSEDA,',
+    'ZZUNUSEDB,',
+  )
+  const unusedTradeConflict = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${underlyingTradeHeader}\n${unusedTradeRow}\n${conflictingUnusedTradeRow}\n`,
+  )
+  assert(
+    hasDiagnostic(unusedTradeConflict, 'instrument_alias_conflict') &&
+      !unusedTradeConflict.report,
+    'Conflicting unused explicit Trades aliases were dropped.',
+  )
+  const unusedFiiRow = 'Financial Instrument Information,Data,Equity and Index Options,ZZUNUSED 19JUN26 1 C,UNUSED FII DESCRIPTION,SYNTH-CONID-UNUSED,ZZUNUSEDB,100,2026-06-19,C,1,'
+  const unusedTradeFiiConflict = parseIbkrActivityStatement(
+    `${currentSchemaFixture}\n${unusedFiiRow}\n${underlyingTradeHeader}\n${unusedTradeRow}\n`,
+  )
+  assert(
+    hasDiagnostic(unusedTradeFiiConflict, 'instrument_alias_conflict') &&
+      !unusedTradeFiiConflict.report,
+    'An unused explicit Trades alias disagreeing with FII was dropped.',
+  )
   for (const compatibleCode of ['A;P', 'A;A', 'Assignment;A']) {
     const compatibleCodeRow = canonicalAssignmentRow.replace(/,A$/, `,${compatibleCode}`)
     const result = parseIbkrActivityStatement(
@@ -2714,6 +2742,39 @@ try {
       exactDuplicateAssignment.report?.symbols.find((symbol) =>
         symbol.symbol === 'ZZFICTA')?.assignmentCount === 1,
     `An exact repeated assignment row changed existing deduplication: ${diagnosticsText(exactDuplicateAssignment)}`,
+  )
+  const firstAssignmentRowNumber = currentSchemaFixture
+    .split('\n')
+    .findIndex((row) => row === canonicalAssignmentRow) + 1
+  const repeatedTradeRefs = exactDuplicateAssignment.report?.events
+    .find((event) => event.type === 'assignment' && event.symbol === 'ZZFICTA')?.sourceRefs
+    .filter((ref) => ref.section === 'Trades') ?? []
+  assert(
+    repeatedTradeRefs.length > 0 &&
+      repeatedTradeRefs.every((ref) => ref.rowNumber === firstAssignmentRowNumber),
+    'A repeated assignment changed its first-row provenance.',
+  )
+  const duplicateBeforeDistinct = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      canonicalAssignmentRow,
+      `${canonicalAssignmentRow}\n${canonicalAssignmentRow}\n${distinctSameDayAssignmentRow}`,
+    ),
+  )
+  assert(
+    hasDiagnostic(duplicateBeforeDistinct, 'option_event_identity_conflict') &&
+      !duplicateBeforeDistinct.report,
+    'An exact duplicate hid a later distinct same-day assignment.',
+  )
+  const narrowedRepeatedTrades = parseIbkrActivityStatement(
+    currentSchemaFixture.replace(
+      canonicalAssignmentRow,
+      `${canonicalAssignmentRow}\n${canonicalAssignmentRow}\nTrades,Header,Asset Class\n${canonicalAssignmentRow}`,
+    ),
+  )
+  assert(
+    hasDiagnostic(narrowedRepeatedTrades, 'accounting_section_conflict') &&
+      !narrowedRepeatedTrades.report,
+    'Repeated Trades concealed a later changed header and unmapped cells.',
   )
   const distinctSameDayDedicatedRow = dedicatedEventRow.replace(
     '2026-06-20',

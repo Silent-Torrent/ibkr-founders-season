@@ -491,6 +491,7 @@ for (const alias of MATERIALIZED_SECTION_ALIASES) {
 }
 const MATERIALIZED_SECTION_KEYS = new Set(MATERIALIZED_SECTION_NAMES.keys())
 const CONTROL_RECORD_SECTIONS = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
+const TRADES_SECTION_KEY = normalizeKey('Trades')
 
 interface StatementIndexBuilder {
   finish(rowCount: number): StatementIndex
@@ -509,6 +510,11 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
   let firstBofPeriod: StatementIndex['firstBofPeriod']
   let hasUnmappedNonemptyCells = false
   let sectionOverflow = false
+  let lastTradesDataRow: {
+    row: string[]
+    rowNumber: number
+    sourceIdentity: string
+  } | undefined
 
   const visit = (row: string[], rowNumber: number): void => {
     const rawSection = row[0]?.trim() ?? ''
@@ -632,6 +638,23 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
         // because trailing cells are empty.
         return
       }
+    }
+
+    if (sectionKey === TRADES_SECTION_KEY && descriptor === 'DATA') {
+      const previous = lastTradesDataRow
+      if (
+        previous?.rowNumber === rowNumber - 1 &&
+        previous.sourceIdentity === sourceIdentity &&
+        previous.row.length === row.length &&
+        previous.row.every((cell, index) => cell === row[index])
+      ) {
+        // The later row has the same active header and fields as the first.
+        // Keep the raw row count but retain only the first source row, just as
+        // option-event and contract mapping deduplication already do.
+        previous.rowNumber = rowNumber
+        return
+      }
+      lastTradesDataRow = { row, rowNumber, sourceIdentity }
     }
 
     const headers = headerState?.headers
@@ -2546,11 +2569,11 @@ function buildInstrumentUnderlyingMap(
         authoritativeCandidates,
         contract,
         explicit.underlying,
-        explicit.sourceRefs,
+        demandedAliases.has(aliasKey) ? explicit.sourceRefs : [],
       )
     }
-    if (inferred) {
-      if (demandedAliases.has(aliasKey)) contractAliases.add(aliasKey)
+    if (inferred && demandedAliases.has(aliasKey)) {
+      contractAliases.add(aliasKey)
       addInstrumentUnderlyingCandidate(
         inferredCandidates,
         contract,
