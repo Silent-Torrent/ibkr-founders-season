@@ -2,7 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.34 local integrity and privacy disclosure
+## Current project state — checkpoint 0.35 Flex boundary and production Worker checks
+
+On 2026-09-25, an official IBKR Flex layout check exposed another local fail-open edge: extra financial content could hide in a known section's `BOS`/`EOS` control row, and a nonzero `MTMP` amount checksum could be accepted even though the documented default is zero outside Transaction/Position sections. Bounded validation now rejects these shapes while keeping documented checksum shapes, without claiming to recompute checksums or authenticate an IBKR file. The production Chrome suite now imports five wholly fictional adversarial variants through the built parser Worker and checks visible rejection plus preservation of the previous Ledger. Its 320 px check also covers the PNG asset-division privacy notice. See [0.35 evidence](docs/PRODUCTION_WORKER_CONTROL_ROWS_035_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). No 0.35 phone, broker-authenticity or deployment pass exists; fixed gates remain **9 OPEN / 3 CLOSED**, and decision **L remains frozen**.
+
+### Earlier checkpoint 0.34 — local integrity and privacy disclosure
 
 On 2026-09-25, wholly fictional counterexamples exposed four unsafe parser interpretations: populated rows with an unknown record type disappearing, stock P&L silently moving to another symbol through a conflicting Underlying, duplicate same-day option events under 2-/4-digit expiry-year spellings, and an unrecognized populated P/L column hidden behind a new header. These now fail closed within the bounded supported schema, with matching/blank/control-row cases retained. The PNG download area also explains in all three languages that an asset division can reveal an approximate account-size range even though no exact net liquidation value is shown. The complete Node 22 check, production-Chrome regression, build and high-severity dependency audit passed; no 0.34 phone, broker-authenticity or deployment test was performed. See [0.34 evidence](docs/PARSER_IDENTITY_PRIVACY_034_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). Fixed release gates remain **9 OPEN / 3 CLOSED**; deployment decision **L remains frozen**.
 

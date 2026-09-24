@@ -1,6 +1,14 @@
-# Verification record — checkpoint 0.34 local parser identity and share disclosure
+# Verification record — checkpoint 0.35 Flex boundary and production Worker checks
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.35 — Flex section controls and adversarial Worker imports
+
+The [official IBKR Flex delivery guide](https://www.ibkrguides.com/reportingreference/reportguide/delivery%20configuration%20and%20general%20configuration.htm) specifies three BOS fields, four EOS fields, and a zero-default amount checksum except for Transaction/Position sections. The parser now rejects extra populated BOS/EOS fields, invalid EOS numeric shape and a nonzero MTMP amount checksum while retaining the four documented nonzero-capable section-code exceptions. The wholly fictional parser red test first failed under old behavior; the updated parser smoke suite passed. This checks syntax and a narrow documented default, not checksum arithmetic or document provenance.
+
+The production Chrome suite imported five wholly fictional adversarial CSV variants through the built browser Worker: unsupported populated MTM descriptor, stock Symbol/Underlying mismatch, two-/four-digit expiry-year option-event collision, populated unrecognized P & L column, and extra populated field after an otherwise valid Flex EOS row. Each was rejected with visible error/recovery and the previously accepted fictional Ledger/source/Season P&L/rows remained unchanged. The same run checked the PNG privacy disclosure's visibility and button association at 320 px. See [0.35 scope and limits](docs/PRODUCTION_WORKER_CONTROL_ROWS_035_EVIDENCE_2026-09-25.md). No personal report, phone, external host or deployment was used. The fixed ledger remains **9 OPEN / 3 CLOSED** under L freeze.
+
+Final Node 22.23.2 `npm run check` exited 0 across all suites, including the production-Chrome browser regression (44 local requests and 26 Worker targets in that test run). Standalone `npm run build` exited 0 with `index-CBIDZIjz.js`, `ibkrParser.worker-BsXKF5SU.js`, and `index-D6ARIZiW.css`. `npm audit --audit-level=high` reported zero vulnerabilities. The desktop browser's DevTools file-input injection is not a native phone-picker test; the 320 px viewport is simulated, not an iPhone or Safari 16.4 observation.
 
 ## 2026-09-25 checkpoint 0.34 — bounded accounting identity and privacy wording
 

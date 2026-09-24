@@ -707,13 +707,36 @@ try {
     'Known IBKR section codes were overridden by variable BOS descriptions.',
   )
   const flexControlResult = parseIbkrActivityStatement(
-    `${codedBosFixture.trimEnd()}\nMTMP,EOS,123,456\n`,
+    `${codedBosFixture.trimEnd()}\nMTMP,EOS,123,0\n`,
   )
   assert(
     flexControlResult.errors.length === 0 &&
       flexControlResult.report?.seasonPnl === 740.123456,
     'A populated Flex end-of-section checksum was treated as an accounting row.',
   )
+  for (const sectionCode of ['TRNT', 'TRNS', 'POST', 'POSS']) {
+    const parsed = parseIbkrActivityStatement(
+      `${codedBosFixture.trimEnd()}\n${sectionCode},EOS,123,456\n`,
+    )
+    assert(
+      parsed.errors.length === 0 && parsed.report?.seasonPnl === 740.123456,
+      `A documented ${sectionCode} nonzero amount checksum was rejected.`,
+    )
+  }
+  for (const [label, controlRow] of [
+    ['extra BOS field', 'MTMP,BOS,MTM Performance Summary in Base,208.863355'],
+    ['non-checksum fields', 'MTMP,EOS,Stocks,ZZFICTA'],
+    ['nonzero MTMP amount checksum', 'MTMP,EOS,123,456'],
+    ['extra financial field', 'MTMP,EOS,123,0,208.863355'],
+  ]) {
+    const parsed = parseIbkrActivityStatement(
+      `${codedBosFixture.trimEnd()}\n${controlRow}\n`,
+    )
+    assert(
+      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      `A Flex section boundary with ${label} was accepted as valid.`,
+    )
+  }
   const codedPluiResult = parseIbkrActivityStatement(
     sample.replaceAll('Month & Year to Date Performance Summary', 'PLUI'),
   )

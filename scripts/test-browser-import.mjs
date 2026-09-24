@@ -105,6 +105,11 @@ let conflictingEventCodeFixturePath
 let extraTradesCellFixturePath
 let malformedAmountFixturePath
 let malformedWhitespaceFixturePath
+let unsupportedMtmRecordFixturePath
+let conflictingStockUnderlyingFixturePath
+let expiryYearCollisionFixturePath
+let unrecognizedPnlColumnFixturePath
+let flexEosExtraCellFixturePath
 let invalidExtensionFixturePath
 let sameDateFixturePath
 let olderFixturePath
@@ -602,6 +607,58 @@ async function assertSnapshotNotice(filePath, expectedMessagePart, label) {
   assert.equal(preserved.rows, 3)
 }
 
+async function assertProductionWorkerRejectedAndPreserved(
+  filePath,
+  expectedErrorPart,
+  expectedRecoveryPart,
+  expectedLedger,
+  label,
+) {
+  await clickPrimaryNavigation('Import')
+  const workerCountBefore = workerTargets.length
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [filePath],
+    nodeId: await resolveFileInputNodeId(),
+  })
+  await waitForCondition(
+    () => workerTargets.length > workerCountBefore,
+    `${label} production Worker creation`,
+  )
+  const rejected = await waitForPageValue(
+    `(() => ({
+      busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes(expectedErrorPart),
+    `${label} visible parser error`,
+  )
+  assert.equal(rejected.busy, 'false', `${label} left the file chooser busy.`)
+  assert(
+    rejected.recovery.includes(expectedRecoveryPart),
+    `${label} did not show the matching recovery guidance: ${JSON.stringify(rejected)}`,
+  )
+  const alert = await accessibleNodeForSelector('.import-messages [role="alert"]', `${label} alert`)
+  assert.equal(alert.role, 'alert')
+  assert(alert.text.includes(expectedErrorPart), `${label} error is absent from the accessibility tree.`)
+
+  await clickPrimaryNavigation('Ledger')
+  const preservedLedger = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+      ledgerText: document.querySelector('.data-table')?.innerText ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === expectedLedger.rows,
+    `${label} prior Ledger`,
+  )
+  assert.deepEqual(preservedLedger, expectedLedger, `${label} replaced or changed the accepted report.`)
+}
+
 assert(existsSync(fixturePath), `The canonical synthetic fixture is missing: ${fixturePath}`)
 assert(chromePath, `Google Chrome was not found. Checked:\n${chromeCandidates.join('\n')}`)
 assert.equal(typeof WebSocket, 'function', 'Node.js 22 with the built-in WebSocket API is required.')
@@ -700,6 +757,11 @@ try {
   extraTradesCellFixturePath = join(browserArtifactDirectory, 'synthetic-extra-trades-cell.csv')
   malformedAmountFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-amount.csv')
   malformedWhitespaceFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-whitespace.csv')
+  unsupportedMtmRecordFixturePath = join(browserArtifactDirectory, 'synthetic-unsupported-mtm-record.csv')
+  conflictingStockUnderlyingFixturePath = join(browserArtifactDirectory, 'synthetic-conflicting-stock-underlying.csv')
+  expiryYearCollisionFixturePath = join(browserArtifactDirectory, 'synthetic-expiry-year-collision.csv')
+  unrecognizedPnlColumnFixturePath = join(browserArtifactDirectory, 'synthetic-unrecognized-pnl-column.csv')
+  flexEosExtraCellFixturePath = join(browserArtifactDirectory, 'synthetic-flex-eos-extra-cell.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
   sameDateFixturePath = join(browserArtifactDirectory, 'same-date-activity-statement.csv')
   olderFixturePath = join(browserArtifactDirectory, 'older-activity-statement.csv')
@@ -715,6 +777,40 @@ try {
   )
   writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
   const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  const stockMtmRow = canonicalFixtureText.split('\n').find((line) =>
+    line.startsWith('Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,'),
+  )
+  assert(stockMtmRow, 'The fictional stock MTM fixture changed unexpectedly.')
+  writeFileSync(
+    unsupportedMtmRecordFixturePath,
+    `${canonicalFixtureText.trimEnd()}\n${stockMtmRow.replace(',Data,', ',Detail,')}\n`,
+  )
+  const withAddedMtmColumn = (header, stockValue) => canonicalFixtureText.split('\n')
+    .map((line) => {
+      if (line.startsWith('Mark-to-Market Performance Summary,')) {
+        const value = line.startsWith('Mark-to-Market Performance Summary,Header,')
+          ? header
+          : line === stockMtmRow ? stockValue : ''
+        return `${line},${value}`
+      }
+      return line.startsWith('Total P/L for Statement Period,') ? `${line},` : line
+    })
+    .join('\n')
+  writeFileSync(
+    conflictingStockUnderlyingFixturePath,
+    withAddedMtmColumn('Underlying', 'ZZFICTB'),
+  )
+  writeFileSync(
+    unrecognizedPnlColumnFixturePath,
+    withAddedMtmColumn('Unrecognized P & L', '999.000000'),
+  )
+  const codedFlexFixtureText = `MTMP,BOS,MTM Performance Summary in Base\nFIFO,BOS,FIFO Performance Summary in Base\n${canonicalFixtureText
+    .replaceAll('Mark-to-Market Performance Summary', 'MTMP')
+    .replaceAll('Realized & Unrealized Performance Summary', 'FIFO')}`
+  writeFileSync(
+    flexEosExtraCellFixturePath,
+    `${codedFlexFixtureText.trimEnd()}\nMTMP,EOS,123,0,208.863355\n`,
+  )
   const canonicalAmountCell = ',740.123456,'
   assert(canonicalFixtureText.includes(canonicalAmountCell), 'The fictional total-amount fixture changed unexpectedly.')
   writeFileSync(
@@ -739,6 +835,13 @@ try {
   const secondAssignmentRow = assignmentRows[0]
     .replace('16:00:00', '17:00:00')
     .replace(',-1.000000,', ',-2.000000,')
+  writeFileSync(
+    expiryYearCollisionFixturePath,
+    canonicalFixtureText.replace(
+      assignmentRows[0],
+      `${assignmentRows[0]}\n${secondAssignmentRow.replace('ZZFICTA 19JUN26 125 P', 'ZZFICTA 19JUN2026 125 P')}`,
+    ),
+  )
   writeFileSync(
     ambiguousEventFixturePath,
     canonicalFixtureText.replace(
@@ -1311,6 +1414,35 @@ try {
     `Unexpected rounded Season P&L display: ${seasonPnl}`,
   )
 
+  const acceptedLedger = await evaluate(`(() => ({
+    heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+    rows: document.querySelectorAll('.data-table tbody tr').length,
+    source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+    seasonPnl: [...document.querySelectorAll('.metric-card')]
+      .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+      ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    ledgerText: document.querySelector('.data-table')?.innerText ?? '',
+  }))()`)
+  assert.equal(acceptedLedger.heading, 'Ledger')
+  assert.equal(acceptedLedger.rows, 3)
+  assert.equal(acceptedLedger.source, 'Fully synthetic test')
+  assert.equal(acceptedLedger.seasonPnl, seasonPnl)
+  for (const [path, errorPart, recoveryPart, label] of [
+    [unsupportedMtmRecordFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Unsupported populated MTM record type'],
+    [conflictingStockUnderlyingFixturePath, 'Conflicting stock-symbol or option-contract mappings', 'Do not edit totals by hand.', 'Conflicting stock Symbol/Underlying'],
+    [expiryYearCollisionFixturePath, 'cannot distinguish them safely', 'Do not merge or edit the event rows by hand.', 'Two-/four-digit expiry-year event collision'],
+    [unrecognizedPnlColumnFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated unrecognized P & L column'],
+    [flexEosExtraCellFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Populated out-of-bounds Flex EOS field'],
+  ]) {
+    await assertProductionWorkerRejectedAndPreserved(
+      path,
+      errorPart,
+      recoveryPart,
+      acceptedLedger,
+      label,
+    )
+  }
+
   await clickPrimaryNavigation('Import')
   const invalidEventDateNodeId = await resolveFileInputNodeId()
   await cdp.send('DOM.setFileInputFiles', {
@@ -1534,11 +1666,31 @@ try {
     const visibleText = (element) => element && getComputedStyle(element).display !== 'none'
       ? element.textContent?.trim() ?? ''
       : null;
+    const disclosure = document.querySelector('.share-privacy-disclosure');
+    const download = document.querySelector('[data-action="download-card"]');
+    const shareActions = document.querySelector('.share-section > .section-heading .button-row');
+    disclosure?.scrollIntoView({ block: 'center' });
+    const disclosureRect = disclosure?.getBoundingClientRect();
+    const actionRect = shareActions?.getBoundingClientRect();
+    const disclosureHit = disclosureRect
+      ? document.elementFromPoint(disclosureRect.left + disclosureRect.width / 2,
+        disclosureRect.top + disclosureRect.height / 2)
+      : null;
     return {
       headers: [...document.querySelectorAll('.data-table th')].map(visibleText).filter((value) => value !== null),
       pageWidth: document.documentElement.scrollWidth,
       rowCells: [...document.querySelectorAll('.data-table tbody tr:first-child td')]
         .map(visibleText).filter((value) => value !== null),
+      sharePrivacy: {
+        actionBottom: actionRect?.bottom ?? 0,
+        describedBy: download?.getAttribute('aria-describedby') ?? '',
+        disclosureId: disclosure?.id ?? '',
+        hitVisibleText: disclosureHit === disclosure || disclosure?.contains(disclosureHit) === true,
+        left: disclosureRect?.left ?? -1,
+        right: disclosureRect?.right ?? Number.POSITIVE_INFINITY,
+        text: disclosure?.textContent?.trim() ?? '',
+        top: disclosureRect?.top ?? 0,
+      },
       viewportWidth: window.innerWidth,
     };
   })()`)
@@ -1548,6 +1700,19 @@ try {
   assert(
     mobileLedgerState.pageWidth <= mobileLedgerState.viewportWidth,
     `The simplified mobile Ledger caused page overflow: ${JSON.stringify(mobileLedgerState)}`,
+  )
+  assert(
+    mobileLedgerState.sharePrivacy.text.includes('account-size range'),
+    `The asset-division privacy disclosure is absent at 320 px: ${JSON.stringify(mobileLedgerState.sharePrivacy)}`,
+  )
+  assert.equal(mobileLedgerState.sharePrivacy.describedBy, mobileLedgerState.sharePrivacy.disclosureId)
+  assert(mobileLedgerState.sharePrivacy.disclosureId, 'The PNG button has no privacy-disclosure target.')
+  assert(
+    mobileLedgerState.sharePrivacy.top >= mobileLedgerState.sharePrivacy.actionBottom &&
+      mobileLedgerState.sharePrivacy.left >= 0 &&
+      mobileLedgerState.sharePrivacy.right <= mobileLedgerState.viewportWidth &&
+      mobileLedgerState.sharePrivacy.hitVisibleText,
+    `The asset-division privacy disclosure is obscured or outside the 320 px viewport: ${JSON.stringify(mobileLedgerState.sharePrivacy)}`,
   )
   await cdp.send('Emulation.clearDeviceMetricsOverride')
 

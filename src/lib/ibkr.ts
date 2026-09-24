@@ -499,9 +499,8 @@ for (const alias of MATERIALIZED_SECTION_ALIASES) {
 }
 const MATERIALIZED_SECTION_KEYS = new Set(MATERIALIZED_SECTION_NAMES.keys())
 const CONTROL_RECORD_SECTIONS = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
-const MATERIALIZED_SECTION_CONTROL_RECORD_TYPES = new Set([
-  'BOS', 'EOS', 'BOA', 'EOA',
-])
+const MATERIALIZED_ACCOUNT_CONTROL_RECORD_TYPES = new Set(['BOA', 'EOA'])
+const FLEX_NONZERO_AMOUNT_CHECKSUM_SECTION_CODES = new Set(['TRNT', 'TRNS', 'POST', 'POSS'])
 const TRADES_SECTION_KEY = normalizeKey('Trades')
 
 interface StatementIndexBuilder {
@@ -589,9 +588,32 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       headerBlockStates.set(sourceIdentity, headerBlockState)
     }
 
-    // Flex section/account boundary records may contain descriptions or
-    // checksums. They are control metadata, not accounting rows.
-    if (MATERIALIZED_SECTION_CONTROL_RECORD_TYPES.has(descriptor)) return
+    // Official Flex BOS and EOS layouts have one description or two numeric
+    // checksums respectively; only Transactions/Positions sections may have
+    // a nonzero amount checksum. Do not let a disguised financial row vanish
+    // behind one of those otherwise legitimate control descriptors.
+    if (descriptor === 'BOS') {
+      if (row.slice(3).some((cell) => cell.trim())) hasUnmappedNonemptyCells = true
+      return
+    }
+    if (descriptor === 'EOS') {
+      const recordChecksum = parseNumber(row[2])
+      const amountChecksum = parseNumber(row[3])
+      if (
+        recordChecksum == null ||
+        !Number.isInteger(recordChecksum) ||
+        recordChecksum < 0 ||
+        amountChecksum == null ||
+        (!FLEX_NONZERO_AMOUNT_CHECKSUM_SECTION_CODES.has(rawSectionUpper) && amountChecksum !== 0) ||
+        row.slice(4).some((cell) => cell.trim())
+      ) {
+        hasUnmappedNonemptyCells = true
+      }
+      return
+    }
+    // BOA/EOA are recognized account boundaries, but their payload is not
+    // used as accounting data or asserted as a verified row layout here.
+    if (MATERIALIZED_ACCOUNT_CONTROL_RECORD_TYPES.has(descriptor)) return
 
     if (descriptor === 'HEADER') {
       const headers = uniqueHeaders(row.slice(2))
