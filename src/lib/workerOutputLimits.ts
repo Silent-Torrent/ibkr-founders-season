@@ -521,7 +521,7 @@ function validateEvent(value: unknown, budget: ValidationBudget): value is Optio
     !hasExactKeys(
       value,
       ['symbol', 'contract', 'date', 'type', 'sourceRefs'],
-      ['symbol', 'type', 'sourceRefs'],
+      ['symbol', 'date', 'type', 'sourceRefs'],
     )
   ) {
     return false
@@ -530,8 +530,8 @@ function validateEvent(value: unknown, budget: ValidationBudget): value is Optio
     !consumeString(value.symbol, budget, MAX_SYMBOL_CHARACTERS) ||
     (value.contract !== undefined &&
       !consumeString(value.contract, budget, MAX_CONTRACT_CHARACTERS, 0)) ||
-    (value.date !== undefined &&
-      (!consumeString(value.date, budget, 10, 10) || !isIsoDate(value.date))) ||
+    !consumeString(value.date, budget, 10, 10) ||
+    !isIsoDate(value.date) ||
     !EVENT_TYPES.has(value.type as string)
   ) {
     return false
@@ -768,8 +768,8 @@ function validateReport(
     const event = value.events[index]
     if (
       !validateEvent(event, budget) ||
-      (event.date !== undefined &&
-        (event.date < value.startDate || event.date > value.endDate))
+      event.date < value.startDate ||
+      event.date > value.endDate
     ) {
       return false
     }

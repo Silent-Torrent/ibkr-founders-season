@@ -99,6 +99,7 @@ let profileDirectory
 let browserArtifactDirectory
 let downloadDirectory
 let invalidFixturePath
+let invalidEventDateFixturePath
 let invalidExtensionFixturePath
 let sameDateFixturePath
 let olderFixturePath
@@ -650,6 +651,7 @@ try {
   profileDirectory = join(browserArtifactDirectory, 'profile')
   downloadDirectory = join(browserArtifactDirectory, 'downloads')
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
+  invalidEventDateFixturePath = join(browserArtifactDirectory, 'synthetic-invalid-event-date.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
   sameDateFixturePath = join(browserArtifactDirectory, 'same-date-activity-statement.csv')
   olderFixturePath = join(browserArtifactDirectory, 'older-activity-statement.csv')
@@ -665,6 +667,12 @@ try {
   )
   writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
   const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  const datedTradeCell = '"2026-06-19, 16:00:00"'
+  assert(canonicalFixtureText.includes(datedTradeCell), 'The fictional event-date fixture changed unexpectedly.')
+  writeFileSync(
+    invalidEventDateFixturePath,
+    canonicalFixtureText.replace(datedTradeCell, '"2026-02-30, 16:00:00"'),
+  )
   writeFileSync(
     sameDateFixturePath,
     `${canonicalFixtureText}\nUnsupported UX Marker,Data,Note,Same date snapshot test\n`,
@@ -1185,6 +1193,37 @@ try {
     /^\+(?:US)?\$740$/,
     `Unexpected rounded Season P&L display: ${seasonPnl}`,
   )
+
+  await clickPrimaryNavigation('Import')
+  const invalidEventDateNodeId = await resolveFileInputNodeId()
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [invalidEventDateFixturePath],
+    nodeId: invalidEventDateNodeId,
+  })
+  const invalidEventDateState = await waitForPageValue(
+    `(() => ({
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+      recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('missing, invalid or out-of-period date'),
+    'Invalid fictional option-event date through the production Worker',
+  )
+  assert(invalidEventDateState.recovery.includes('Do not change an event date by hand.'))
+  await clickPrimaryNavigation('Ledger')
+  const preservedAfterInvalidEventDate = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Preserved report after invalid option-event date',
+  )
+  assert.equal(preservedAfterInvalidEventDate.source, 'Fully synthetic test')
+  assert.equal(preservedAfterInvalidEventDate.seasonPnl, seasonPnl)
 
   const shortLandscape = await testShortLandscape({ cdp, evaluate, waitForPageValue })
 

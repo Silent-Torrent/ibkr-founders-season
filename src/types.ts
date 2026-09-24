@@ -31,6 +31,7 @@ export type ParserDiagnosticCode =
   | 'mtm_section_missing'
   | 'accounting_value_invalid'
   | 'accounting_section_conflict'
+  | 'option_event_date_invalid'
   | 'underlyings_missing'
   | 'mtm_total_missing'
   | 'instrument_alias_conflict'
@@ -132,7 +133,7 @@ export type SymbolMetricKey =
 export interface OptionEvent {
   symbol: string
   contract?: string
-  date?: string
+  date: string
   type: 'assignment' | 'exercise' | 'expiration'
   sourceRefs: SourceRef[]
 }

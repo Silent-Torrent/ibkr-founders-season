@@ -2701,13 +2701,33 @@ function inferEventType(value: string | undefined): OptionEvent['type'] | undefi
   return undefined
 }
 
+function parseOptionEventDate(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  const directDate = parseDateFlexible(value)
+  if (directDate) return toIsoDate(directDate)
+
+  // Activity Statement Trades can use "YYYY-MM-DD, HH:mm:ss". Keep the
+  // complete English month-first date ("June 20, 2026") before stripping
+  // only a recognizable, valid time suffix.
+  const withTime = value.trim().match(/^(.*?)(?:[,;]\s*|\s+)(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+  if (!withTime) return undefined
+  const hour = Number(withTime[2])
+  const minute = Number(withTime[3])
+  const second = withTime[4] === undefined ? 0 : Number(withTime[4])
+  if (hour > 23 || minute > 59 || second > 59) return undefined
+  return toIsoDate(parseDateFlexible(withTime[1]))
+}
+
 function parseOptionEvents(
   eventRecords: SectionRecord[],
   symbols: Map<string, SymbolAccumulator>,
   instrumentIndex: InstrumentUnderlyingMapResult,
-): { capacityExceeded: boolean; events: OptionEvent[] } {
+  startIso: string | undefined,
+  endIso: string | undefined,
+): { capacityExceeded: boolean; invalidEventDate: boolean; events: OptionEvent[] } {
   const events: OptionEvent[] = []
   const seen = new Set<string>()
+  let invalidEventDate = false
 
   for (const record of eventRecords) {
     if (record.recordType !== 'DATA') continue
@@ -2745,11 +2765,19 @@ function parseOptionEvents(
     if (isTotalRow(underlying)) continue
 
     const dateMatch = fieldFor(record, ['Date', 'Date/Time', 'Trade Date', 'Report Date'])
-    const parsedDate = toIsoDate(parseDateFlexible(dateMatch?.value.split(/[;,]/)[0]))
-    const key = `${underlying}|${contract ?? ''}|${parsedDate ?? ''}|${type}`
+    const parsedDate = parseOptionEventDate(dateMatch?.value)
+    if (
+      !parsedDate ||
+      (startIso !== undefined && parsedDate < startIso) ||
+      (endIso !== undefined && parsedDate > endIso)
+    ) {
+      invalidEventDate = true
+      continue
+    }
+    const key = `${underlying}|${contract ?? ''}|${parsedDate}|${type}`
     if (seen.has(key)) continue
     if (events.length >= MAX_REPORT_EVENTS) {
-      return { capacityExceeded: true, events: [] }
+      return { capacityExceeded: true, invalidEventDate, events: [] }
     }
     seen.add(key)
 
@@ -2775,7 +2803,8 @@ function parseOptionEvents(
 
   return {
     capacityExceeded: false,
-    events: events.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
+    invalidEventDate,
+    events: events.sort((a, b) => b.date.localeCompare(a.date)),
   }
 }
 
@@ -4940,9 +4969,14 @@ function parseIndexedStatement(
     eventRecords,
     symbols,
     primaryYtdInstrumentMappingResult,
+    startIso,
+    endIso,
   )
   if (eventResult.capacityExceeded) return reportCapacityFailure()
   const events = eventResult.events
+  if (eventResult.invalidEventDate) {
+    errors.push({ code: 'option_event_date_invalid' })
+  }
   if (primaryYtdInstrumentMappingResult.hasConflicts) {
     errors.push({ code: 'instrument_alias_conflict' })
   }

@@ -699,7 +699,7 @@ try {
   assert.equal(
     isWorkerReportWithinLimits(
       mutateReport((report) => {
-        report.events = [{ symbol: 'ZZFICTA', contract: '', type: 'assignment', sourceRefs: [] }]
+        report.events = [{ symbol: 'ZZFICTA', contract: '', date: '2026-06-20', type: 'assignment', sourceRefs: [] }]
         report.symbols[0].assignmentCount = 1
         report.warnings = [{ code: 'other_pnl_included' }]
       }),
@@ -742,7 +742,7 @@ try {
   assert.equal(
     isWorkerReportWithinLimits(
       mutateReport((report) => {
-        const repeated = { symbol: 'ZZFICTA', type: 'assignment', sourceRefs: [] }
+        const repeated = { symbol: 'ZZFICTA', date: '2026-06-20', type: 'assignment', sourceRefs: [] }
         report.events = [repeated, { ...repeated, sourceRefs: [] }]
         report.symbols[0].assignmentCount = 2
         report.warnings = [{ code: 'other_pnl_included' }]
@@ -1106,6 +1106,28 @@ try {
     isWorkerParseResultWithinLimits(navComponentMismatchResult, referenceTimeMs),
     true,
     'A valid NAV component warning with a zero top-level bridge difference was rejected.',
+  )
+
+  const datedEventReport = validReport()
+  datedEventReport.events = [{
+    symbol: 'ZZFICTA',
+    date: '2026-06-20',
+    type: 'assignment',
+    sourceRefs: [],
+  }]
+  datedEventReport.symbols[0].assignmentCount = 1
+  datedEventReport.warnings = [{ code: 'other_pnl_included' }]
+  assert.equal(
+    isWorkerReportWithinLimits(datedEventReport, referenceTimeMs),
+    true,
+    'A valid dated option event was rejected by the Worker response boundary.',
+  )
+  const undatedEventReport = structuredClone(datedEventReport)
+  delete undatedEventReport.events[0].date
+  assert.equal(
+    isWorkerReportWithinLimits(undatedEventReport, referenceTimeMs),
+    false,
+    'An otherwise valid option event without a date crossed the Worker response boundary.',
   )
 
   for (const invalidReport of [

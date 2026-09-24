@@ -2441,6 +2441,69 @@ try {
       ),
     'Dedicated lifecycle rows were combined with Trades and counted twice.',
   )
+  const dedicatedEventRow = '"Options Exercises, Assignments and Expirations",Data,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Assignment'
+  for (const date of ['June 20, 2026', 'June 20, 2026, 16:00:00']) {
+    const result = parseIbkrActivityStatement(
+      dedicatedLifecycleFixture.replace(
+        dedicatedEventRow,
+        dedicatedEventRow.replace('2026-06-20', encodeCsvCell(date)),
+      ),
+    )
+    assert(
+      result.errors.length === 0 &&
+        result.report?.events.some(
+          (event) => event.type === 'assignment' && event.date === '2026-06-20',
+        ),
+      `A supported English event-date form was rejected: ${date}; ${diagnosticsText(result)}`,
+    )
+  }
+  for (const [date, label] of [
+    ['', 'missing'],
+    ['2026-02-30', 'nonexistent'],
+    ['2026-06-20, 25:00:00', 'invalid-time'],
+    ['2025-12-31', 'before-period'],
+    ['2026-08-16', 'after-period'],
+  ]) {
+    const result = parseIbkrActivityStatement(
+      dedicatedLifecycleFixture.replace(
+        dedicatedEventRow,
+        dedicatedEventRow.replace('2026-06-20', encodeCsvCell(date)),
+      ),
+    )
+    assert(
+      hasDiagnostic(result, 'option_event_date_invalid') && !result.report,
+      `A dedicated ${label} option-event date was accepted: ${diagnosticsText(result)}`,
+    )
+  }
+  const missingDedicatedDateColumn = parseIbkrActivityStatement(
+    dropSectionColumn(
+      dedicatedLifecycleFixture,
+      'Options Exercises, Assignments and Expirations',
+      'Date',
+    ),
+  )
+  assert(
+    hasDiagnostic(missingDedicatedDateColumn, 'option_event_date_invalid') &&
+      !missingDedicatedDateColumn.report,
+    `A dedicated option-event row without a Date column was accepted: ${diagnosticsText(missingDedicatedDateColumn)}`,
+  )
+  for (const [date, label] of [
+    ['""', 'missing'],
+    ['2026-02-30', 'nonexistent'],
+    ['2025-12-31', 'before-period'],
+    ['2026-08-16', 'after-period'],
+  ]) {
+    const result = parseIbkrActivityStatement(
+      currentSchemaFixture.replace(
+        canonicalAssignmentRow,
+        canonicalAssignmentRow.replace('"2026-06-19, 16:00:00"', date),
+      ),
+    )
+    assert(
+      hasDiagnostic(result, 'option_event_date_invalid') && !result.report,
+      `A Trades-fallback ${label} option-event date was accepted: ${diagnosticsText(result)}`,
+    )
+  }
   const subtotalOnlyLifecycleResult = parseIbkrActivityStatement(`${currentSchemaFixture}
 "Options Exercises, Assignments and Expirations",Header,Asset Class,Symbol,Underlying Symbol,Date,Transaction Type
 "Options Exercises, Assignments and Expirations",SubTotal,OPT,ZZFICTA 19JUN26 125 P,ZZFICTA,2026-06-20,Assignment

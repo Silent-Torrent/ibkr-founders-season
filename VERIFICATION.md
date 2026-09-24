@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.25 candidate small-value display
+# Verification record — checkpoint 0.26 candidate option-event date integrity
 
 Last updated: 2026-09-24
+
+## 2026-09-24 checkpoint 0.26 — option-event dates
+
+The fully fictional current-schema fixture first reproduced a missing-date Assignment silently counted as a good event; the new red parser assertion exited 1 on the old code. The parser now rejects missing, invalid or statement-period-outside dates in selected dedicated and Trades-fallback lifecycle rows with `option_event_date_invalid` and no report. Valid month-first dates and the known time-suffixed Trades form remain accepted. A separate Worker contract requires every event to carry an ISO date within the statement period. The 43 fixed parser/import codes all retain three-locale text and recovery mapping. The final Node 22.23.2 `npm run check` exited 0: parser, streaming, materialization, Worker, i18n, accessibility, compatibility, product policy, launchers, fictional phone-pack and production-Chrome import/cancel/exact-capacity/PNG regressions passed. Chrome imported a malformed fictional CSV through the real Worker, showed the specific error, and retained the preceding synthetic Ledger on return. Final `npm run build` exited 0, producing `index-CX2NKqBh.js`, `ibkrParser.worker-BSLI_BU5.js` and `index-W6y1gsmE.css`; `npm audit --audit-level=high` reported 0 vulnerabilities. None of these local checks is a real iPhone VoiceOver, iOS/Safari 16.4 or deployment pass. See `docs/OPTION_EVENT_DATE_EVIDENCE_2026-09-24.md`.
+
+The D01 method recheck found no qualified existing Worker-exclusive true-peak instrument: the calibrated 50 ms isolate sampler missed all three short pulses, and one renderer was independently shown to contain the page plus two Workers. Chrome's [allocation timeline guide](https://developer.chrome.com/docs/devtools/memory-problems/allocation-profiler) describes periodic snapshots, while [its page-memory API guidance](https://web.dev/articles/monitor-total-page-memory-usage) describes GC-timed estimates rather than a guaranteed transient peak; neither closes D01. D02's local inventory found Command Line Tools only (`xcode-select -p`), no `simctl` or `instruments` utility and no `/Applications/Xcode.app`. No iOS 16.4 real-device environment was established. Both gates remain OPEN; no tool was installed or phone/network setting changed.
 
 ## 2026-09-24 checkpoint 0.25 — small non-zero display
 

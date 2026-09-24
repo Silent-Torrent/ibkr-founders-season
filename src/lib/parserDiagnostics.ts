@@ -31,6 +31,7 @@ export const PARSER_DIAGNOSTIC_CODES = Object.freeze([
   'mtm_section_missing',
   'accounting_value_invalid',
   'accounting_section_conflict',
+  'option_event_date_invalid',
   'underlyings_missing',
   'mtm_total_missing',
   'instrument_alias_conflict',
@@ -111,6 +112,8 @@ const messages: Record<
       'An accounting value has an unsupported format or cannot be calculated safely. Export a fresh English Activity Statement CSV.',
     accounting_section_conflict:
       'The statement contains ambiguous or conflicting source sections, columns, or accounting totals. Export a fresh English Activity Statement CSV.',
+    option_event_date_invalid:
+      'An option assignment, exercise or expiration event has a missing, invalid or out-of-period date. Export a fresh English Activity Statement CSV.',
     underlyings_missing:
       'No stock or option underlying rows could be parsed from the YTD statement.',
     mtm_total_missing:
@@ -175,6 +178,8 @@ const messages: Record<
       '报表会计数值格式不受支持，或无法安全计算。请重新导出英文版 Activity Statement CSV。',
     accounting_section_conflict:
       '报表的来源区块、字段列或会计合计存在歧义或冲突。请重新导出英文版 Activity Statement CSV。',
+    option_event_date_invalid:
+      '期权指派、行权或到期事件的日期缺失、无效或不在报表期间内。请重新导出英文版 Activity Statement CSV。',
     underlyings_missing: '无法从年初至今报表中解析出股票或期权标的行。',
     mtm_total_missing: '业绩部分中缺少 IBKR 全部资产 YTD MTM 合计值。',
     instrument_alias_conflict:
@@ -228,6 +233,8 @@ const messages: Record<
       '報表會計數值格式不受支援，或無法安全計算。請重新匯出英文版 Activity Statement CSV。',
     accounting_section_conflict:
       '報表的來源區塊、欄位或會計合計存在歧義或衝突。請重新匯出英文版 Activity Statement CSV。',
+    option_event_date_invalid:
+      '選擇權指派、行權或到期事件的日期缺失、無效或不在報表期間內。請重新匯出英文版 Activity Statement CSV。',
     underlyings_missing: '無法從年初至今報表中剖析出股票或選擇權標的列。',
     mtm_total_missing: '績效部分中缺少 IBKR 全部資產 YTD MTM 合計值。',
     instrument_alias_conflict:
