@@ -27,7 +27,7 @@ try {
     { ShareCardPreview },
     { TrophiesPage },
     { demoReport },
-    { formatCurrency, formatReconciliationDifference },
+    { formatCurrency, formatPercent, formatReconciliationDifference },
     { hasCurrentUnrealizedExplanation, hasRealizedExplanation },
     { getDivision, getTrophies },
     { parseIbkrActivityStatement },
@@ -112,6 +112,30 @@ try {
     '—',
     'An invalid currency escaped the formatter safety fallback.',
   )
+  for (const [locale, symbol] of [['en', '$'], ['zh-CN', 'US$'], ['zh-TW', 'US$']]) {
+    assert.equal(formatCurrency(0, 'USD', locale), `${symbol}0`)
+    assert.equal(formatCurrency(0.4, 'USD', locale), `+${symbol}0.40`)
+    assert.equal(formatCurrency(-0.4, 'USD', locale), `-${symbol}0.40`)
+    assert.equal(formatCurrency(0.000001, 'USD', locale), `+${symbol}0.000001`)
+    assert.equal(formatCurrency(-0.000001, 'USD', locale), `-${symbol}0.000001`)
+    assert.equal(formatCurrency(0.4, 'USD', locale, true), `+${symbol}0.40`)
+    assert.equal(formatPercent(0, locale), '0%')
+    assert.equal(formatPercent(0.0004, locale), '+0.04%')
+    assert.equal(formatPercent(-0.0004, locale), '-0.04%')
+    assert.equal(formatPercent(0.000001, locale), '+0.0001%')
+    assert.equal(formatPercent(-0.000001, locale), '-0.0001%')
+    assert.equal(formatPercent(0.000499999999999, locale), '+0.05%')
+    assert.equal(formatPercent(0.0005, locale), '+0.05%')
+    assert.equal(formatPercent(-0.0005, locale), '-0.05%')
+    assert.equal(formatPercent(0.001, locale), '+0.1%')
+    assert.equal(formatPercent(0.00123, locale), '+0.1%')
+  }
+  assert.equal(formatCurrency(0.4, 'JPY', 'en'), '+¥0.40')
+  assert.equal(formatCurrency(0.4, '<img>', 'en'), '—')
+  assert.equal(formatCurrency(Number.NaN, 'USD', 'en'), '—')
+  assert.equal(formatCurrency(Number.POSITIVE_INFINITY, 'USD', 'en'), '—')
+  assert.equal(formatPercent(Number.NEGATIVE_INFINITY, 'en'), '—')
+  assert.equal(formatPercent(1e-23, 'en'), '+1E-21%')
   assert.equal(formatReconciliationDifference(0, 'USD', 'en'), '$0')
   assert.equal(formatReconciliationDifference(0.4, 'USD', 'en'), '+$0.40')
   assert.equal(formatReconciliationDifference(-0.4, 'USD', 'en'), '-$0.40')
@@ -268,6 +292,21 @@ try {
     precisionMarkup.includes('+$0.40'),
     'A non-zero sub-dollar reconciliation difference was rounded to zero in the Ledger.',
   )
+
+  const smallValueReport = cloneReport()
+  smallValueReport.source = 'local'
+  smallValueReport.seasonPnl = -0.4
+  smallValueReport.optionPnl = 0.4
+  smallValueReport.seasonReturn = 0.0004
+  const smallValueLedger = renderToStaticMarkup(
+    createElement(LedgerPage, { locale: 'en', report: smallValueReport }),
+  )
+  assert.ok(smallValueLedger.includes('-$0.40'), 'The Ledger hid a small loss.')
+  assert.ok(smallValueLedger.includes('+0.04%'), 'The Ledger hid a small positive return.')
+  const smallValueSummary = buildSeasonSummary(smallValueReport, 'en')
+  assert.ok(smallValueSummary.includes('-$0.40'), 'The share summary hid a small loss.')
+  assert.ok(smallValueSummary.includes('+$0.40'), 'The share summary hid a small gain.')
+  assert.ok(smallValueSummary.includes('+0.04%'), 'The share summary hid a small return.')
 
   const missingExplanationReport = cloneReport()
   missingExplanationReport.source = 'local'

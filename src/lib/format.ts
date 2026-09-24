@@ -13,6 +13,10 @@ export function formatCurrency(
   compact = false,
 ): string {
   if (value == null || !Number.isFinite(value)) return '—'
+  // Whole-unit rounding must not turn a real gain or loss into an unsigned zero.
+  if (value !== 0 && Math.abs(value) < 1) {
+    return formatReconciliationDifference(value, currency, locale)
+  }
   try {
     return new Intl.NumberFormat(localeMap[locale], {
       style: 'currency',
@@ -55,9 +59,14 @@ export function formatReconciliationDifference(
 
 export function formatPercent(value: number | undefined, locale: Locale): string {
   if (value == null || !Number.isFinite(value)) return '—'
+  const absolutePercent = Math.abs(value) * 100
+  const useScientificNotation = value !== 0 && absolutePercent < 1e-20
   return new Intl.NumberFormat(localeMap[locale], {
     style: 'percent',
-    maximumFractionDigits: 1,
+    notation: useScientificNotation ? 'scientific' : 'standard',
+    ...(value !== 0 && absolutePercent < 0.1
+      ? { maximumSignificantDigits: 2 }
+      : { maximumFractionDigits: 1 }),
     signDisplay: 'exceptZero',
   }).format(value)
 }
