@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.30 production CSP connection scope
+# Verification record — checkpoint 0.30 phone acceptance and production CSP
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.30 — hotel-Wi-Fi iPhone continuation
+
+The iPhone 15 Plus / iOS 27.0 system Safari actually loaded the unchanged 0.30 production preview from the Mac across two hotel Wi-Fi names on the same private router. A native Files selection of the repository's wholly synthetic sample produced the visible `FULLY SYNTHETIC TEST` Ledger, `Season P&L +$20,040` and local-import success notice. The user answered “是” to whether the success notification was actually heard, without providing its words or order. A separate 128-byte fictional malformed CSV produced the visible insufficient-rows error while the prior synthetic-source badge was still shown; the complete Ledger was not rechecked after that error. The error's actual speech, in-progress cancellation, complete modal/focus order, manual-selection labels and physical rotation are not established. Native file-picker dismissal is not an app cancellation test. No personal IBKR statement or external host was used.
+
+The two test downloads were removed from the phone's active Downloads folder and visibly appeared in recoverable Recently Deleted, without touching unrelated files or permanently emptying trash. The project Safari tab closed to Start Page/Home; VoiceOver was verified Off; the Mac's original Simplified Pinyin returned; the temporary invalid file was removed from `dist`; and the owned preview stopped with no port-4174 listener. No product edit, full check or build was performed in this device-only session. D07/D08/D02 and the other six open gates remain `OPEN` (**9 OPEN/3 CLOSED**), with L frozen. Detailed [phone evidence](docs/IPHONE_HOTEL_WIFI_VOICEOVER_EVIDENCE_2026-09-25.md).
 
 ## 2026-09-25 checkpoint 0.30 — production page CSP
 
