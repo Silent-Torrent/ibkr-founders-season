@@ -2,6 +2,8 @@
 
 建立日期：2026-09-09。初始核对基线：checkpoint 0.23，提交 `482c66d`。
 
+2026-09-25 checkpoint 0.30：生产页面的 `connect-src` 已从不限目标的 `ws:` 收紧为仅 `'self'`，开发模式热更新单独保留 WebSocket 例外。旧页面未通过新增策略测试；新页面的开发/预览响应、生产 Chrome 跨端口 WebSocket 被 CSP 拦截、完整本地检查与构建均已验证。此项只加强页面级本地边界，不能证明未来部署的 Worker 脚本响应头或完整 Network/Storage；R01 仍 `OPEN`。见 [CSP 范围证据](PRODUCTION_CSP_SCOPE_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结不变。
+
 2026-09-25 checkpoint 0.29：完全虚构的期权事件代码暴露两个假正常结果：`A;Ep` 被当成单一指派，以及“Cancelled Assignment”等取消/冲销文字被当成已完成事件。现对相互冲突或尚未支持的候选代码明确拒绝导入，专门事件区块优先计数时也检查被舍弃的 Trades 区块是否有矛盾代码。三语提示/恢复映射现为 45 项；生产 Chrome 辅助功能树验证仅为 D07 桌面准备，不能代替手机实听。官方代码定义仍不构成 F01 所需的真实完成行权 CSV 形状。见 [事件代码完整性记录](OPTION_EVENT_TYPE_INTEGRITY_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结不变。
 
 2026-09-25 checkpoint 0.28：完全虚构的财务总额中插入非法引号、或在引号内包裹首尾空白/换行，旧解析器会删掉异常内容并给出 `good` 报表。现已严格检查引号及 CRLF、保留字段原文并在金额/收益率入口拒绝首尾空白；生产 Chrome 的两种虚构导入均失败且旧账本保持不变。见 [CSV 完整性修复](CSV_QUOTE_INTEGRITY_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。没有私人报表、真机或部署新证据，固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结不变。

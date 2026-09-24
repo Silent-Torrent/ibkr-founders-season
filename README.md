@@ -2,7 +2,11 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.29 option-event code integrity
+## Current project state — checkpoint 0.30 production CSP connection scope
+
+On 2026-09-25 the built page's CSP was narrowed from a scheme-wide WebSocket allowance to connections matching CSP's `'self'` rule. Vite development still gets a serve-only WebSocket exception for hot reload; the production build and preview do not. A new policy regression first failed against the old HTML, then passed; local dev/preview responses were inspected, and production Chrome observed an actual CSP violation while a separate loopback WebSocket listener received no connection. The complete Node 22 check, build and dependency audit passed. See [CSP scope evidence](docs/PRODUCTION_CSP_SCOPE_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). This does **not** prove a future host's Worker response header or deployed Network/Storage boundary; R01 remains open, as do the other fixed gates (**9 OPEN / 3 CLOSED**). L deployment freeze remains.
+
+### Earlier checkpoint 0.29 — option-event code integrity
 
 On 2026-09-25 fictional option rows exposed another false-good path: combined Assignment/Expiration codes could be silently resolved to one event, and cancellation/reversal wording could be counted as a completed event. Lifecycle type recognition now accepts only bounded known words and code tokens; contradictory, negated, malformed or unsupported event codes fail the import rather than being guessed or silently dropped. A contradictory Trades row is checked even when the dedicated lifecycle section owns the event count. A specific diagnostic is available in all three languages, bringing the current total to 45. Production-Chrome accessibility-tree checks cover the import error, recovery, success and cancellation states, but are only desktop preparation, not a real VoiceOver hearing test. See [event-code evidence](docs/OPTION_EVENT_TYPE_INTEGRITY_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). Official codes alone do not prove a completed Exercise CSV row; F01 and the other fixed gates remain **9 OPEN / 3 CLOSED**, with deployment frozen by L.
 

@@ -450,6 +450,27 @@ try {
   }
 
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const productionHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
+  const productionMetaCsp = productionHtml.match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/)?.[1]
+  assert(productionMetaCsp, 'The production page lost its Content Security Policy meta tag.')
+  assert(
+    productionMetaCsp.split(';').map((directive) => directive.trim()).includes("connect-src 'self'"),
+    'The production page must restrict connection destinations to its own origin.',
+  )
+  const developmentHtml = await vite.transformIndexHtml('/', productionHtml)
+  const developmentMetaCsp = developmentHtml.match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/)?.[1]
+  assert(
+    developmentMetaCsp?.split(';').map((directive) => directive.trim()).includes("connect-src 'self' ws:"),
+    'The development page must retain Vite HMR WebSocket access without widening production CSP.',
+  )
+  const hostConfiguration = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'))
+  const hostedCsp = hostConfiguration.headers?.flatMap((rule) => rule.headers ?? [])
+    .find((header) => header.key?.toLowerCase() === 'content-security-policy')?.value
+  assert(hostedCsp, 'The configured host lost its Content Security Policy response header.')
+  assert(
+    hostedCsp.split(';').map((directive) => directive.trim()).includes("connect-src 'self'"),
+    'The configured host must restrict connection destinations to its own origin.',
+  )
   const functionalSourceFiles = readFunctionalSourceTree(new URL('../src/', import.meta.url))
   const functionalSource = functionalSourceFiles.map(({ source }) => source).join('\n')
   const preferenceKeys = [...new Set(functionalSource.match(/pnl-arena\.[a-z.-]+\.v1/g) ?? [])].sort()

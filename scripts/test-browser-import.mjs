@@ -2753,6 +2753,47 @@ try {
     [],
     `Worker DevTools setup errors were observed: ${JSON.stringify(asynchronousProtocolErrors)}`,
   )
+  // Run the deliberate CSP violation after the ordinary no-error assertions.
+  // A separate loopback port is cross-origin, so a production page must not
+  // connect even though the development page allows Vite's HMR WebSocket.
+  let cspProbeConnections = 0
+  const cspProbeServer = createNetServer((socket) => {
+    cspProbeConnections += 1
+    socket.destroy()
+  })
+  await new Promise((resolveListen, rejectListen) => {
+    cspProbeServer.once('error', rejectListen)
+    cspProbeServer.listen(0, '127.0.0.1', resolveListen)
+  })
+  try {
+    const address = cspProbeServer.address()
+    assert(address && typeof address === 'object')
+    const probeUrl = `ws://127.0.0.1:${address.port}/csp-probe`
+    await evaluate(`(() => {
+      const probe = { violations: [] };
+      window.__pnlArenaCspProbe = probe;
+      document.addEventListener('securitypolicyviolation', (event) => {
+        probe.violations.push({ directive: event.effectiveDirective, blockedUri: event.blockedURI });
+      });
+      probe.socket = new WebSocket(${JSON.stringify(probeUrl)});
+      return true;
+    })()`)
+    await delay(250)
+    const cspProbeResult = await evaluate(`(() => ({
+      violations: window.__pnlArenaCspProbe?.violations ?? [],
+      readyState: window.__pnlArenaCspProbe?.socket?.readyState ?? null,
+    }))()`)
+    assert.equal(cspProbeConnections, 0, 'The production page opened a cross-origin WebSocket.')
+    assert(
+      cspProbeResult.violations.some((violation) =>
+        violation.directive === 'connect-src' && violation.blockedUri === probeUrl),
+      `The cross-origin WebSocket was not demonstrably blocked by CSP: ${JSON.stringify(cspProbeResult)}`,
+    )
+  } finally {
+    await new Promise((resolveClose, rejectClose) => {
+      cspProbeServer.close((error) => (error ? rejectClose(error) : resolveClose()))
+    })
+  }
   assert(
     workerTargets.some(({ url }) => url.includes('ibkrParser.worker')),
     `The dedicated parser Worker target was not observed: ${JSON.stringify(workerTargets)}`,

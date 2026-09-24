@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.29 option-event code integrity
+# Verification record — checkpoint 0.30 production CSP connection scope
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.30 — production page CSP
+
+The old HTML meta policy permitted any `ws:` destination (and, by CSP scheme matching, `wss:`), although the configured Vercel response header was already stricter. A new product-policy assertion failed on the old source. Production HTML now declares `connect-src 'self'`; a Vite serve-only HTML transform retains `ws:` in development for hot reload. Actual localhost development HTML contained the HMR exception and a Node handshake to its HMR WebSocket succeeded; the built production-preview HTML contained the stricter directive. Both owned services on ports 4175/4176 were stopped. In production Chrome, an intentional separate-loopback WebSocket probe caused a `connect-src` security-policy violation and the listening probe server accepted zero connections. This is a controlled local negative test, not a statement upload or external-host check. The ordinary browser regression still observed no application WebSockets, external or non-GET requests.
+
+Final Node 22.23.2 standalone `npm run test:browser`, complete `npm run check`, `npm run build` and `git diff --check` exited 0; the build produced `index-BdVZYtmB.js`, `ibkrParser.worker-BXBB7hz7.js` and `index-W6y1gsmE.css`. `npm audit --audit-level=high` found 0 vulnerabilities. The document meta policy does not itself establish the independent parser Worker's CSP on another static host; configured deployed response headers, Worker asset, Network and Storage remain untested under L. R01 remains OPEN; all fixed gates stay 9 OPEN/3 CLOSED. Detailed [CSP evidence](docs/PRODUCTION_CSP_SCOPE_EVIDENCE_2026-09-25.md).
 
 ## 2026-09-25 checkpoint 0.29 — option-event type codes
 
