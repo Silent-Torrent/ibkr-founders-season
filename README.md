@@ -2,7 +2,15 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.32 production Worker-source policy
+## Current project state — checkpoint 0.34 local integrity and privacy disclosure
+
+On 2026-09-25, wholly fictional counterexamples exposed four unsafe parser interpretations: populated rows with an unknown record type disappearing, stock P&L silently moving to another symbol through a conflicting Underlying, duplicate same-day option events under 2-/4-digit expiry-year spellings, and an unrecognized populated P/L column hidden behind a new header. These now fail closed within the bounded supported schema, with matching/blank/control-row cases retained. The PNG download area also explains in all three languages that an asset division can reveal an approximate account-size range even though no exact net liquidation value is shown. The complete Node 22 check, production-Chrome regression, build and high-severity dependency audit passed; no 0.34 phone, broker-authenticity or deployment test was performed. See [0.34 evidence](docs/PARSER_IDENTITY_PRIVACY_034_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). Fixed release gates remain **9 OPEN / 3 CLOSED**; deployment decision **L remains frozen**.
+
+### Earlier checkpoint 0.33 — local parser and phone continuation
+
+On 2026-09-25, the parser reduced intermediate retention of adjacent identical Trades rows and unused contract-inference candidates while keeping tested results, conflict detection and source references unchanged. The full Node 22 check, production-Chrome Worker regression, build and high-severity dependency audit passed. A later iPhone 15 Plus Safari session visibly loaded that 0.33 production bundle: a fully fictional CSV imported, and a separate malformed fictional CSV was rejected without replacing the previous synthetic Ledger. VoiceOver was visibly enabled for the test and restored Off, but the user's **0.33 spoken-word/focus-order feedback is still pending**; this is not complete D07 or iOS/Safari 16.4 acceptance. See [parser evidence](docs/PARSER_RETENTION_EVIDENCE_2026-09-25.md), [phone evidence](docs/IPHONE_VOICEOVER_033_EVIDENCE_2026-09-25.md), and [verification](VERIFICATION.md). The fixed release ledger remains **9 OPEN / 3 CLOSED**; external deployment decision **L remains frozen**.
+
+### Earlier checkpoint 0.32 — production Worker-source policy
 
 On 2026-09-25, a local Chrome counterexample proved that the previous `worker-src 'self' blob:` policy let an in-page Blob Worker execute. Production HTML and the configured host policy now allow only `'self'` Worker script URLs, while `img-src blob:` stays for PNG previews. The new production-Chrome test observes a `worker-src` block and no Blob execution, then the existing same-origin parser Worker still imports a wholly fictional CSV. The complete Node 22 check, build and dependency audit passed. See [Worker policy evidence](docs/WORKER_CSP_SCOPE_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). This is local defense in depth, not a deployed response-header or iOS 16.4 pass. Fixed release gates stay **9 OPEN / 3 CLOSED** under L deployment freeze.
 

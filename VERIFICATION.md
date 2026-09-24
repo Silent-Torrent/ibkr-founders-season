@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.33 parser retention
+# Verification record — checkpoint 0.34 local parser identity and share disclosure
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.34 — bounded accounting identity and privacy wording
+
+Fully fictional red tests reproduced four false-good/unsupported-input cases: a populated unknown MTM record type was omitted, an explicit stock Underlying reassigned one row's P&L to another stock while exact totals still closed, 2-/4-digit-year spellings of one option contract bypassed the same-day event collision, and a populated header-named unrecognized P/L column was ignored. Narrow parser guards now fail closed on those shapes; matching stock Underlying, a blank new P/L column, nonempty Flex EOS checksum and the previously supported total-P/L special row remain accepted. A three-locale notice beside Download PNG now explains that the visible division may disclose an account-size range even though the exact net liquidation value is omitted.
+
+Node 22.23.2 `npm run check` passed every suite, including production-Chrome Worker/PNG/capacity/recovery regression, after the follow-up P & L spelling repair. `npm run build` passed with `index-CzBbJeEl.js`, `ibkrParser.worker-DyBxjpLN.js` and `index-D6ARIZiW.css`. `npm audit --audit-level=high` reported 0 vulnerabilities. The browser suite did not separately run each newly mutated parser file through Chrome. No private statement, 0.34 iPhone, iOS 16.4, external deployment or broker authenticity check was performed. See [0.34 evidence and limits](docs/PARSER_IDENTITY_PRIVACY_034_EVIDENCE_2026-09-25.md). The fixed ledger remains **9 OPEN / 3 CLOSED**, L frozen.
 
 ## 2026-09-25 — read-only D01/F01 evidence boundary
 

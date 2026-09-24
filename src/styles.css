@@ -1242,6 +1242,13 @@ h2 {
   white-space: normal;
 }
 
+.share-privacy-disclosure {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .share-copy-feedback {
   display: grid;
   margin-top: 9px;

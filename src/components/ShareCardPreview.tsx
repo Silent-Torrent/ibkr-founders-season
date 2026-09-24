@@ -49,6 +49,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
   const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
   const [manualCopyContext, setManualCopyContext] = useState<ShareContext | null>(null)
   const manualCopyId = useId()
+  const sharePrivacyId = useId()
   const manualButtonRef = useRef<HTMLButtonElement>(null)
   const manualPanelRef = useRef<HTMLDivElement>(null)
   const manualTextRef = useRef<HTMLTextAreaElement>(null)
@@ -259,6 +260,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             {t(locale, 'manualSummary')}
           </button>
           <button
+            aria-describedby={sharePrivacyId}
             className="primary-button"
             data-action="download-card"
             disabled={cardStatus === 'preparing'}
@@ -270,6 +272,9 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
           </button>
         </div>
       </div>
+      <p className="share-privacy-disclosure" id={sharePrivacyId}>
+        {t(locale, 'shareDivisionPrivacyHint')}
+      </p>
       <div className="share-copy-feedback">
         {/* Reserve the tallest localized outcome without adding another announcement. */}
         {(['copying', 'copied', 'copyFailed'] as const).map((key) => (

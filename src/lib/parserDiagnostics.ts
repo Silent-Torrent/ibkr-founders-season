@@ -125,7 +125,7 @@ const messages: Record<
     mtm_total_missing:
       'The IBKR all-assets YTD MTM total is missing from the performance section.',
     instrument_alias_conflict:
-      'Conflicting option contract-to-underlying mappings were found across statement sections.',
+      'Conflicting stock-symbol or option-contract mappings to an underlying were found in the statement.',
     report_capacity_exceeded:
       'This statement exceeds the current local capacity for underlyings, option lifecycle events, report sections, or safely traceable source details.',
     realized_section_missing:
@@ -193,7 +193,7 @@ const messages: Record<
     underlyings_missing: '无法从年初至今报表中解析出股票或期权标的行。',
     mtm_total_missing: '业绩部分中缺少 IBKR 全部资产 YTD MTM 合计值。',
     instrument_alias_conflict:
-      '报表各区块中存在相互冲突的期权合约与标的映射。',
+      '报表中的股票代码或期权合约与标的的对应关系存在冲突。',
     report_capacity_exceeded:
       '这份报表的标的、期权生命周期事件、报表区块或可安全追溯的来源明细超过当前本地处理上限。',
     realized_section_missing:
@@ -252,7 +252,7 @@ const messages: Record<
     underlyings_missing: '無法從年初至今報表中剖析出股票或選擇權標的列。',
     mtm_total_missing: '績效部分中缺少 IBKR 全部資產 YTD MTM 合計值。',
     instrument_alias_conflict:
-      '報表各區塊中存在相互衝突的選擇權合約與標的對應。',
+      '報表中的股票代碼或選擇權合約與標的的對應關係存在衝突。',
     report_capacity_exceeded:
       '這份報表的標的、選擇權生命週期事件、報表區塊或可安全追溯的來源明細超過目前本機處理上限。',
     realized_section_missing:

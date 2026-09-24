@@ -373,6 +373,91 @@ try {
   assert(currentReport.symbols.length === 3, `Unexpected current-schema symbol count: ${currentReport.symbols.length}`)
   assert(currentReport.events.length === 2, `Unexpected current-schema event count: ${currentReport.events.length}`)
   assert(currentReport.dataQuality === 'good', 'A supported Other bucket was incorrectly treated as a reconciliation failure.')
+  const withExplicitStockUnderlying = (stockUnderlying) => parseCsvRows(currentSchemaFixture)
+    .map((row) => {
+      if (row[0] === 'Mark-to-Market Performance Summary') {
+        const extra = row[1]?.toUpperCase() === 'HEADER'
+          ? 'Underlying'
+          : row[1]?.toUpperCase() === 'DATA' && row[2] === 'Stocks' && row[3] === 'ZZFICTA'
+            ? stockUnderlying
+            : ''
+        return [...row, extra]
+      }
+      if (row[0] === 'Total P/L for Statement Period') return [...row, '']
+      return row
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const matchingStockUnderlying = parseIbkrActivityStatement(
+    withExplicitStockUnderlying('ZZFICTA'),
+  )
+  assert(
+    matchingStockUnderlying.errors.length === 0 &&
+      matchingStockUnderlying.report?.symbols.find(
+        (symbol) => symbol.symbol === 'ZZFICTA',
+      )?.stockYtdMtm === 208.863355,
+    `A matching explicit stock Underlying was rejected: ${diagnosticsText(matchingStockUnderlying)}`,
+  )
+  const mismatchedStockUnderlying = parseIbkrActivityStatement(
+    withExplicitStockUnderlying('ZZFICTB'),
+  )
+  assert(
+    mismatchedStockUnderlying.errors.length > 0 && !mismatchedStockUnderlying.report,
+    'A conflicting stock Symbol/Underlying silently reassigned P&L to another stock.',
+  )
+  const withUnrecognizedMtmPnl = (value, field = 'Unrecognized P/L') => parseCsvRows(currentSchemaFixture)
+    .map((row) => {
+      if (row[0] === 'Mark-to-Market Performance Summary') {
+        const extra = row[1]?.toUpperCase() === 'HEADER'
+          ? field
+          : row[1]?.toUpperCase() === 'DATA' && row[2] === 'Stocks' && row[3] === 'ZZFICTA'
+            ? value
+            : ''
+        return [...row, extra]
+      }
+      if (row[0] === 'Total P/L for Statement Period') return [...row, '']
+      return row
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const blankUnrecognizedMtmPnl = parseIbkrActivityStatement(
+    withUnrecognizedMtmPnl(''),
+  )
+  assert(
+    blankUnrecognizedMtmPnl.errors.length === 0 &&
+      blankUnrecognizedMtmPnl.report?.seasonPnl === 740.123456,
+    'A completely blank new P/L column was treated as an accounted value.',
+  )
+  for (const field of ['Unrecognized P/L', 'Unrecognized P & L', 'Unrecognized P and L']) {
+    const populatedUnrecognizedMtmPnl = parseIbkrActivityStatement(
+      withUnrecognizedMtmPnl('999.000000', field),
+    )
+    assert(
+      hasDiagnostic(populatedUnrecognizedMtmPnl, 'accounting_section_conflict') &&
+        !populatedUnrecognizedMtmPnl.report,
+      `A populated unrecognized ${field} column was silently ignored by exact checks.`,
+    )
+  }
+  for (const [fixture, section, symbol, field] of [
+    [sample, 'Month & Year to Date Performance Summary', 'NVDA', 'Unrecognized Profit'],
+    [currentSchemaFixture, 'Realized & Unrealized Performance Summary', 'ZZFICTA', 'Unrecognized Loss'],
+  ]) {
+    const variant = parseCsvRows(fixture)
+      .map((row) => row[0] === section
+        ? [...row, row[1]?.toUpperCase() === 'HEADER'
+          ? field
+          : row[1]?.toUpperCase() === 'DATA' && row[2] === 'Stocks' && row[3] === symbol
+            ? '999.000000'
+            : '']
+        : row)
+      .map((row) => row.map(encodeCsvCell).join(','))
+      .join('\n')
+    const parsed = parseIbkrActivityStatement(variant)
+    assert(
+      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      `A populated unrecognized ${field} column in ${section} was silently ignored.`,
+    )
+  }
   for (const [label, prefix, extraCell] of [
     ['ambiguous option code', 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,', 'Ex'],
     ['unexpected MTM amount', 'Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,', '9999.99'],
@@ -445,6 +530,14 @@ try {
   assert(
     stockDetailTemplate,
     'The punctuation-identity fixture is incomplete.',
+  )
+  const unknownMtmRecordType = parseIbkrActivityStatement(
+    `${currentSchemaFixture.trimEnd()}\n${stockDetailTemplate.replace(',Data,', ',Detail,')}\n`,
+  )
+  assert(
+    hasDiagnostic(unknownMtmRecordType, 'accounting_section_conflict') &&
+      !unknownMtmRecordType.report,
+    `A populated unsupported MTM record type was silently ignored: ${diagnosticsText(unknownMtmRecordType)}`,
   )
   const offsettingStockDetail = (symbol, amount) => {
     const row = [...parseCsvRows(stockDetailTemplate)[0]]
@@ -612,6 +705,14 @@ try {
       codedBosResult.report?.seasonPnl === 740.123456 &&
       codedBosResult.report.parserFacts.realizedSectionMissing === false,
     'Known IBKR section codes were overridden by variable BOS descriptions.',
+  )
+  const flexControlResult = parseIbkrActivityStatement(
+    `${codedBosFixture.trimEnd()}\nMTMP,EOS,123,456\n`,
+  )
+  assert(
+    flexControlResult.errors.length === 0 &&
+      flexControlResult.report?.seasonPnl === 740.123456,
+    'A populated Flex end-of-section checksum was treated as an accounting row.',
   )
   const codedPluiResult = parseIbkrActivityStatement(
     sample.replaceAll('Month & Year to Date Performance Summary', 'PLUI'),
@@ -2669,6 +2770,7 @@ try {
   for (const contractVariant of [
     'zzficta 19jun26 125 p',
     'ZZFICTA   19JUN26 125 P',
+    'ZZFICTA 19JUN2026 125 P',
     'ZZFICTA260619P00125000',
   ]) {
     const variantAssignmentRow = distinctSameDayAssignmentRow.replace(

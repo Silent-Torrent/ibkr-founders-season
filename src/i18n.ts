@@ -116,6 +116,8 @@ const en = {
   underlyingLedgerEyebrow: 'UNDERLYING LEDGER',
   shareCard: 'Season card',
   downloadCard: 'Download PNG',
+  shareDivisionPrivacyHint:
+    'When available, the PNG card shows an account-size division derived from USD net liquidation value. That division reveals an account-size range, not the exact net liquidation value.',
   pngPreviewTitle: 'Local PNG preview',
   pngPreviewHint:
     'This PNG was created on this device and has not been uploaded by this app. A preview is not a saved file.',
@@ -442,6 +444,7 @@ const zhCN: typeof en = {
   underlyingLedgerEyebrow: '底层标的账本',
   shareCard: '赛季战绩卡',
   downloadCard: '下载 PNG',
+  shareDivisionPrivacyHint: '如有以美元计价的净清算价值，PNG 战绩卡会显示由此计算的资产组别；该组别会透露账户规模范围，但不显示精确净清算价值。',
   pngPreviewTitle: '本机 PNG 预览',
   pngPreviewHint: 'PNG 只在本机生成，本应用没有上传。看到预览不代表文件已经保存。',
   pngFilenameHint: '预期的完整 PNG 文件名：',
@@ -752,6 +755,7 @@ const zhTW: typeof en = {
   underlyingLedgerEyebrow: '底層標的帳本',
   shareCard: '賽季戰績卡',
   downloadCard: '下載 PNG',
+  shareDivisionPrivacyHint: '如有以美元計價的淨清算價值，PNG 戰績卡會顯示由此計算的資產組別；該組別會透露帳戶規模範圍，但不顯示精確淨清算價值。',
   pngPreviewTitle: '本機 PNG 預覽',
   pngPreviewHint: 'PNG 只在本機產生，本應用程式沒有上傳。看到預覽不代表檔案已經儲存。',
   pngFilenameHint: '預期的完整 PNG 檔名：',

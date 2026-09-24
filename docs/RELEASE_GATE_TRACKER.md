@@ -2,6 +2,8 @@
 
 建立日期：2026-09-09。初始核对基线：checkpoint 0.23，提交 `482c66d`。
 
+2026-09-25 checkpoint 0.34 本地完整性：全虚构对照揭示了未知记录类型被漏算、股票 `Symbol`/`Underlying` 冲突导致收益错归属、两位/四位年份的同期权事件重复计数，以及新命名 P/L 列被忽略。现对这些明确形状拒绝导入；三语 PNG 操作旁新增“资产组别可能透露账户规模范围”的告知。Node 22 完整检查、生产 Chrome 回归、构建与依赖审计通过；**0.34 未进行真机、真实券商行权或部署验收**。见 [0.34 范围与局限](PARSER_IDENTITY_PRIVACY_034_EVIDENCE_2026-09-25.md) 和 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 部署冻结不变。
+
 2026-09-25 checkpoint 0.33 手机局域网续测：iPhone 15 Plus 的 Safari 实际打开本机生产预览；VoiceOver 开启状态经系统横幅与设置开关确认。全虚构样本可见导入成功，68 字节无效虚构 CSV 可见报错，返回账本后旧虚构来源仍在；隐私弹窗可见打开、点背景关闭而未误开语言选择。0.33 的导航/弹窗/成功/错误实际播报问题已向用户提出，写入时尚无回答；进行中取消、完整焦点顺序、手选和真实 16.4 也未完成。两份本轮手机文件可恢复删除，测试标签、VoiceOver、输入法、临时文件和服务均已收尾。见 [0.33 真机续测](IPHONE_VOICEOVER_033_EVIDENCE_2026-09-25.md)。D07 与固定 **9 OPEN / 3 CLOSED** 不变，L 部署冻结继续。
 
 2026-09-25 checkpoint 0.32 本地 Worker 来源策略：旧 `worker-src 'self' blob:` 下，生产 Chrome 的微型 Blob Worker 实际发出执行消息；修订后页面与托管配置均限为 `worker-src 'self'`，浏览器观测到策略阻拦、无执行消息/Blob Worker target，本站真实解析 Worker 仍能导入全虚构 CSV。图片预览用的 `img-src blob:` 保留。Node 22 完整检查、构建、依赖扫描通过。见 [证据](WORKER_CSP_SCOPE_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。本地 Meta 和托管 JSON 不证明未来受保护主机的 Worker 响应头，也不证明 iOS 16.4；R01/D02 仍 `OPEN`，固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结。

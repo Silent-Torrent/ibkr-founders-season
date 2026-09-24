@@ -616,6 +616,26 @@ try {
   const privacyLine = 'Excludes holdings, account identifiers, and exact net liquidation value.'
   assert.ok(summary.includes(privacyLine))
   assert.ok(previewMarkup.includes(privacyLine))
+  for (const [locale, requiredPhrases] of [
+    ['en', ['When available', 'PNG card', 'USD net liquidation value', 'account-size range', 'exact net liquidation value']],
+    ['zh-CN', ['如有以美元计价的净清算价值', 'PNG 战绩卡', '账户规模范围', '精确净清算价值']],
+    ['zh-TW', ['如有以美元計價的淨清算價值', 'PNG 戰績卡', '帳戶規模範圍', '精確淨清算價值']],
+  ]) {
+    const disclosure = t(locale, 'shareDivisionPrivacyHint')
+    for (const phrase of requiredPhrases) {
+      assert.ok(disclosure.includes(phrase), `${locale} share disclosure omits ${phrase}.`)
+    }
+    const markup = renderToStaticMarkup(
+      createElement(ShareCardPreview, { locale, report: canaryReport }),
+    )
+    const disclosureTag = markup.match(/<p[^>]*class="share-privacy-disclosure"[^>]*>/)?.[0]
+    const disclosureId = disclosureTag?.match(/id="([^"]+)"/)?.[1]
+    const downloadTag = markup.match(/<button[^>]*data-action="download-card"[^>]*>/)?.[0]
+    assert.ok(disclosureId, `${locale} share disclosure is not visible beside the actions.`)
+    assert.ok(markup.includes(disclosure), `${locale} share disclosure was not rendered.`)
+    assert.ok(downloadTag?.includes(`aria-describedby="${disclosureId}"`),
+      `${locale} PNG download does not announce the share disclosure.`)
+  }
   assert.ok(summary.includes('Self-reported · not broker-verified'))
   assert.ok(previewMarkup.includes('Self-reported · not broker-verified'))
   assert.ok(summary.includes('Internal calculation check: Review internal checks'))

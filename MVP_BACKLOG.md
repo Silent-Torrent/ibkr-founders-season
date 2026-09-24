@@ -103,7 +103,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] PNG season card export.
 - [x] iOS secure-context file sharing plus an explicit local Blob-preview/Safari-save fallback when file sharing is unavailable.
 - [x] Automated coverage for Web Share filename/MIME/bytes, iOS preview focus, stale-request protection, Blob-URL cleanup, and PNG privacy canaries.
-- [x] Privacy-safe default share card and copied summary with no underlying symbols, account identifiers, or exact net liquidation value.
+- [x] Privacy-safe default share card and copied summary with no underlying symbols, account identifiers, or exact net liquidation value. The PNG action explicitly warns in three languages that its optional USD asset division still reveals an approximate account-size range; sharing remains the user's choice.
 - [x] Sample CSV and parser smoke suite, including invalid-input cases.
 - [x] Visible IBKR YTD-total reconciliation difference.
 - [x] Canonical MTM field names and `reported - parsed` difference direction.
@@ -156,6 +156,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Confirm Financial Instrument Information underlying mapping for the private sample.
 - [x] Validate assignment and expiration from the private sample.
 - [ ] Validate exercise from a qualified real or independently proven fixture.
+  - September 25's bounded official-source recheck found an `EXE` code only in IBKR's separately requested Reporting Integration feed, not a completed row in this MVP's supported Activity Statement CSV. A `.csv` extension does not make the two formats equivalent; F01 remains open. See `docs/OPTION_EXERCISE_EVIDENCE_2026-08-30.md`.
 - [x] Add visible reconciliation difference.
 - [x] Add expandable source rows for portfolio-level reconciliation diagnostics.
 - [x] Implement NAV and statement-period P/L diagnostics for the proven current schema.
@@ -176,6 +177,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
   - September 14's read-only method review checked upstream WebKit Heap/Memory tracking semantics: endpoint snapshots and category samples do not establish a continuous Worker peak. Next qualify a candidate instrument with an isolated synthetic Worker before another product-capacity run. No calibration harness, new measurement or threshold was produced; the original D01 requirement remains open. See the dated follow-up in the same evidence file.
   - Subsequent September 14 implementation completed that bounded calibration of the current Chrome sampler: 8/12/12 held samples per Worker/phase; distinct isolate controls; known object/buffer allocations; three sampled short tasks with only a baseline. New analysis and browser ownership/cancellation guards were tested. This is a concrete counterexample to complete-peak use, not D01 closure; next qualify a different instrument before another purported peak run. Full numeric evidence and explicit limitations are in `docs/WORKER_HEAP_CALIBRATION_EVIDENCE_2026-09-14.md`.
   - Later native self-process and exact browser-attribution controls establish the checked alternative's limits: the high-water ledger retains native pulses, but the page/two Workers share its process scope. Stop this substitution route rather than repeating larger pulses. No qualified complete Worker/iPhone instrument is established; a distinct instrumentation plan must justify its capability and obtain required permissions before proceeding. See `docs/WORKER_PROCESS_ATTRIBUTION_EVIDENCE_2026-09-14.md`; D01 remains open, not redefined.
+  - September 25's read-only follow-up identified Apple Instruments Allocations event tracing as a **candidate to calibrate**, not a proven Safari Worker peak method. The current Mac has no full Xcode/Instruments, and target Worker attribution plus a real supported-iPhone threshold are missing. No installation or device debugging was undertaken. See `docs/WORKER_EVENT_TRACE_CANDIDATE_2026-09-25.md`; D01 stays open.
 - [x] Verify on iPhone 17 Pro Max / iOS 27.0 Safari: production-page loading, the system file picker, fully fictional small-file Worker import, refresh clearing, and synthetic no-rank/no-trophy behavior.
 - [ ] Verify the actual supported floor on iOS 16.4 / Safari 16.4; the iOS 27.0 observation and production-target configuration do not establish this compatibility gate.
 - [x] Verify an imported-report local-HTTP PNG preview and save/reopen round trip through Photos to Files on “On My iPhone”; system Info reported PNG, approximately 2 MB, 1200×1500 and alpha. The resulting name was `pnl-arena-2026-season.png.PNG`, so exact requested-filename preservation did not pass.

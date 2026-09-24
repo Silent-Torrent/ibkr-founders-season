@@ -200,6 +200,14 @@ const MONTH_YTD_MTM_FIELD_ALIASES = [
   'YTD MTM PNL',
   'YTD MTM',
 ]
+const VERIFIED_MONTH_MTD_FIELD_ALIASES = [
+  'MTD Mark-to-Market',
+  'Mark-to-Market MTD',
+  'MTD Realized S/T',
+  'Realized S/T MTD',
+  'MTD Realized L/T',
+  'Realized L/T MTD',
+]
 const MTM_TOTAL_FIELD_ALIASES = [
   'Mark-to-Market P/L Total',
   'Mark-to-Market PNL Total',
@@ -491,6 +499,9 @@ for (const alias of MATERIALIZED_SECTION_ALIASES) {
 }
 const MATERIALIZED_SECTION_KEYS = new Set(MATERIALIZED_SECTION_NAMES.keys())
 const CONTROL_RECORD_SECTIONS = new Set(['BOF', 'EOF', 'BOS', 'EOS'])
+const MATERIALIZED_SECTION_CONTROL_RECORD_TYPES = new Set([
+  'BOS', 'EOS', 'BOA', 'EOA',
+])
 const TRADES_SECTION_KEY = normalizeKey('Trades')
 
 interface StatementIndexBuilder {
@@ -578,7 +589,9 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       headerBlockStates.set(sourceIdentity, headerBlockState)
     }
 
-    if (descriptor === 'BOS' && row[2]) return
+    // Flex section/account boundary records may contain descriptions or
+    // checksums. They are control metadata, not accounting rows.
+    if (MATERIALIZED_SECTION_CONTROL_RECORD_TYPES.has(descriptor)) return
 
     if (descriptor === 'HEADER') {
       const headers = uniqueHeaders(row.slice(2))
@@ -593,7 +606,15 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
     const isSupportedRecordType = ['DATA', 'SUBTOTAL', 'TOTAL'].includes(descriptor)
     const isKnownEmptyTotalPnl =
       descriptor === '' && sectionKey === normalizeKey('Total P/L for Statement Period')
-    if (!isSupportedRecordType && !isKnownEmptyTotalPnl) return
+    if (!isSupportedRecordType && !isKnownEmptyTotalPnl) {
+      // A populated row in a registered section must not disappear merely
+      // because its record-type token changed. It may carry an unaccounted
+      // amount or identity even if all recognized totals still reconcile.
+      if (row.slice(2).some((cell) => cell.trim())) {
+        hasUnmappedNonemptyCells = true
+      }
+      return
+    }
 
     let headerState = headersBySection.get(sourceIdentity)
     if (
@@ -1885,6 +1906,28 @@ function hasAmbiguousSchemaFields(
   )
 }
 
+function hasUnmappedPerformanceAmountFields(
+  records: SectionRecord[],
+  supportedAliases: string[][],
+): boolean {
+  const supported = new Set(supportedAliases.flat().map(normalizeKey))
+  return records.some((record) =>
+    Object.entries(record.fields).some(([field, value]) => {
+      if (!value.trim()) return false
+      const key = normalizeSchemaKey(field)
+      // Extra descriptive/Flex metadata can be harmless, but a populated
+      // unrecognized performance column can change the economic meaning of
+      // an otherwise exactly reconciled amount. Keep this a narrow guard;
+      // it is not proof that every possible new broker column is covered.
+      return Boolean(
+        key &&
+        /(pnl|pandl|profit|loss|mtm|marktomarket)/.test(key) &&
+        !supported.has(key),
+      )
+    }),
+  )
+}
+
 interface BoundedSourceRefs {
   refs: SourceRef[]
   keys: Set<string>
@@ -2088,7 +2131,7 @@ function normalizeInstrumentKey(value: string): string {
 function inferOptionUnderlyingFromContract(value: string): string | undefined {
   const symbol = normalizeInstrumentKey(value)
   const spaced = symbol.match(
-    /^(.+?)\s+\d{1,2}[A-Z]{3}\d{2,4}\s+\d+(?:\.\d+)?\s+[CP]$/,
+    /^(.+?)\s+\d{1,2}[A-Z]{3}(?:\d{2}|\d{4})\s+\d+(?:\.\d+)?\s+[CP]$/,
   )
   if (spaced) return spaced[1].trim()
 
@@ -2199,6 +2242,17 @@ function resolveUnderlying(
 
   if (assetClass !== 'OPTION') {
     if (explicit.conflict) {
+      markInstrumentAliasConflict(instrumentIndex, aliasKey)
+      return { sourceRefs: [], underlying: '' }
+    }
+    if (
+      assetClass === 'STOCK' &&
+      aliasKey &&
+      explicit.underlying &&
+      explicit.underlying !== aliasKey
+    ) {
+      // A stock row cannot move its P&L to a different stock merely because
+      // an optional Underlying field was added to the export.
       markInstrumentAliasConflict(instrumentIndex, aliasKey)
       return { sourceRefs: [], underlying: '' }
     }
@@ -2815,7 +2869,7 @@ function optionEventContractIdentity(contract: string, underlying: string): stri
   const normalizedUnderlying = normalizeInstrumentKey(underlying)
 
   const spaced = normalized.match(
-    /^([A-Z.\-]{1,8})\s+(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2})\s+(\d{1,5})(?:\.(\d{1,3}))?\s+([CP])$/,
+    /^([A-Z.\-]{1,8})\s+(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{2}|\d{4})\s+(\d{1,5})(?:\.(\d{1,3}))?\s+([CP])$/,
   )
   const occ = normalized.match(
     /^([A-Z.\-]{1,8})(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/,
@@ -2824,14 +2878,15 @@ function optionEventContractIdentity(contract: string, underlying: string): stri
 
   const root = (spaced ?? occ)?.[1]
   if (!root || root !== normalizedUnderlying) return rawIdentity
-  const year = Number(spaced ? spaced[4] : occ?.[2])
+  const yearText = spaced ? spaced[4] : occ?.[2]
+  const year = yearText?.length === 4 ? Number(yearText) : 2000 + Number(yearText)
   const month = spaced
     ? OPTION_EXPIRY_MONTHS.indexOf(spaced[3]) + 1
     : Number(occ?.[3])
   const day = Number(spaced ? spaced[2] : occ?.[4])
-  const expiry = new Date(Date.UTC(2000 + year, month - 1, day))
+  const expiry = new Date(Date.UTC(year, month - 1, day))
   if (
-    expiry.getUTCFullYear() !== 2000 + year ||
+    expiry.getUTCFullYear() !== year ||
     expiry.getUTCMonth() !== month - 1 ||
     expiry.getUTCDate() !== day
   ) return rawIdentity
@@ -2845,7 +2900,7 @@ function optionEventContractIdentity(contract: string, underlying: string): stri
   return JSON.stringify([
     'series',
     root,
-    `${String(year).padStart(2, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`,
+    `${String(year).padStart(4, '0')}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`,
     spaced ? spaced[7] : occ?.[5],
     String(thousandths).padStart(8, '0'),
   ])
@@ -4706,6 +4761,34 @@ function parseIndexedStatement(
     monthYtdInstrumentMappingResult.hasConflicts ||
     mtmSnapshot?.conflict === true ||
     monthYtdSnapshot?.conflict === true
+  accountingSectionConflict ||= hasUnmappedPerformanceAmountFields(mtmRecords, [
+    MTM_POSITION_FIELD_ALIASES,
+    MTM_TRANSACTION_FIELD_ALIASES,
+    MTM_COMMISSION_FIELD_ALIASES,
+    MTM_OTHER_FIELD_ALIASES,
+    MTM_TOTAL_FIELD_ALIASES,
+  ])
+  accountingSectionConflict ||= hasUnmappedPerformanceAmountFields(monthYtdRecords, [
+    MONTH_YTD_MTM_FIELD_ALIASES,
+    VERIFIED_MONTH_MTD_FIELD_ALIASES,
+    YTD_REALIZED_SHORT_FIELD_ALIASES,
+    YTD_REALIZED_LONG_FIELD_ALIASES,
+  ])
+  accountingSectionConflict ||= hasUnmappedPerformanceAmountFields(realizedRecords, [
+    REALIZED_SHORT_PROFIT_FIELD_ALIASES,
+    REALIZED_SHORT_LOSS_FIELD_ALIASES,
+    REALIZED_LONG_PROFIT_FIELD_ALIASES,
+    REALIZED_LONG_LOSS_FIELD_ALIASES,
+    UNREALIZED_SHORT_PROFIT_FIELD_ALIASES,
+    UNREALIZED_SHORT_LOSS_FIELD_ALIASES,
+    UNREALIZED_LONG_PROFIT_FIELD_ALIASES,
+    UNREALIZED_LONG_LOSS_FIELD_ALIASES,
+    UNREALIZED_PROFIT_FIELD_ALIASES,
+    UNREALIZED_LOSS_FIELD_ALIASES,
+    REALIZED_TOTAL_FIELD_ALIASES,
+    UNREALIZED_TOTAL_FIELD_ALIASES,
+    REALIZED_AND_UNREALIZED_TOTAL_FIELD_ALIASES,
+  ])
   accountingSectionConflict ||=
     mtmRecords.length > 0 &&
     !validateYtdAccountingSection(
