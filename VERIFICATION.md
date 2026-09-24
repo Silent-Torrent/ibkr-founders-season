@@ -1,6 +1,14 @@
-# Verification record — checkpoint 0.30 phone acceptance and production CSP
+# Verification record — checkpoint 0.31 local integrity
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.31 — cash badge and CSV row width
+
+The fictional Cash Gang red test first produced negative progress (−0.6667) for negative cash with positive NLV; an old-code synthetic probe also confirmed that negative cash divided by negative NLV unlocked the badge. Targeted tests now verify negative, zero, just-below-threshold and 15%-threshold states, including the rendered unavailable/not-met distinction and nonnegative ARIA progress. The three localized explanations now require positive NLV.
+
+The fictional current-schema `A,Ex` Trades row first parsed with no error and a `good` report, silently dropping `Ex`. Populated extra cells in Trades, MTM, realized subtotal, statement-period total and Financial Instrument Information now fail with `accounting_section_conflict`; empty trailing cells remain accepted. A new special-row empty-tail test initially failed because that row was discarded; an overbroad relaxation then failed the existing no-Other Flex test by mapping its amount into `Code`. The final narrow rule preserves the aligned special value and keeps the shorter-header old-width variant as `NOT_AVAILABLE`/`warning`, rather than asserting reconciliation. A separately aligned synthetic no-Other variant gives `PASS_EXACT` on the two bridge checks and `good` quality. The parser smoke test passed again after explicitly asserting both shapes; sync and Blob streaming results agree for the extra-cell rejection.
+
+On the final product-source change, Node 22.23.2 `npm run check` exited 0, including the production-Chrome real-Worker extra-cell failure and preservation of the prior fictional Ledger/source/P&L. `npm run build` exited 0 with `index-X2MGWDPZ.js`, `ibkrParser.worker-Zpbk-44s.js` and `index-W6y1gsmE.css`; `npm audit --audit-level=high` found 0 vulnerabilities, and `git diff --check` exited 0 before documentation. No private statement or iPhone was used for 0.31. The 0.30 phone result below does not transfer to this build. Detailed [integrity evidence](docs/CASH_BADGE_AND_CSV_ROW_WIDTH_EVIDENCE_2026-09-25.md). Fixed release gates stay **9 OPEN/3 CLOSED**, L frozen.
 
 ## 2026-09-25 checkpoint 0.30 — hotel-Wi-Fi iPhone continuation
 

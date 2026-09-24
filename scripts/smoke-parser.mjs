@@ -80,6 +80,16 @@ try {
 
   const encodeCsvCell = (value) =>
     /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
+  const appendCellToFirstMatchingLine = (fixture, prefix, value) => {
+    let changed = false
+    const result = fixture.split('\n').map((line) => {
+      if (changed || !line.startsWith(prefix)) return line
+      changed = true
+      return `${line},${value}`
+    }).join('\n')
+    assert(changed, `Missing synthetic row for ${prefix}`)
+    return result
+  }
   const dropSectionColumn = (fixture, section, columnName) => {
     let columnIndex
     return parseCsvRows(fixture)
@@ -363,6 +373,41 @@ try {
   assert(currentReport.symbols.length === 3, `Unexpected current-schema symbol count: ${currentReport.symbols.length}`)
   assert(currentReport.events.length === 2, `Unexpected current-schema event count: ${currentReport.events.length}`)
   assert(currentReport.dataQuality === 'good', 'A supported Other bucket was incorrectly treated as a reconciliation failure.')
+  for (const [label, prefix, extraCell] of [
+    ['ambiguous option code', 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,', 'Ex'],
+    ['unexpected MTM amount', 'Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,', '9999.99'],
+    ['unexpected realized subtotal', 'Realized & Unrealized Performance Summary,SubTotal,Total Stocks,', '9999.99'],
+    ['unexpected statement-period total', 'Total P/L for Statement Period,', '9999.99'],
+    ['unexpected FII identity', 'Financial Instrument Information,Data,Equity and Index Options,ZZFICTA,', 'ZZOTHER'],
+  ]) {
+    const variant = appendCellToFirstMatchingLine(currentSchemaFixture, prefix, extraCell)
+    const parsed = parseIbkrActivityStatement(variant)
+    assert(
+      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      `An extra non-empty ${label} cell was silently discarded: ${diagnosticsText(parsed)}`,
+    )
+  }
+  const harmlessEmptyTail = appendCellToFirstMatchingLine(
+    currentSchemaFixture,
+    'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,',
+    '',
+  )
+  const harmlessEmptyTailResult = parseIbkrActivityStatement(harmlessEmptyTail)
+  assert(
+    harmlessEmptyTailResult.errors.length === 0 && harmlessEmptyTailResult.report,
+    'An empty trailing CSV cell was rejected without source evidence that it changes the row.',
+  )
+  const emptyStatementTotalTail = appendCellToFirstMatchingLine(
+    currentSchemaFixture,
+    'Total P/L for Statement Period,',
+    '',
+  )
+  const emptyStatementTotalTailResult = parseIbkrActivityStatement(emptyStatementTotalTail)
+  assert(
+    emptyStatementTotalTailResult.errors.length === 0 &&
+      emptyStatementTotalTailResult.report?.statementPeriodTotalPnl === 750.243455,
+    'An empty trailing CSV cell silently removed the statement-period P/L source.',
+  )
   assert(currentReport.statementPeriodTotalPnl === 750.243455, 'Statement-period P&L was not parsed from the verified empty record-type row.')
   assert(currentReport.beginningNav === 25000.125, 'Beginning NAV was not parsed.')
   assert(currentReport.endingNav === 33750.368455, 'Ending NAV was not parsed.')
@@ -3158,6 +3203,35 @@ try {
   assert(
     currentMtmWithoutOtherResult.report?.seasonPnl === 740.123456,
     `A current Flex MTMP layout without the retired Other field was rejected: ${diagnosticsText(currentMtmWithoutOtherResult)}`,
+  )
+  assert(
+    currentMtmWithoutOtherResult.report.statementPeriodTotalPnl === undefined &&
+      currentMtmWithoutOtherResult.report.dataQuality === 'warning' &&
+      ['statement_period_pnl', 'nav_bridge'].every((id) =>
+        currentMtmWithoutOtherResult.report.reconciliations.find((check) => check.id === id)?.status === 'NOT_AVAILABLE',
+      ),
+    'A headerless old-width Total P/L row was guessed against a shorter Flex MTMP header.',
+  )
+  const currentMtmWithoutOtherAlignedTotal = parseCsvRows(currentMtmWithoutOther)
+    .map((row) => {
+      if (row[0] !== 'Total P/L for Statement Period') return row
+      const aligned = [...row]
+      assert(aligned[11] === '' && aligned[12] === '750.243455')
+      aligned.splice(11, 1)
+      return aligned
+    })
+    .map((row) => row.map(encodeCsvCell).join(','))
+    .join('\n')
+  const currentMtmWithoutOtherAlignedResult = parseIbkrActivityStatement(
+    currentMtmWithoutOtherAlignedTotal,
+  )
+  assert(
+    currentMtmWithoutOtherAlignedResult.report?.statementPeriodTotalPnl === 750.243455 &&
+      currentMtmWithoutOtherAlignedResult.report.dataQuality === 'good' &&
+      ['statement_period_pnl', 'nav_bridge'].every((id) =>
+        currentMtmWithoutOtherAlignedResult.report.reconciliations.find((check) => check.id === id)?.status === 'PASS_EXACT',
+      ),
+    `An aligned headerless Total P/L row was not reconciled: ${diagnosticsText(currentMtmWithoutOtherAlignedResult)}`,
   )
 
   const wrongReportType = sample.replace(

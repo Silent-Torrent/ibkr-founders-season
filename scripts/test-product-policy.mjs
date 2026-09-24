@@ -29,7 +29,7 @@ try {
     { demoReport },
     { formatCurrency, formatPercent, formatReconciliationDifference },
     { hasCurrentUnrealizedExplanation, hasRealizedExplanation },
-    { getDivision, getTrophies },
+    { getCashBufferRatio, getDivision, getTrophies },
     { parseIbkrActivityStatement },
     { formatParserDiagnostic },
     { buildSeasonSummary, downloadSeasonCard, formatShareSeasonReturn },
@@ -107,6 +107,35 @@ try {
   const nonUsdTrophies = getTrophies(nonUsdTrophyReport)
   assert.equal(nonUsdTrophies.find((trophy) => trophy.id === 'theta')?.unlocked, false)
   assert.equal(nonUsdTrophies.find((trophy) => trophy.id === 'bagholder')?.unlocked, false)
+  const negativeCashReport = cloneReport()
+  negativeCashReport.source = 'local'
+  negativeCashReport.netLiquidationValue = 10_000
+  negativeCashReport.cashValue = -1_000
+  assert.equal(getCashBufferRatio(negativeCashReport), -0.1)
+  const negativeCashTrophy = getTrophies(negativeCashReport).find((trophy) => trophy.id === 'cash')
+  assert.equal(negativeCashTrophy?.unlocked, false)
+  assert.equal(negativeCashTrophy?.progress, 0, 'Negative cash created a negative progress value.')
+
+  const negativeEquityReport = cloneReport()
+  negativeEquityReport.source = 'local'
+  negativeEquityReport.netLiquidationValue = -10_000
+  negativeEquityReport.cashValue = -2_000
+  assert.equal(getCashBufferRatio(negativeEquityReport), undefined)
+  const negativeEquityCashTrophy = getTrophies(negativeEquityReport).find((trophy) => trophy.id === 'cash')
+  assert.equal(negativeEquityCashTrophy?.unlocked, false, 'Two negative values falsely unlocked Cash Gang.')
+  assert.equal(negativeEquityCashTrophy?.progress, undefined)
+  const positiveCashReport = cloneReport()
+  positiveCashReport.source = 'local'
+  positiveCashReport.netLiquidationValue = 10_000
+  positiveCashReport.cashValue = 1_500
+  assert.equal(getTrophies(positiveCashReport).find((trophy) => trophy.id === 'cash')?.unlocked, true)
+  positiveCashReport.cashValue = 1_499
+  assert.equal(getTrophies(positiveCashReport).find((trophy) => trophy.id === 'cash')?.unlocked, false)
+  positiveCashReport.cashValue = 0
+  assert.equal(getTrophies(positiveCashReport).find((trophy) => trophy.id === 'cash')?.progress, 0)
+  positiveCashReport.netLiquidationValue = 0
+  assert.equal(getCashBufferRatio(positiveCashReport), undefined)
+  assert.equal(getTrophies(positiveCashReport).find((trophy) => trophy.id === 'cash')?.progress, undefined)
   assert.equal(
     formatCurrency(1, '<img>', 'en'),
     '—',
@@ -527,7 +556,18 @@ try {
   )
   assert.ok(missingArenaMarkup.includes('TWR unavailable'))
   assert.match(missingCashTrophiesMarkup, /data-status="unavailable" data-trophy="cash"/)
-  assert.ok(missingCashTrophiesMarkup.includes('cash value or a non-zero net liquidation value is unavailable'))
+  assert.ok(missingCashTrophiesMarkup.includes('cash value or a positive net liquidation value is unavailable'))
+  const negativeCashMarkup = renderToStaticMarkup(
+    createElement(TrophiesPage, { locale: 'en', report: negativeCashReport }),
+  )
+  const negativeCashCard = negativeCashMarkup.match(/<article[^>]*data-status="notMet" data-trophy="cash"[\s\S]*?<\/article>/)?.[0]
+  assert.ok(negativeCashCard, 'Negative cash should remain a not-met achievement.')
+  assert.match(negativeCashCard, /aria-valuenow="0"/)
+  const negativeEquityMarkup = renderToStaticMarkup(
+    createElement(TrophiesPage, { locale: 'en', report: negativeEquityReport }),
+  )
+  assert.match(negativeEquityMarkup, /data-status="unavailable" data-trophy="cash"/)
+  assert.ok(negativeEquityMarkup.includes('cash value or a positive net liquidation value is unavailable'))
   assert.equal(formatShareSeasonReturn(undefined, 'en'), 'Unavailable')
   assert.ok(buildSeasonSummary(missingValuesReport, 'en').includes('Season return: Unavailable'))
   assert.ok(

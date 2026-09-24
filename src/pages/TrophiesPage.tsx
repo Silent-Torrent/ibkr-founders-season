@@ -1,7 +1,7 @@
 import type { Locale, PortfolioReport, TrophyDefinition } from '../types'
 import type { MessageKey } from '../i18n'
 import { t } from '../i18n'
-import { getTrophies } from '../lib/season'
+import { getCashBufferRatio, getTrophies } from '../lib/season'
 import { isSyntheticSource, reportTrustLabelKey } from '../lib/reportSource'
 
 interface TrophiesPageProps {
@@ -66,7 +66,7 @@ function trophyPresentationStatus(
   }
   if (
     trophy.id === 'cash' &&
-    (report.cashValue == null || report.netLiquidationValue == null || report.netLiquidationValue === 0)
+    getCashBufferRatio(report) == null
   ) {
     return 'unavailable'
   }

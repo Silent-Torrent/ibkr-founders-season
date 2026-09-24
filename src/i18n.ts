@@ -211,7 +211,7 @@ const en = {
   trophyUnavailableUnrealized:
     'Cannot evaluate: this statement does not include the supported current-unrealized P&L section.',
   trophyUnavailableCash:
-    'Cannot evaluate: cash value or a non-zero net liquidation value is unavailable.',
+    'Cannot evaluate: cash value or a positive net liquidation value is unavailable.',
   badgeFoundersTitle: 'Founding Degenerate',
   badgeFoundersDesc: 'Unlocks when a local 2026-season statement is imported.',
   badgeThetaTitle: 'Theta Landlord',
@@ -231,7 +231,7 @@ const en = {
   badgeIvDesc: 'Requires volatility and event data, which this version does not parse.',
   badgeCashTitle: 'Cash Gang',
   badgeCashDesc:
-    'Unlocks when a locally imported statement has cash equal to at least 15% of net liquidation value.',
+    'Unlocks when a locally imported statement has a positive net liquidation value and cash equal to at least 15% of it.',
   importTitle: 'Import your current YTD statement',
   localFirstImportEyebrow: 'LOCAL-FIRST IMPORT',
   importSubtitle:
@@ -528,7 +528,7 @@ const zhCN: typeof en = {
   trophyStatusNotApplicable: '不适用',
   trophyStatusUnsupported: '暂未支持',
   trophyUnavailableUnrealized: '无法判断：当前报表缺少受支持的“当前未实现盈亏”分区。',
-  trophyUnavailableCash: '无法判断：现金价值或非零净清算价值不可用。',
+  trophyUnavailableCash: '无法判断：现金价值或正数净清算价值不可用。',
   badgeFoundersTitle: '创始韭菜',
   badgeFoundersDesc: '解锁条件：导入一份 2026 赛季的本机报表。',
   badgeThetaTitle: '西塔收租公',
@@ -544,7 +544,7 @@ const zhCN: typeof en = {
   badgeIvTitle: '波动率粉碎幸存者',
   badgeIvDesc: '需要波动率和事件数据；当前版本尚未解析这类数据。',
   badgeCashTitle: '现金帮',
-  badgeCashDesc: '解锁条件：本机导入的报表中，现金价值至少占净清算价值的 15%。',
+  badgeCashDesc: '解锁条件：本机导入的报表中，净清算价值为正，且现金价值至少占其 15%。',
   importTitle: '导入当前年度 YTD 报表',
   localFirstImportEyebrow: '本机导入',
   importSubtitle: '当前版本：一个 IBKR 账户、一个自然年度、一份最新英文 Activity Statement CSV。',
@@ -838,7 +838,7 @@ const zhTW: typeof en = {
   trophyStatusNotApplicable: '不適用',
   trophyStatusUnsupported: '暫未支援',
   trophyUnavailableUnrealized: '無法判斷：目前報表缺少受支援的「目前未實現損益」分區。',
-  trophyUnavailableCash: '無法判斷：現金價值或非零淨清算價值不可用。',
+  trophyUnavailableCash: '無法判斷：現金價值或正數淨清算價值不可用。',
   badgeFoundersTitle: '創始韭菜',
   badgeFoundersDesc: '解鎖條件：匯入一份 2026 賽季的本機報表。',
   badgeThetaTitle: 'Theta 收租王',
@@ -854,7 +854,7 @@ const zhTW: typeof en = {
   badgeIvTitle: '波動率粉碎倖存者',
   badgeIvDesc: '需要波動率和事件資料；目前版本尚未解析這類資料。',
   badgeCashTitle: '現金幫',
-  badgeCashDesc: '解鎖條件：本機匯入的報表中，現金價值至少占淨清算價值的 15%。',
+  badgeCashDesc: '解鎖條件：本機匯入的報表中，淨清算價值為正，且現金價值至少占其 15%。',
   importTitle: '匯入目前年度 YTD 報表',
   localFirstImportEyebrow: '本機匯入',
   importSubtitle: '目前版本：一個 IBKR 帳戶、一個自然年度、一份最新英文 Activity Statement CSV。',

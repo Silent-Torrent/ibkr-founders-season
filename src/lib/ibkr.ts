@@ -205,6 +205,12 @@ const MTM_TOTAL_FIELD_ALIASES = [
   'Mark-to-Market PNL Total',
   'Total',
 ]
+const STATEMENT_PERIOD_TOTAL_FIELD_ALIASES = [
+  ...MTM_TOTAL_FIELD_ALIASES,
+  'Field Value',
+  'Value',
+  'Amount',
+]
 const MTM_POSITION_FIELD_ALIASES = [
   'Mark-to-Market P/L Position',
   'Mark-to-Market PNL Position',
@@ -448,6 +454,13 @@ function uniqueHeaders(headers: string[]): string[] {
   })
 }
 
+function hasNonemptyCellsBeyondHeader(row: string[], headerFieldCount: number): boolean {
+  for (let index = headerFieldCount + 2; index < row.length; index += 1) {
+    if (row[index].trim()) return true
+  }
+  return false
+}
+
 interface HeaderBlockState {
   hasData: boolean
   incomplete: boolean
@@ -461,6 +474,7 @@ interface StatementIndex {
   bofPeriodInvalid: boolean
   bofPeriodKeys: Set<string>
   firstBofPeriod?: { start?: Date; end?: Date }
+  hasUnmappedNonemptyCells: boolean
   headerBlockStates: Map<string, HeaderBlockState>
   rowCount: number
   sectionNames: string[]
@@ -493,6 +507,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
   let bofPeriodConflict = false
   let bofPeriodInvalid = false
   let firstBofPeriod: StatementIndex['firstBofPeriod']
+  let hasUnmappedNonemptyCells = false
   let sectionOverflow = false
 
   const visit = (row: string[], rowNumber: number): void => {
@@ -575,6 +590,15 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
     if (!isSupportedRecordType && !isKnownEmptyTotalPnl) return
 
     let headerState = headersBySection.get(sourceIdentity)
+    if (
+      headerState &&
+      hasNonemptyCellsBeyondHeader(row, headerState.headers.length)
+    ) {
+      // A populated unlabelled cell may be a shifted amount or lifecycle
+      // code. Ignoring it can make a changed statement look reconciled.
+      hasUnmappedNonemptyCells = true
+      return
+    }
     if (isKnownEmptyTotalPnl && !headerState) {
       for (const candidate of headersBySection.values()) {
         if (matchesSchemaAlias(candidate.section, MTM_PERFORMANCE_SECTION_ALIASES)) {
@@ -586,9 +610,28 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
 
     if (
       isKnownEmptyTotalPnl &&
-      (!headerState || row.length !== headerState.headers.length + 2)
+      headerState &&
+      hasNonemptyCellsBeyondHeader(row, headerState.headers.length)
     ) {
+      hasUnmappedNonemptyCells = true
       return
+    }
+
+    if (isKnownEmptyTotalPnl) {
+      if (!headerState || row.length < headerState.headers.length + 2) return
+      if (
+        row.length > headerState.headers.length + 2 &&
+        !headerState.headers.some(
+          (header, index) =>
+            matchesSchemaAlias(header, STATEMENT_PERIOD_TOTAL_FIELD_ALIASES) &&
+            Boolean(row[index + 2]?.trim()),
+        )
+      ) {
+        // This headerless row may retain an older MTM column layout. Do not
+        // remap its amount into another field (for example, Code) merely
+        // because trailing cells are empty.
+        return
+      }
     }
 
     const headers = headerState?.headers
@@ -624,6 +667,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       bofPeriodInvalid,
       bofPeriodKeys,
       firstBofPeriod,
+      hasUnmappedNonemptyCells,
       headerBlockStates,
       rowCount,
       sectionNames: [...sectionNames],
@@ -2372,6 +2416,13 @@ function createFinancialInstrumentIndexBuilder(
     if (!['DATA', 'SUBTOTAL', 'TOTAL'].includes(descriptor)) return
 
     const headerState = headersBySection.get(sourceIdentity)
+    if (
+      headerState &&
+      hasNonemptyCellsBeyondHeader(row, headerState.headers.length)
+    ) {
+      schemaFieldsValid = false
+      return
+    }
     const fields: Record<string, string> = {}
     if (headerState) {
       headerState.headers.forEach((header, index) => {
@@ -3672,14 +3723,7 @@ function statementPnlDiagnostic(
   for (const record of totalPnlRecords) {
     const candidate = numericMatchFor(
       record,
-      [
-        'Mark-to-Market P/L Total',
-        'Mark-to-Market PNL Total',
-        'Total',
-        'Field Value',
-        'Value',
-        'Amount',
-      ],
+      STATEMENT_PERIOD_TOTAL_FIELD_ALIASES,
       invalidNumericFields,
       true,
     )
@@ -4315,6 +4359,9 @@ function parseIndexedStatement(
     return { errors: [{ code: 'csv_not_enough_rows' }], warnings }
   }
   if (statementIndex.sectionOverflow) return reportCapacityFailure()
+  if (statementIndex.hasUnmappedNonemptyCells) {
+    return { errors: [{ code: 'accounting_section_conflict' }], warnings }
+  }
 
   const { sectionNames, store } = statementIndex
   const statementRecords = recordsFor(store, ['Statement'])

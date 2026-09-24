@@ -527,6 +527,22 @@ try {
     )
   }
 
+  const extraTradesCell = standardFixture.split('\n').map((line) =>
+    line.startsWith('Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,')
+      ? `${line},Ex`
+      : line,
+  ).join('\n')
+  assert.notEqual(extraTradesCell, standardFixture)
+  const extraTradesCellSync = parseIbkrActivityStatement(extraTradesCell, parseOptions)
+  const extraTradesCellBlob = await parseIbkrActivityStatementBlob(
+    new Blob([extraTradesCell], { type: 'text/csv' }),
+    parseOptions,
+  )
+  assert.deepEqual(extraTradesCellBlob, extraTradesCellSync)
+  assert.equal(extraTradesCellSync.report, undefined)
+  assert.ok(extraTradesCellSync.errors.some((diagnostic) =>
+    diagnostic.code === 'accounting_section_conflict'))
+
   // Keep the high-cardinality parser workloads while leaving the exact
   // 5 MiB/100,000-row combined endpoint to the dedicated browser evidence.
   const pressureTargetBytes = 3 * 1_024 * 1_024

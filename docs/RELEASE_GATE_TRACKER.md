@@ -2,6 +2,8 @@
 
 建立日期：2026-09-09。初始核对基线：checkpoint 0.23，提交 `482c66d`。
 
+2026-09-25 checkpoint 0.31 本地完整性：全虚构测试先复现现金/净清算价值双负数导致 Cash Gang 错误解锁、负进度，以及财务 CSV 行在表头之外藏有非空单元格仍获 `good` 报表。现要求正数净清算价值并拒绝已知分区的非空越界单元格；无害空尾格保留。无独立表头的期间总盈亏行只在现有表头对齐时取值；Flex/no-Other 旧宽度行维持 `NOT_AVAILABLE`/warning，不错映射为 `Code`。完整 Node 22 检查、生产 Chrome 真 Worker 拒绝/旧账本保留、构建与依赖扫描通过；最后新增的 Flex 状态断言亦通过烟测。见 [0.31 证据](CASH_BADGE_AND_CSV_ROW_WIDTH_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。新版未做手机验收；固定门槛仍 **9 OPEN / 3 CLOSED**，L 部署冻结不变。
+
 2026-09-25 checkpoint 0.30 酒店 Wi-Fi 真机续测：iPhone 15 Plus / iOS 27.0 的 Safari 实际打开局域网生产预览。全虚构 CSV 在手机原生选取后显示导入成功，用户确认**听到**成功通知；128 字节虚构错误文件显示拒绝提示，且旧虚构来源徽标仍可见，未复核完整账本。成功通知的逐字内容/顺序、错误与进行中取消的实际播报，以及隐私弹窗完整焦点、手选、当前包物理旋转仍无足够证据；不能关闭 D07/D08 或 iOS 16.4 底线。两份本轮手机文件已从 Downloads 移至可恢复的 Recently Deleted，测试标签/服务/临时错误文件已清理，VoiceOver Off、原拼音恢复。详见 [酒店 Wi-Fi 真机证据](IPHONE_HOTEL_WIFI_VOICEOVER_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 部署冻结不变。
 
 2026-09-25 checkpoint 0.30：生产页面的 `connect-src` 已从不限目标的 `ws:` 收紧为仅 `'self'`，开发模式热更新单独保留 WebSocket 例外。旧页面未通过新增策略测试；新页面的开发/预览响应、生产 Chrome 跨端口 WebSocket 被 CSP 拦截、完整本地检查与构建均已验证。此项只加强页面级本地边界，不能证明未来部署的 Worker 脚本响应头或完整 Network/Storage；R01 仍 `OPEN`。见 [CSP 范围证据](PRODUCTION_CSP_SCOPE_EVIDENCE_2026-09-25.md) 与 [验证记录](../VERIFICATION.md)。固定门槛仍 **9 OPEN / 3 CLOSED**，L 冻结不变。

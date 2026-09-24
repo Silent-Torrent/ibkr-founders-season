@@ -102,6 +102,7 @@ let invalidFixturePath
 let invalidEventDateFixturePath
 let ambiguousEventFixturePath
 let conflictingEventCodeFixturePath
+let extraTradesCellFixturePath
 let malformedAmountFixturePath
 let malformedWhitespaceFixturePath
 let invalidExtensionFixturePath
@@ -696,6 +697,7 @@ try {
   invalidEventDateFixturePath = join(browserArtifactDirectory, 'synthetic-invalid-event-date.csv')
   ambiguousEventFixturePath = join(browserArtifactDirectory, 'synthetic-ambiguous-event.csv')
   conflictingEventCodeFixturePath = join(browserArtifactDirectory, 'synthetic-conflicting-event-code.csv')
+  extraTradesCellFixturePath = join(browserArtifactDirectory, 'synthetic-extra-trades-cell.csv')
   malformedAmountFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-amount.csv')
   malformedWhitespaceFixturePath = join(browserArtifactDirectory, 'synthetic-malformed-whitespace.csv')
   invalidExtensionFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.txt')
@@ -747,6 +749,10 @@ try {
   writeFileSync(
     conflictingEventCodeFixturePath,
     canonicalFixtureText.replace(assignmentRows[0], assignmentRows[0].replace(/,A$/, ',A;Ep')),
+  )
+  writeFileSync(
+    extraTradesCellFixturePath,
+    canonicalFixtureText.replace(assignmentRows[0], `${assignmentRows[0]},Ex`),
   )
   writeFileSync(
     sameDateFixturePath,
@@ -1403,6 +1409,35 @@ try {
   )
   assert.equal(preservedAfterConflictingEventCode.source, 'Fully synthetic test')
   assert.equal(preservedAfterConflictingEventCode.seasonPnl, seasonPnl)
+
+  await clickPrimaryNavigation('Import')
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [extraTradesCellFixturePath],
+    nodeId: await resolveFileInputNodeId(),
+  })
+  const extraTradesCellState = await waitForPageValue(
+    `(() => ({
+      error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.error.includes('ambiguous or conflicting source sections'),
+    'Extra fictional Trades cell through the production Worker',
+  )
+  assert(extraTradesCellState.error.includes('columns'))
+  await clickPrimaryNavigation('Ledger')
+  const preservedAfterExtraTradesCell = await waitForPageValue(
+    `(() => ({
+      heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+    }))()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Preserved report after extra fictional Trades cell',
+  )
+  assert.equal(preservedAfterExtraTradesCell.source, 'Fully synthetic test')
+  assert.equal(preservedAfterExtraTradesCell.seasonPnl, seasonPnl)
 
   await clickPrimaryNavigation('Import')
   const malformedAmountNodeId = await resolveFileInputNodeId()

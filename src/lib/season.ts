@@ -20,6 +20,18 @@ export function getDivision(
   return 'whaleLeague'
 }
 
+export function getCashBufferRatio(report: PortfolioReport): number | undefined {
+  const { cashValue, netLiquidationValue } = report
+  if (
+    cashValue == null ||
+    !Number.isFinite(cashValue) ||
+    netLiquidationValue == null ||
+    !Number.isFinite(netLiquidationValue) ||
+    netLiquidationValue <= 0
+  ) return undefined
+  return cashValue / netLiquidationValue
+}
+
 export function getTrophies(report: PortfolioReport): TrophyDefinition[] {
   const isEligibleLocalReport = report.source === 'local'
   const hasUsdAmountThresholds =
@@ -39,10 +51,7 @@ export function getTrophies(report: PortfolioReport): TrophyDefinition[] {
     (sum, symbol) => sum + symbol.assignmentCount,
     0,
   )
-  const cashRatio =
-    report.cashValue != null && report.netLiquidationValue
-      ? report.cashValue / report.netLiquidationValue
-      : 0
+  const cashRatio = getCashBufferRatio(report)
 
   return [
     {
@@ -90,8 +99,10 @@ export function getTrophies(report: PortfolioReport): TrophyDefinition[] {
       id: 'cash',
       icon: '$',
       tone: 'neutral',
-      unlocked: isEligibleLocalReport && cashRatio >= 0.15,
-      progress: isEligibleLocalReport ? Math.min(1, cashRatio / 0.15) : undefined,
+      unlocked: isEligibleLocalReport && cashRatio != null && cashRatio >= 0.15,
+      progress: isEligibleLocalReport && cashRatio != null
+        ? Math.min(1, Math.max(0, cashRatio / 0.15))
+        : undefined,
     },
     {
       id: 'reverse',
