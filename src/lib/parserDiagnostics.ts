@@ -31,6 +31,7 @@ export const PARSER_DIAGNOSTIC_CODES = Object.freeze([
   'mtm_section_missing',
   'accounting_value_invalid',
   'accounting_section_conflict',
+  'account_boundary_unsupported',
   'option_event_date_invalid',
   'option_event_type_conflict',
   'option_event_identity_conflict',
@@ -114,6 +115,8 @@ const messages: Record<
       'An accounting value has an unsupported format or cannot be calculated safely. Export a fresh English Activity Statement CSV.',
     accounting_section_conflict:
       'The statement contains ambiguous or conflicting source sections, columns, or accounting totals. Export a fresh English Activity Statement CSV.',
+    account_boundary_unsupported:
+      'This CSV contains BOA/EOA account-boundary rows. This single-account version cannot verify their account ownership, so this report shape is not supported. This does not mean the file is forged.',
     option_event_date_invalid:
       'An option assignment, exercise or expiration event has a missing, invalid or out-of-period date. Export a fresh English Activity Statement CSV.',
     option_event_type_conflict:
@@ -184,6 +187,8 @@ const messages: Record<
       '报表会计数值格式不受支持，或无法安全计算。请重新导出英文版 Activity Statement CSV。',
     accounting_section_conflict:
       '报表的来源区块、字段列或会计合计存在歧义或冲突。请重新导出英文版 Activity Statement CSV。',
+    account_boundary_unsupported:
+      '这份 CSV 含 BOA/EOA 账户边界行。当前单账户版本无法核对其归属，因此暂不支持这种结构；这不表示文件造假。',
     option_event_date_invalid:
       '期权指派、行权或到期事件的日期缺失、无效或不在报表期间内。请重新导出英文版 Activity Statement CSV。',
     option_event_type_conflict:
@@ -243,6 +248,8 @@ const messages: Record<
       '報表會計數值格式不受支援，或無法安全計算。請重新匯出英文版 Activity Statement CSV。',
     accounting_section_conflict:
       '報表的來源區塊、欄位或會計合計存在歧義或衝突。請重新匯出英文版 Activity Statement CSV。',
+    account_boundary_unsupported:
+      '這份 CSV 含 BOA/EOA 帳戶邊界列。目前單帳戶版本無法核對其歸屬，因此暫不支援這種結構；這不表示檔案造假。',
     option_event_date_invalid:
       '選擇權指派、行權或到期事件的日期缺失、無效或不在報表期間內。請重新匯出英文版 Activity Statement CSV。',
     option_event_type_conflict:

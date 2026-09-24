@@ -416,7 +416,7 @@ try {
     assert.ok(markup.includes(checkBoundary), `${locale} lost the separate calculation-check label.`)
   }
 
-  assert.equal(PARSER_DIAGNOSTIC_CODES.length, 45)
+  assert.equal(PARSER_DIAGNOSTIC_CODES.length, 46)
   for (const code of PARSER_DIAGNOSTIC_CODES) {
     const recoveryKey = importRecoveryKey(code)
     assert.equal(typeof recoveryKey, 'string', `No recovery category exists for ${code}.`)
@@ -427,6 +427,16 @@ try {
   assert.equal(importRecoveryKey('option_event_date_invalid'), 'recoveryEventDate')
   assert.equal(importRecoveryKey('option_event_type_conflict'), 'recoveryEventIdentity')
   assert.equal(importRecoveryKey('option_event_identity_conflict'), 'recoveryEventIdentity')
+  assert.equal(importRecoveryKey('account_boundary_unsupported'), 'recoveryAccountBoundary')
+  for (const [locale, unsupported, notForged, keepOriginal] of [
+    ['en', 'BOA/EOA account-boundary rows', 'does not mean the file is forged', 'Keep the original CSV unchanged.'],
+    ['zh-CN', 'BOA/EOA 账户边界行', '不表示文件造假', '请保留原始 CSV'],
+    ['zh-TW', 'BOA/EOA 帳戶邊界列', '不表示檔案造假', '請保留原始 CSV'],
+  ]) {
+    const diagnostic = formatParserDiagnostic({ code: 'account_boundary_unsupported' }, locale)
+    assert.ok(diagnostic.includes(unsupported) && diagnostic.includes(notForged))
+    assert.ok(t(locale, importRecoveryKey('account_boundary_unsupported')).includes(keepOriginal))
+  }
   for (const [locale, expected] of [
     ['en', 'missing, invalid or out-of-period date'],
     ['zh-CN', '日期缺失、无效或不在报表期间内'],

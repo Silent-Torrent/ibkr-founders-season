@@ -724,7 +724,7 @@ try {
       `${codedBosFixture.trimEnd()}\n${controlRow}\n`,
     )
     assert(
-      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      hasDiagnostic(parsed, 'account_boundary_unsupported') && !parsed.report,
       `A populated ${label} control row was silently accepted: ${diagnosticsText(parsed)}`,
     )
   }
@@ -742,7 +742,7 @@ try {
       `${codedBosFixture.trimEnd()}\n${controlRow}\n`,
     )
     assert(
-      hasDiagnostic(parsed, 'accounting_section_conflict') && !parsed.report,
+      hasDiagnostic(parsed, 'account_boundary_unsupported') && !parsed.report,
       `An unsupported account-boundary control row was accepted: ${diagnosticsText(parsed)}`,
     )
   }

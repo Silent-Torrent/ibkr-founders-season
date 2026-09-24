@@ -483,6 +483,7 @@ interface StatementIndex {
   bofPeriodInvalid: boolean
   bofPeriodKeys: Set<string>
   firstBofPeriod?: { start?: Date; end?: Date }
+  hasUnsupportedAccountBoundary: boolean
   hasUnmappedNonemptyCells: boolean
   headerBlockStates: Map<string, HeaderBlockState>
   rowCount: number
@@ -520,6 +521,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
   let bofPeriodConflict = false
   let bofPeriodInvalid = false
   let firstBofPeriod: StatementIndex['firstBofPeriod']
+  let hasUnsupportedAccountBoundary = false
   let hasUnmappedNonemptyCells = false
   let sectionOverflow = false
   let lastTradesDataRow: {
@@ -577,7 +579,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       (row.length >= 2 &&
         ACCOUNT_BOUNDARY_RECORD_TYPES.has(row[1].trim().toUpperCase()))
     ) {
-      hasUnmappedNonemptyCells = true
+      hasUnsupportedAccountBoundary = true
       return
     }
 
@@ -764,6 +766,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
       bofPeriodInvalid,
       bofPeriodKeys,
       firstBofPeriod,
+      hasUnsupportedAccountBoundary,
       hasUnmappedNonemptyCells,
       headerBlockStates,
       rowCount,
@@ -4493,6 +4496,9 @@ function parseIndexedStatement(
     return { errors: [{ code: 'csv_not_enough_rows' }], warnings }
   }
   if (statementIndex.sectionOverflow) return reportCapacityFailure()
+  if (statementIndex.hasUnsupportedAccountBoundary) {
+    return { errors: [{ code: 'account_boundary_unsupported' }], warnings }
+  }
   if (statementIndex.hasUnmappedNonemptyCells) {
     return { errors: [{ code: 'accounting_section_conflict' }], warnings }
   }

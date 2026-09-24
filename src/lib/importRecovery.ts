@@ -28,6 +28,7 @@ const recoveryKeyByCode = {
   mtm_section_missing: 'recoveryExportSettings',
   accounting_value_invalid: 'recoveryReconciliation',
   accounting_section_conflict: 'recoveryReconciliation',
+  account_boundary_unsupported: 'recoveryAccountBoundary',
   option_event_date_invalid: 'recoveryEventDate',
   option_event_type_conflict: 'recoveryEventIdentity',
   option_event_identity_conflict: 'recoveryEventIdentity',

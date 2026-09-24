@@ -31,6 +31,7 @@ export type ParserDiagnosticCode =
   | 'mtm_section_missing'
   | 'accounting_value_invalid'
   | 'accounting_section_conflict'
+  | 'account_boundary_unsupported'
   | 'option_event_date_invalid'
   | 'option_event_type_conflict'
   | 'option_event_identity_conflict'

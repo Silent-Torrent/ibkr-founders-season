@@ -1,0 +1,13 @@
+# Checkpoint 0.38 — honest account-boundary recovery (2026-09-25)
+
+## User-facing defect and change
+
+Checkpoint 0.37 safely rejected unverified `BOA`/`EOA` account boundaries, including empty markers, but surfaced the generic `accounting_section_conflict` message. A genuine yet unsupported report could therefore appear to have bad accounting and invite repeated re-export or manual CSV editing. The new red parser assertion failed against the generic code. A distinct `account_boundary_unsupported` diagnostic now reports the specific compatibility limit in English, Simplified Chinese and Traditional Chinese: the current single-account parser cannot establish boundary ownership, and rejection **does not mean the file is forged**. Matching recovery guidance says to preserve the original CSV, never delete boundary rows by hand, and use the supported export settings or fictional Demo until the layout is verified.
+
+The first-pass index retains the same 0.37 reject decision; this checkpoint changes the diagnostic path, not the accepted financial-data contract. For an otherwise in-bounds statement, the specific code takes precedence over generic accounting conflict. Existing short-file, parser-syntax and capacity failures can still take precedence. The fixed diagnostic allow-list and three-language recovery map now contain 46 codes. Tests verify the message's unsupported/not-forged distinction and original-file instruction in all three locales.
+
+## Verification and limits
+
+Node 22.23.2 `npm run check` passed all suites. The production Chrome test imported three wholly fictional `BOA`/`EOA` variants through the actual built Worker, observed the specific error, recovery and accessibility alert, then verified the earlier synthetic Ledger/source/Season P&L/rows were unchanged (52 local requests, 34 Worker targets in that run). Standalone `npm run build` passed with `index-K6dxNFx5.js`, `ibkrParser.worker-BSpPJ87-.js`, and `index-D6ARIZiW.css`; `npm audit --audit-level=high` reported zero vulnerabilities and `git diff --check` exited 0. No personal statement or phone file was used.
+
+A separate read-only official-source review still found no complete, verifiable Activity Statement CSV row for a completed account-side Exercise; code tables, HTML examples and the separate Reporting Integration feed cannot close F01. A local privacy-path read-only review found no new silent upload or persisted financial-data path, but it does not prove the deployed host's Network/Storage boundary. The iPhone Mirroring inventory again reported the Mac locked, so no new phone/audio or 16.4 result exists. Fixed release gates remain **9 OPEN / 3 CLOSED** under the user's **L deployment freeze**.
