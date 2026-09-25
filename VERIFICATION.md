@@ -2,6 +2,10 @@
 
 Last updated: 2026-09-25
 
+## 2026-09-25 checkpoint 0.38 — iPhone visual-only continuation
+
+The iPhone's own Safari loaded the existing 0.38 production bundle over a temporary private LAN preview. English, Simplified and Traditional interfaces, four mobile tabs, privacy modal, native picker dismissal, fictional sample success, manual-summary text selection without copying, and a verified fictional 501-symbol capacity rejection were visually exercised. After the rejection, the prior `FULLY SYNTHETIC TEST` source and `Season P&L +$20,040` remained. A retry while iCloud Drive showed “Waiting...” resulted in “The CSV file is empty”; its cause and the in-progress cancel/timeout path are unverified. VoiceOver stayed Off and no 0.38 spoken-audio or rotation result exists. Two newly downloaded fictional CSVs were moved to recoverable Recently Deleted; the project Safari tab and both private servers were closed, with no remaining listener on 4174/4175 and Simplified Pinyin restored. See [0.38 phone evidence](docs/IPHONE_038_VISUAL_ACCEPTANCE_2026-09-25.md). No code/build/full-suite rerun in this device-only session. Fixed **9 OPEN / 3 CLOSED**, L frozen.
+
 ## 2026-09-25 checkpoint 0.38 — specific unsupported-format guidance
 
 The previous `BOA`/`EOA` rejection used the generic `accounting_section_conflict` error. A new parser red assertion failed on that old code. The first-pass boundary flag now produces `account_boundary_unsupported` for otherwise in-bounds reports, without relaxing the 0.37 fail-closed decision. Three-language error and recovery text explicitly say this unverified account-boundary format is unsupported rather than forged, to retain the original file and not to remove its rows by hand. The typed diagnostic allow-list, Worker-output validation, recovery mapping and product-policy assertions cover all 46 codes; independent read-only review found no missing wiring. See [0.38 evidence](docs/ACCOUNT_BOUNDARY_RECOVERY_038_EVIDENCE_2026-09-25.md).
