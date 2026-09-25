@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.40 signed CSV differences and mobile privacy
+# Verification record — checkpoint 0.41 reconciliation equations
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.41 — 三项核对数字可追查
+
+账本已有三项核对展开区现在在数值证据完整时显示“报表值／计算值／有符号差额”三行，缺失值不补零；来源行和 `Self-reported · not broker-verified` 边界不变。全虚构 `+0.000001` MTM CSV 经生产 Chrome 真 Worker 导入后，三项展开式分别显示精确的两端金额与 `+$0.000001`、`-$0.000001`、零差额。三语静态和模拟 320px 浏览器测试包含原生 summary 的完整 CDP Enter 键序列、可见尺寸、至少 12px 字体和无横向裁切。高精度红测复现两个解析器已接受的极小不同值被旧格式器显示成同一金额；改用足够有效数字后金额及正负差额可区分，既有小额日元显示合同保持通过。Node 22 最终 `npm run check`、单独构建、差异检查和高危依赖审计均通过；浏览器记录 58 次本地请求、36 个 Worker target，构建为 `index-gS9zFKav.js` / `ibkrParser.worker-DH4j2t4Z.js` / `index-C91NXhFt.css`。参见 [0.41 证据](docs/RECONCILIATION_EQUATION_041_EVIDENCE_2026-09-25.md)。
+
+这仍是本地桌面/虚构数据验收，不是手机 Safari/VoiceOver、券商真实性或正式上线证据。上次手机设置与标签收尾仍待 Mac 实际解锁后核对；固定 **9 OPEN / 3 CLOSED**，L 冻结。
 
 ## 2026-09-25 checkpoint 0.40 — 容差内差额不再伪装成零
 

@@ -83,7 +83,45 @@ try {
     assert.match(guidance, /0\.000001/, `${locale} guidance omits the locked CSV tolerance.`)
     assert.match(guidance, /absolute|绝对值|絕對值/, `${locale} guidance omits absolute value.`)
     assert.match(guidance, /source|来源|來源/, `${locale} guidance omits source checks.`)
+    for (const key of [
+      'reconciliationReportedValue',
+      'reconciliationCalculatedValue',
+      'reconciliationSignedDifference',
+    ]) {
+      assert.equal(typeof t(locale, key), 'string', `${locale} is missing ${key}.`)
+      assert(t(locale, key).trim(), `${locale} has an empty ${key}.`)
+    }
   }
+
+  const fictionalSourceRef = {
+    source: 'csv', section: 'Entirely fictional test', rowNumber: 1,
+    recordType: 'Data', field: 'Amount',
+  }
+  const localEquationReport = {
+    ...demoReport,
+    source: 'local',
+    mtmReconciliationDifference: 0.000001,
+    reconciliations: [
+      {
+        id: 'mtm_all_assets', status: 'PASS_EXACT', reasonCode: 'within_tolerance',
+        reportedValue: 740.123457, calculatedValue: 740.123456,
+        difference: 0.000001, tolerance: 0.000001, sourceRefs: [fictionalSourceRef],
+      },
+      {
+        id: 'statement_period_pnl', status: 'PASS_EXACT', reasonCode: 'within_tolerance',
+        reportedValue: 750.243454, calculatedValue: 750.243455,
+        difference: -0.000001, tolerance: 0.000001, sourceRefs: [fictionalSourceRef],
+      },
+      {
+        id: 'nav_bridge', status: 'PASS_EXACT', reasonCode: 'within_tolerance',
+        reportedValue: 8750.243455, calculatedValue: 8750.243455,
+        difference: 0, tolerance: 0.000001, sourceRefs: [fictionalSourceRef],
+      },
+    ],
+  }
+  const reconciliationDetails = (markup) =>
+    [...markup.matchAll(/<details class="provenance-details reconciliation-item"[\s\S]*?<\/details>/g)]
+      .map((match) => match[0])
 
   const noop = () => {}
   const renderers = {
@@ -134,6 +172,39 @@ try {
       !demoLedger.includes('reconciliation-tolerance-note'),
       `${locale} Demo incorrectly claims a CSV-specific tolerance check.`,
     )
+    const demoChecks = reconciliationDetails(demoLedger)
+    assert.equal(demoChecks.length, 3, `${locale} Demo has an unexpected reconciliation count.`)
+    for (const check of demoChecks.slice(1)) {
+      assert(!check.includes('reconciliation-equation'), `${locale} Demo invented unavailable figures.`)
+    }
+
+    const localLedger = renderToStaticMarkup(createElement(LedgerPage, {
+      locale, report: localEquationReport,
+    }))
+    assert(localLedger.includes('reconciliation-tolerance-note'), `${locale} local CSV omits its tolerance notice.`)
+    const localChecks = reconciliationDetails(localLedger)
+    assert.equal(localChecks.length, 3, `${locale} local CSV has an unexpected reconciliation count.`)
+    for (const [index, check] of localChecks.entries()) {
+      assert(check.includes('reconciliation-equation'), `${locale} check ${index} hides its numeric equation.`)
+      assert.match(check, /<dl[^>]*class="reconciliation-equation"/, `${locale} check ${index} lacks a semantic equation list.`)
+      assert.equal((check.match(/<dt>/g) ?? []).length >= 3, true, `${locale} check ${index} lacks dt labels.`)
+      assert.equal((check.match(/<dd/g) ?? []).length >= 3, true, `${locale} check ${index} lacks dd amounts.`)
+      for (const key of [
+        'reconciliationReportedValue',
+        'reconciliationCalculatedValue',
+        'reconciliationSignedDifference',
+      ]) {
+        assert(check.includes(t(locale, key)), `${locale} check ${index} omits ${key}.`)
+      }
+    }
+    for (const value of ['740.123457', '740.123456']) {
+      assert(localChecks[0].includes(value), `${locale} MTM ${value} was rounded away.`)
+    }
+    assert.match(localChecks[0], /\+[^<]*0\.000001/, `${locale} MTM positive difference is hidden.`)
+    for (const value of ['750.243454', '750.243455']) {
+      assert(localChecks[1].includes(value), `${locale} statement P&L ${value} was rounded away.`)
+    }
+    assert.match(localChecks[1], /-[^<]*0\.000001/, `${locale} statement P&L negative difference is hidden.`)
   }
 
   const visibleSourceDirectories = [

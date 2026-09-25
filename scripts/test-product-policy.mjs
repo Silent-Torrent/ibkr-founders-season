@@ -27,7 +27,8 @@ try {
     { ShareCardPreview },
     { TrophiesPage },
     { demoReport },
-    { formatCurrency, formatPercent, formatReconciliationDifference },
+    { formatCurrency, formatPercent, formatReconciliationDifference, formatReconciliationValue },
+    { parseNumber },
     { hasCurrentUnrealizedExplanation, hasRealizedExplanation },
     { getCashBufferRatio, getDivision, getTrophies },
     { parseIbkrActivityStatement },
@@ -46,6 +47,7 @@ try {
     vite.ssrLoadModule('/src/pages/TrophiesPage.tsx'),
     vite.ssrLoadModule('/src/data/demo.ts'),
     vite.ssrLoadModule('/src/lib/format.ts'),
+    vite.ssrLoadModule('/src/lib/csv.ts'),
     vite.ssrLoadModule('/src/lib/explanationAvailability.ts'),
     vite.ssrLoadModule('/src/lib/season.ts'),
     vite.ssrLoadModule('/src/lib/ibkr.ts'),
@@ -172,6 +174,45 @@ try {
   assert.equal(formatReconciliationDifference(0.0000004, 'USD', 'en'), '+$0.0000004')
   assert.match(formatReconciliationDifference(1e-21, 'USD', 'en'), /\+\$1E-21/)
   assert.equal(formatReconciliationDifference(1, '<img>', 'en'), '—')
+  const preciseCsvTokens = [
+    '0.0000000000000000000123456789',
+    '0.0000000000000000000123456788',
+    '0.00000000000000000000123456789',
+  ]
+  const preciseCsvValues = preciseCsvTokens.map(parseNumber)
+  assert.deepEqual(
+    preciseCsvValues,
+    [1.23456789e-20, 1.23456788e-20, 1.23456789e-21],
+    'The high-precision financial test tokens were not accepted by the CSV parser.',
+  )
+  const displayedMagnitude = (formatted) => {
+    const match = formatted.match(/\d+(?:\.\d+)?(?:E[+-]?\d+)?/i)
+    assert(match, `The financial formatter omitted its numeric value: ${formatted}`)
+    return Number(match[0])
+  }
+  for (const value of preciseCsvValues) {
+    const operand = formatReconciliationValue(value, 'USD', 'en')
+    const positiveDifference = formatReconciliationDifference(value, 'USD', 'en')
+    const negativeDifference = formatReconciliationDifference(-value, 'USD', 'en')
+    assert.equal(displayedMagnitude(operand), value,
+      `A parsed reconciliation operand lost accepted digits: ${operand}`)
+    assert.equal(displayedMagnitude(positiveDifference), value,
+      `A positive signed reconciliation difference lost accepted digits: ${positiveDifference}`)
+    assert.equal(displayedMagnitude(negativeDifference), value,
+      `A negative signed reconciliation difference lost accepted digits: ${negativeDifference}`)
+    assert(positiveDifference.startsWith('+') && negativeDifference.startsWith('-'),
+      'The formatter dropped a nonzero reconciliation difference sign.')
+  }
+  assert.notEqual(
+    formatReconciliationValue(preciseCsvValues[0], 'USD', 'en'),
+    formatReconciliationValue(preciseCsvValues[1], 'USD', 'en'),
+    'Two distinct accepted CSV operands rendered identically.',
+  )
+  assert.notEqual(
+    formatReconciliationDifference(preciseCsvValues[0], 'USD', 'en'),
+    formatReconciliationDifference(preciseCsvValues[1], 'USD', 'en'),
+    'Two distinct accepted CSV differences rendered identically.',
+  )
 
   const arenaDemoMarkup = renderToStaticMarkup(
     createElement(ArenaPage, { locale: 'en', report: demoReport }),

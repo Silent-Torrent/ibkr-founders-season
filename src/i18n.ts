@@ -305,6 +305,9 @@ const en = {
   sections: 'CSV sections',
   metricSources: 'Key metric sources',
   reconciliationChecks: 'Reconciliation checks',
+  reconciliationReportedValue: 'Reported value',
+  reconciliationCalculatedValue: 'Calculated value',
+  reconciliationSignedDifference: 'Signed difference',
   reconciliationToleranceNote:
     'The signed difference is reported minus calculated in the account’s base currency. An absolute difference at or below 0.000001 meets the CSV numeric tolerance; source and component checks must also pass. Within tolerance does not mean zero difference.',
   reconciliationMtm: 'All-assets MTM',
@@ -623,6 +626,9 @@ const zhCN: typeof en = {
   sections: 'CSV 分区',
   metricSources: '关键指标来源',
   reconciliationChecks: '三项对账检查',
+  reconciliationReportedValue: '报表值',
+  reconciliationCalculatedValue: '计算值',
+  reconciliationSignedDifference: '有符号差额',
   reconciliationToleranceNote:
     '有符号差额＝报表值减去计算值，以账户基础货币计。差额的绝对值不超过 0.000001 只符合 CSV 数值容差；来源与组成项仍须通过核对。“在容差内”不代表差额为零。',
   reconciliationMtm: '全部资产盯市盈亏',
@@ -939,6 +945,9 @@ const zhTW: typeof en = {
   sections: 'CSV 分區',
   metricSources: '關鍵指標來源',
   reconciliationChecks: '三項核對檢查',
+  reconciliationReportedValue: '報表值',
+  reconciliationCalculatedValue: '計算值',
+  reconciliationSignedDifference: '有符號差額',
   reconciliationToleranceNote:
     '有符號差額＝報表值減去計算值，以帳戶基礎貨幣計。差額的絕對值不超過 0.000001 只符合 CSV 數值容差；來源與組成項仍須通過核對。「在容差內」不代表差額為零。',
   reconciliationMtm: '全部資產盯市損益',

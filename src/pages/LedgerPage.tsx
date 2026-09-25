@@ -12,6 +12,7 @@ import {
   formatDate,
   formatPercent,
   formatReconciliationDifference,
+  formatReconciliationValue,
   pnlClass,
 } from '../lib/format'
 import { diagnosticKey, formatParserDiagnostic } from '../lib/parserDiagnostics'
@@ -349,6 +350,24 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                       </small>
                     </summary>
                     <p className="reconciliation-help">{reconciliationHelp(locale, id)}</p>
+                    {check?.reportedValue != null &&
+                      check.calculatedValue != null &&
+                      check.difference != null && (
+                        <dl className="reconciliation-equation">
+                          <div>
+                            <dt>{t(locale, 'reconciliationReportedValue')}</dt>
+                            <dd>{formatReconciliationValue(check.reportedValue, report.baseCurrency, locale)}</dd>
+                          </div>
+                          <div>
+                            <dt>{t(locale, 'reconciliationCalculatedValue')}</dt>
+                            <dd>{formatReconciliationValue(check.calculatedValue, report.baseCurrency, locale)}</dd>
+                          </div>
+                          <div>
+                            <dt>{t(locale, 'reconciliationSignedDifference')}</dt>
+                            <dd>{formatReconciliationDifference(check.difference, report.baseCurrency, locale)}</dd>
+                          </div>
+                        </dl>
+                      )}
                     <SourceRows
                       isDemo={report.source === 'demo'}
                       locale={locale}

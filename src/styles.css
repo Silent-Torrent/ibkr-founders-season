@@ -1080,7 +1080,7 @@ h2 {
   padding: 10px 2px;
   color: var(--text);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .provenance-details summary::marker {
@@ -1132,15 +1132,47 @@ h2 {
 .reconciliation-help {
   margin: 0 0 8px !important;
   color: var(--muted) !important;
-  font-size: 10px !important;
+  font-size: 12px !important;
   line-height: 1.55 !important;
 }
 
-.reconciliation-tolerance-note {
+.source-card p.reconciliation-tolerance-note {
   margin: 0 0 10px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.source-card dl.reconciliation-equation {
+  margin: 7px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 4px 10px;
+}
+
+.source-card dl.reconciliation-equation > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.source-card dl.reconciliation-equation > div:first-child {
+  border-top: 0;
+}
+
+.source-card dl.reconciliation-equation dt,
+.source-card dl.reconciliation-equation dd {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.source-card dl.reconciliation-equation dd {
+  overflow-wrap: anywhere;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .source-empty {
@@ -1184,7 +1216,7 @@ h2 {
 .source-ref-card dt,
 .source-ref-card dd {
   margin: 0;
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -1206,7 +1238,7 @@ h2 {
   border-top: 1px solid var(--border);
   padding-top: 6px;
   color: var(--muted-2);
-  font-size: 7px;
+  font-size: 12px;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }

@@ -3005,6 +3005,14 @@ try {
         source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
         difference: diffRow?.querySelector('dd')?.textContent?.trim() ?? '',
         mtmStatus: mtmCheck?.querySelector('.reconciliation-status')?.textContent?.trim() ?? '',
+        equations: [...document.querySelectorAll('.reconciliation-item')].map((item) => ({
+          title: item.querySelector('summary span')?.textContent?.trim() ?? '',
+          status: item.querySelector('.reconciliation-status')?.textContent?.trim() ?? '',
+          rows: [...item.querySelectorAll('.reconciliation-equation > div')].map((row) => ({
+            label: row.querySelector('dt')?.textContent?.trim() ?? '',
+            value: row.querySelector('dd')?.textContent?.trim() ?? '',
+          })),
+        })),
         warnings: document.querySelector('.warning-list')?.textContent?.trim() ?? '',
         rows: document.querySelectorAll('.data-table tbody tr').length,
       };
@@ -3018,6 +3026,24 @@ try {
   assert.equal(microMtmLedger.source, 'Self-reported · not broker-verified')
   assert.match(microMtmLedger.difference, /^\+(?:US)?\$0\.000001$/)
   assert.equal(microMtmLedger.mtmStatus, 'Within CSV tolerance')
+  assert.deepEqual(
+    microMtmLedger.equations.map(({ title }) => title),
+    ['All-assets MTM', 'Statement-period P&L', 'NAV bridge'],
+    'The production Ledger omitted or reordered its three reconciliation checks.',
+  )
+  for (const { title, rows } of microMtmLedger.equations) {
+    assert.equal(rows.length, 3, `${title} hides one or more reported/calculated/difference amounts.`)
+    assert.deepEqual(rows.map(({ label }) => label), [
+      'Reported value', 'Calculated value', 'Signed difference',
+    ], `${title} does not label its source-to-calculation equation.`)
+    assert(rows.every(({ value }) => value && value !== '—'), `${title} has an unavailable numeric amount.`)
+  }
+  const [mtmEquation, statementEquation, navEquation] = microMtmLedger.equations
+  assert.match(mtmEquation.rows[0].value, /740\.123457/, 'The reported MTM amount lost its source decimals.')
+  assert.match(mtmEquation.rows[1].value, /740\.123456/, 'The calculated MTM amount lost its source decimals.')
+  assert.match(mtmEquation.rows[2].value, /^\+(?:US)?\$0\.000001$/, 'The signed MTM micro-difference is hidden.')
+  assert.match(statementEquation.rows[2].value, /^-(?:US)?\$0\.000001$/, 'The statement P&L negative micro-difference is hidden.')
+  assert.match(navEquation.rows[2].value, /(?:US)?\$0(?:\.0+)?$/, 'The zero NAV bridge difference is unavailable.')
   assert(
     !microMtmLedger.warnings.includes('IBKR reported all-assets YTD MTM minus the parsed detail sum'),
     `A within-tolerance MTM difference was incorrectly warned: ${microMtmLedger.warnings}`,
@@ -3026,10 +3052,53 @@ try {
     deviceScaleFactor: 1, mobile: false, screenHeight: 568, screenWidth: 320,
     height: 568, width: 320,
   })
+  for (let index = 0; index < 3; index += 1) {
+    const focused = await evaluate(`(() => {
+      const summary = document.querySelectorAll('.reconciliation-item > summary')[${index}];
+      summary?.focus();
+      return document.activeElement === summary;
+    })()`)
+    assert.equal(focused, true, `Reconciliation summary ${index} could not receive keyboard focus.`)
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'rawKeyDown', key: 'Enter', code: 'Enter',
+      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
+    })
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'char', key: 'Enter', code: 'Enter', text: '\r', unmodifiedText: '\r',
+      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
+    })
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: 'Enter', code: 'Enter',
+      windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13,
+    })
+    await waitForPageValue(
+      `document.querySelectorAll('.reconciliation-item')[${index}]?.open === true`,
+      Boolean,
+      `Reconciliation summary ${index} did not expand after the CDP Enter key sequence`,
+    )
+  }
   const narrowReconciliation = await evaluate(`(() => {
     const status = [...document.querySelectorAll('.reconciliation-item .reconciliation-status')]
       .find((node) => node.textContent?.trim() === 'Within CSV tolerance');
     const rect = status?.getBoundingClientRect();
+    const measure = (selector) => {
+      const nodes = [...document.querySelectorAll(selector)];
+      return {
+        count: nodes.length,
+        minFont: nodes.length ? Math.min(...nodes.map((node) => Number.parseFloat(getComputedStyle(node).fontSize))) : 0,
+        clipped: nodes.some((node) => {
+          const box = node.getBoundingClientRect();
+          return box.left < 0 || box.right > innerWidth + 1 ||
+            node.scrollWidth > node.clientWidth + 1;
+        }),
+        hidden: nodes.some((node) => {
+          const box = node.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return box.width <= 0 || box.height <= 0 || style.display === 'none' ||
+            style.visibility !== 'visible' || Number(style.opacity) <= 0;
+        }),
+      };
+    };
     return {
       viewportWidth: innerWidth,
       documentWidth: document.documentElement.scrollWidth,
@@ -3037,15 +3106,27 @@ try {
       statusInsideViewport: Boolean(rect && rect.left >= 0 && rect.right <= innerWidth),
       statusFits: Boolean(status && status.scrollWidth <= status.clientWidth + 1 &&
         status.scrollHeight <= status.clientHeight + 1),
+      expanded: [...document.querySelectorAll('.reconciliation-item')].every((item) => item.open),
+      note: measure('.reconciliation-tolerance-note'),
+      help: measure('.reconciliation-help'),
+      equation: measure('.reconciliation-equation dt, .reconciliation-equation dd'),
+      sourceRefs: measure('.reconciliation-item .source-ref-card dt, .reconciliation-item .source-ref-card dd'),
     };
   })()`)
   assert.equal(narrowReconciliation.viewportWidth, 320)
   assert(
-    narrowReconciliation.documentWidth <= 320 &&
+    narrowReconciliation.expanded && narrowReconciliation.documentWidth <= 320 &&
       narrowReconciliation.fontSize >= 12 &&
       narrowReconciliation.statusInsideViewport && narrowReconciliation.statusFits,
     `The CSV-tolerance status is clipped or too small at 320px: ${JSON.stringify(narrowReconciliation)}`,
   )
+  for (const key of ['note', 'help', 'equation', 'sourceRefs']) {
+    const sample = narrowReconciliation[key]
+    assert(
+      sample.count > 0 && sample.minFont >= 12 && !sample.hidden && !sample.clipped,
+      `${key} is absent, hidden, too small, or clipped at 320px: ${JSON.stringify(narrowReconciliation)}`,
+    )
+  }
   await cdp.send('Emulation.clearDeviceMetricsOverride')
 
   await delay(250)
