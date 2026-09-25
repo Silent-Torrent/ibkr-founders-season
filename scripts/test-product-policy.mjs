@@ -428,6 +428,19 @@ try {
   assert.equal(importRecoveryKey('option_event_type_conflict'), 'recoveryEventIdentity')
   assert.equal(importRecoveryKey('option_event_identity_conflict'), 'recoveryEventIdentity')
   assert.equal(importRecoveryKey('account_boundary_unsupported'), 'recoveryAccountBoundary')
+  assert.equal(importRecoveryKey('file_empty'), 'recoveryEmptyFile')
+  assert.equal(importRecoveryKey('file_not_csv'), 'recoveryFile')
+  assert.equal(importRecoveryKey('statement_unreadable'), 'recoveryFile')
+  for (const [locale, cloudWait, localAvailability, trulyEmpty, preserveOriginal] of [
+    ['en', 'waiting to download', 'available on this device', 'zero bytes', 'Keep the original; do not edit the CSV by hand.'],
+    ['zh-CN', '等待下载', '下载到这台设备', '0 字节', '保留原件，不要手工修改 CSV。'],
+    ['zh-TW', '等待下載', '下載到這台裝置', '0 位元組', '保留原件，不要手動修改 CSV。'],
+  ]) {
+    const recovery = t(locale, importRecoveryKey('file_empty'))
+    for (const expected of [cloudWait, localAvailability, trulyEmpty, preserveOriginal]) {
+      assert.ok(recovery.includes(expected), `${locale} empty-file recovery lacks: ${expected}`)
+    }
+  }
   for (const [locale, unsupported, notForged, keepOriginal] of [
     ['en', 'BOA/EOA account-boundary rows', 'does not mean the file is forged', 'Keep the original CSV unchanged.'],
     ['zh-CN', 'BOA/EOA 账户边界行', '不表示文件造假', '请保留原始 CSV'],
@@ -485,6 +498,20 @@ try {
     assert.ok(
       t(locale, 'privacyClearBody').includes(sharedCopyBoundary),
       `${locale} clearing copy omits the separately shared PNG boundary.`,
+    )
+  }
+  for (const [locale, appReadData, originalCsvBoundary] of [
+    ['en', 'CSV data read by this app', 'does not delete the original CSV from Files, Downloads, or cloud storage'],
+    ['zh-CN', '本应用读取的 CSV 数据', '不会删除“文件”、下载目录或云端存储里的原始 CSV'],
+    ['zh-TW', '本應用讀取的 CSV 資料', '不會刪除「檔案」、下載資料夾或雲端儲存中的原始 CSV'],
+  ]) {
+    assert.ok(
+      t(locale, 'privacyMemoryBody').includes(appReadData),
+      `${locale} memory copy must distinguish app-read CSV data from the source file.`,
+    )
+    assert.ok(
+      t(locale, 'privacyClearBody').includes(originalCsvBoundary),
+      `${locale} clearing copy omits the original CSV in device or cloud storage.`,
     )
   }
 

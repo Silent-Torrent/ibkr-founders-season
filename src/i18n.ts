@@ -51,7 +51,7 @@ const en = {
     'The selected English IBKR Activity Statement CSV is converted to a filename-free browser object, then read and parsed by a dedicated worker in this tab. This beta has no backend and does not upload the file or its financial contents.',
   privacyMemoryTitle: 'What stays in memory',
   privacyMemoryBody:
-    'The raw CSV and complete parsed report remain in current-tab memory only. The app does not write them to localStorage, sessionStorage, IndexedDB, or Cache Storage.',
+    'The CSV data read by this app and the complete parsed report remain in current-tab memory only. The app does not write them to localStorage, sessionStorage, IndexedDB, or Cache Storage.',
   privacyPreferenceTitle: 'What may be saved',
   privacyPreferenceBody:
     'Only non-financial interface preferences, such as language and whether the introductory guide has been seen, may be saved in localStorage. No account identifier, holding, amount, symbol, or selected filename is saved there.',
@@ -66,7 +66,7 @@ const en = {
     'The app provides informational analytics only. It is not investment, tax, legal, or accounting advice, and the official IBKR statement remains the source of record.',
   privacyClearTitle: 'How to clear your data',
   privacyClearBody:
-    'Choose “Clear current statement” when shown or “Use demo data”, refresh the page, or close the tab or browser. Language and the seen-guide preference remain until you change them or clear this site’s browser storage. A copied summary remains in the system clipboard until it is replaced, and a downloaded PNG remains as a separate browser file until you delete it from its download location. If you shared a PNG to another app or opened it in another tab, delete that separate copy at its destination too.',
+    'Choose “Clear current statement” when shown or “Use demo data”, refresh the page, or close the tab or browser. This does not delete the original CSV from Files, Downloads, or cloud storage; those locations may sync it independently. Language and the seen-guide preference remain until you change them or clear this site’s browser storage. A copied summary remains in the system clipboard until it is replaced, and a downloaded PNG remains as a separate browser file until you delete it from its download location. If you shared a PNG to another app or opened it in another tab, delete that separate copy at its destination too.',
   privacyAcknowledge: 'Got it',
   seasonPnl: 'Season P&L',
   seasonReturn: 'Season return',
@@ -259,6 +259,7 @@ const en = {
   chooseAnotherFile: 'Choose another CSV',
   importRecoveryTitle: 'What to do next',
   recoveryFile: 'Choose a fresh CSV exported directly from IBKR. Avoid opening and resaving it in spreadsheet software before importing.',
+  recoveryEmptyFile: 'If Files shows a cloud file still waiting to download, wait until the original is fully available on this device, then choose it again. If the original really is zero bytes, export a fresh CSV from IBKR. Keep the original; do not edit the CSV by hand.',
   recoveryExportSettings: 'Export again with all five required settings shown on this page.',
   recoveryPeriodAccount: 'Use the current natural-year Year to Date period and select exactly one account.',
   recoveryReconciliation: 'Do not edit totals by hand. Export a fresh statement; if the same message returns, this report shape may not yet be supported.',
@@ -385,7 +386,7 @@ const zhCN: typeof en = {
     '你选择的英文 IBKR Activity Statement CSV 会先转为不含文件名的浏览器对象，再由当前标签页中的专用后台线程读取和解析。当前 Beta 没有后端，不会上传文件或其中的财务数据。',
   privacyMemoryTitle: '哪些数据留在内存',
   privacyMemoryBody:
-    '原始 CSV 和完整解析结果只保留在当前标签页的内存中。本应用不会将它们写入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
+    '本应用读取的 CSV 数据和完整解析结果只保留在当前标签页的内存中。本应用不会将它们写入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
   privacyPreferenceTitle: '哪些设置可能保存',
   privacyPreferenceBody:
     '只有界面语言、是否看过新手指南等非财务偏好可以保存在 localStorage。账户标识、持仓、金额、标的代码和所选文件名都不会保存在其中。',
@@ -400,7 +401,7 @@ const zhCN: typeof en = {
     '本应用只提供信息性数据分析，不构成投资、税务、法律或会计建议；最终以 IBKR 官方报表为准。',
   privacyClearTitle: '如何清除数据',
   privacyClearBody:
-    '导入后可选择“清除当前报表”，也可选择“使用演示数据”、刷新页面或关闭标签页/浏览器。语言和“已看过指南”偏好会保留，直到你更改设置或清除该站点的浏览器存储。复制的摘要会留在系统剪贴板中，直到被其他内容替换；下载的 PNG 是独立文件，也需在下载位置自行删除。如果 PNG 已分享到其他应用，或在另一个标签页打开，还需要在对应位置删除那份副本。',
+    '导入后可选择“清除当前报表”，也可选择“使用演示数据”、刷新页面或关闭标签页/浏览器。这不会删除“文件”、下载目录或云端存储里的原始 CSV；这些位置可能自行同步。语言和“已看过指南”偏好会保留，直到你更改设置或清除该站点的浏览器存储。复制的摘要会留在系统剪贴板中，直到被其他内容替换；下载的 PNG 是独立文件，也需在下载位置自行删除。如果 PNG 已分享到其他应用，或在另一个标签页打开，还需要在对应位置删除那份副本。',
   privacyAcknowledge: '我知道了',
   seasonPnl: '赛季盈亏',
   seasonReturn: '赛季收益率',
@@ -573,6 +574,7 @@ const zhCN: typeof en = {
   chooseAnotherFile: '重新选择 CSV',
   importRecoveryTitle: '下一步怎么做',
   recoveryFile: '请直接从 IBKR 重新导出一份 CSV；导入前尽量不要用表格软件打开并重新保存。',
+  recoveryEmptyFile: '如果“文件”显示云端文件仍在等待下载，请先确认原文件已完整下载到这台设备，再重新选择。若原文件确实为 0 字节，请从 IBKR 重新导出 CSV。保留原件，不要手工修改 CSV。',
   recoveryExportSettings: '请按照本页列出的五项要求重新导出，缺一项都可能无法识别。',
   recoveryPeriodAccount: '期间请选择当前自然年的 Year to Date，并且只选择一个账户。',
   recoveryReconciliation: '不要手工修改合计数。请重新导出；如果仍出现同样提示，当前版本可能暂不支持这种报表结构。',
@@ -697,7 +699,7 @@ const zhTW: typeof en = {
     '你選擇的英文 IBKR Activity Statement CSV 會先轉為不含檔名的瀏覽器物件，再由目前分頁中的專用後台執行緒讀取與解析。目前 Beta 沒有後端，不會上傳檔案或其中的財務資料。',
   privacyMemoryTitle: '哪些資料留在記憶體',
   privacyMemoryBody:
-    '原始 CSV 和完整解析結果只保留在目前分頁的記憶體中。本應用不會將它們寫入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
+    '本應用讀取的 CSV 資料和完整解析結果只保留在目前分頁的記憶體中。本應用不會將它們寫入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
   privacyPreferenceTitle: '哪些設定可能儲存',
   privacyPreferenceBody:
     '只有介面語言、是否看過新手指南等非財務偏好可以儲存在 localStorage。帳戶識別、持倉、金額、標的代碼和所選檔名都不會儲存在其中。',
@@ -712,7 +714,7 @@ const zhTW: typeof en = {
     '本應用只提供資訊性資料分析，不構成投資、稅務、法律或會計建議；最終以 IBKR 官方報表為準。',
   privacyClearTitle: '如何清除資料',
   privacyClearBody:
-    '匯入後可選擇「清除目前報表」，也可選擇「使用示範資料」、重新整理頁面或關閉分頁/瀏覽器。語言和「已看過指南」偏好會保留，直到你更改設定或清除該網站的瀏覽器儲存。複製的摘要會留在系統剪貼簿中，直到被其他內容取代；下載的 PNG 是獨立檔案，也需在下載位置自行刪除。如果 PNG 已分享到其他應用，或在另一個分頁開啟，還需要在對應位置刪除那份副本。',
+    '匯入後可選擇「清除目前報表」，也可選擇「使用示範資料」、重新整理頁面或關閉分頁/瀏覽器。這不會刪除「檔案」、下載資料夾或雲端儲存中的原始 CSV；這些位置可能自行同步。語言和「已看過指南」偏好會保留，直到你更改設定或清除該網站的瀏覽器儲存。複製的摘要會留在系統剪貼簿中，直到被其他內容取代；下載的 PNG 是獨立檔案，也需在下載位置自行刪除。如果 PNG 已分享到其他應用，或在另一個分頁開啟，還需要在對應位置刪除那份副本。',
   privacyAcknowledge: '我知道了',
   seasonPnl: '賽季損益',
   seasonReturn: '賽季報酬率',
@@ -885,6 +887,7 @@ const zhTW: typeof en = {
   chooseAnotherFile: '重新選擇 CSV',
   importRecoveryTitle: '下一步怎麼做',
   recoveryFile: '請直接從 IBKR 重新匯出一份 CSV；匯入前盡量不要用試算表軟體開啟並重新儲存。',
+  recoveryEmptyFile: '如果「檔案」顯示雲端檔案仍在等待下載，請先確認原始檔案已完整下載到這台裝置，再重新選擇。若原始檔案確實為 0 位元組，請從 IBKR 重新匯出 CSV。保留原件，不要手動修改 CSV。',
   recoveryExportSettings: '請按照本頁列出的五項要求重新匯出，缺一項都可能無法識別。',
   recoveryPeriodAccount: '期間請選擇目前自然年的 Year to Date，並且只選擇一個帳戶。',
   recoveryReconciliation: '不要手動修改合計數。請重新匯出；如果仍出現相同提示，目前版本可能暫不支援這種報表結構。',

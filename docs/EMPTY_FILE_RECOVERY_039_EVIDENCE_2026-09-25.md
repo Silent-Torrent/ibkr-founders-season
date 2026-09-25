@@ -1,0 +1,23 @@
+# Checkpoint 0.39 — empty-file recovery and source-file boundary
+
+## Scope and reason
+
+The 0.38 iPhone run showed the iOS Files picker displaying “Waiting...” for a cloud item and the app subsequently receiving a zero-byte selection. The bytes and provider state at selection were not independently captured, so this is **not** evidence that iCloud caused the result or that the app's reader failed. The app already rejected a zero-byte `File` before creating a parser Worker and kept the previous report. Its generic recovery text, however, immediately told the user to re-export from IBKR. That advice was too narrow for an original file that might simply be unavailable on the device yet.
+
+The `file_empty` diagnostic now has its own English, Simplified Chinese and Traditional Chinese recovery text: when Files reports a cloud file is still waiting to download, first make the original available on the device and reselect it; if the original really has zero bytes, export a fresh CSV; keep the original and do not hand-edit it. The diagnostic code, zero-byte refusal, capacity boundaries and Worker logic did not change. The wording does not claim to detect a cloud-provider cause.
+
+The privacy notice now distinguishes the CSV data read by this app in the current tab from the original CSV in Files, Downloads or cloud storage. Clearing the app does not delete that external original; the storage location may sync independently. This describes the app's control boundary, not the current user's iCloud settings. Apple's [iCloud Drive setup](https://support.apple.com/en-us/118443) and [iCloud Drive synchronization guidance](https://support.apple.com/en-gb/guide/icloud/mm19ef899373/icloud) confirm the independent device/cloud file path. No real statement was opened or uploaded for this work.
+
+## Regression and verification
+
+- A generated **wholly fictional, truly zero-byte** CSV went through the real production Chrome file chooser. The UI showed `file_empty`, the dedicated recovery text and an accessible alert; the input reset, the import was no longer busy, and no parser Worker started.
+- The prior wholly fictional Ledger retained its source, Season P&L and all three table rows with exact before/after comparison. Choosing a distinct, valid fictional CSV afterwards succeeded and started one Worker; the altered fixture was correctly shown as self-reported, not as an exact synthetic-test digest match.
+- Node 22 `npm run check` exited 0, including the real-browser path (53 local requests, 35 Worker targets). Standalone `npm run build` exited 0 with `index-C7PA4BIR.js`, `ibkrParser.worker-BSpPJ87-.js` and `index-D6ARIZiW.css`. `npm audit --audit-level=high` reported zero vulnerabilities. The three-locale policy and i18n contracts passed. An independent read-only diff review found no actionable defect; it noted the new zero-byte retry uses the main chooser while the dedicated recovery chooser has other existing browser coverage.
+
+## Interrupted iPhone continuation — not 0.39 phone acceptance
+
+Before the new 0.39 build, the existing local production bundle was temporarily served only on the Mac's private Wi-Fi address and opened in the iPhone's own Safari. Settings directly showed iPhone 15 Plus / iOS 27.0 and VoiceOver **Off** initially. VoiceOver was temporarily turned **On** and its green switch observed. The English Import page opened; its native Files chooser opened and was dismissed without selecting a file. No CSV was downloaded or selected in this continuation. No spoken response or physical rotation was confirmed, and the system Safari's independent version was not established. The currently built 0.39 copy was **not** retested on the phone.
+
+The Mac then locked during an attempted scroll, making Mirroring unavailable. The owned preview process was stopped and port 4174 was checked with **no listener**. This is a partial safety cleanup, **not** a completed device cleanup: the last directly observed phone state had VoiceOver **On**, the project Safari tab open, and the Mac input source had been toggled for URL entry without a final readback. On the user's next Mac unlock, first restore VoiceOver to **Off** and read back its switch, close only this project tab, and restore/read back Simplified Pinyin. Do not delete unrelated Files, Photos or tabs. If an actual-hearing or rotation answer arrives later, record it as user testimony with its scope, not as an independently captured audio or physical-rotation result.
+
+The fixed release ledger remains **9 OPEN / 3 CLOSED**. D07 and D08 are still open, as are D01/D02/D06/F01/R01–R03. Decision L still freezes public deployment and broker-verification claims.

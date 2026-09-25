@@ -14,7 +14,10 @@ export async function testImportRecovery({
   releaseWorkerHold,
   getWorkerTargets,
   fixturePath,
+  emptyFixturePath,
+  newerFixturePath,
   invalidExtensionFixturePath,
+  accessibleNodeForSelector,
 }) {
   const stateExpression = `(() => ({
     heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
@@ -203,6 +206,86 @@ export async function testImportRecovery({
     assert.equal(getWorkerTargets().length, workersBeforeRetry + 1)
     assert.equal(recovered.source, 'Fully synthetic test')
 
+    // A zero-byte File may be handed to the page while a cloud provider is
+    // still waiting. Reject the bytes supplied by the browser without
+    // guessing why they are empty, keep the existing report, and allow retry.
+    const retainedBeforeEmpty = await evaluate(`(() => ({
+      rows: document.querySelectorAll('.data-table tbody tr').length,
+      source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      seasonPnl: [...document.querySelectorAll('.metric-card')]
+        .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+        ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+      ledgerText: document.querySelector('.data-table')?.innerText ?? '',
+    }))()`)
+    assert.equal(retainedBeforeEmpty.rows, 3)
+    assert.equal(retainedBeforeEmpty.source, 'Fully synthetic test')
+    await clickPrimaryNavigation('Import')
+    const workersBeforeEmpty = getWorkerTargets().length
+    assert.equal(await selectThroughControl('choose-file', emptyFixturePath), 'choose-file')
+    const emptyFileState = await waitForPageValue(
+      `(() => ({
+        busy: document.querySelector('.drop-zone')?.getAttribute('aria-busy'),
+        error: document.querySelector('.error-message')?.textContent?.trim() ?? '',
+        recovery: document.querySelector('.import-recovery-panel')?.textContent?.trim() ?? '',
+        retry: Boolean(document.querySelector('[data-action="choose-file-after-error"]')),
+        inputValue: document.querySelector('input[type="file"]')?.value ?? null,
+        fileCount: document.querySelector('input[type="file"]')?.files?.length ?? null,
+      }))()`,
+      (value) => value?.error.includes('The CSV file is empty.'),
+      'Zero-byte fictional CSV browser preflight',
+    )
+    assert.equal(emptyFileState.busy, 'false')
+    assert.equal(emptyFileState.retry, true)
+    assert.equal(emptyFileState.inputValue, '')
+    assert.equal(emptyFileState.fileCount, 0)
+    assert(emptyFileState.recovery.includes('waiting to download'))
+    assert(emptyFileState.recovery.includes('zero bytes'))
+    assert(emptyFileState.recovery.includes('do not edit the CSV by hand'))
+    const emptyFileAlert = await accessibleNodeForSelector(
+      '.import-messages [role="alert"]',
+      'Zero-byte CSV alert',
+    )
+    assert.equal(emptyFileAlert.role, 'alert')
+    assert(emptyFileAlert.text.includes('The CSV file is empty.'))
+    assert.equal(
+      getWorkerTargets().length,
+      workersBeforeEmpty,
+      'A zero-byte CSV unexpectedly started a parser Worker.',
+    )
+    await clickPrimaryNavigation('Ledger')
+    const retainedAfterEmpty = await waitForPageValue(
+      `(() => ({
+        rows: document.querySelectorAll('.data-table tbody tr').length,
+        source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+        seasonPnl: [...document.querySelectorAll('.metric-card')]
+          .find((card) => card.querySelector('.metric-card-head span')?.textContent?.trim() === 'Season P&L')
+          ?.querySelector('.metric-value')?.textContent?.trim() ?? '',
+        ledgerText: document.querySelector('.data-table')?.innerText ?? '',
+      }))()`,
+      (value) => value?.rows === 3,
+      'Zero-byte rejection preserves the previous fictional Ledger',
+    )
+    assert.deepEqual(retainedAfterEmpty, retainedBeforeEmpty)
+    assert.equal(getWorkerTargets().length, workersBeforeEmpty)
+
+    await clickPrimaryNavigation('Import')
+    const workersBeforeValidRetry = getWorkerTargets().length
+    assert.equal(await selectThroughControl('choose-file', newerFixturePath), 'choose-file')
+    const recoveredAfterEmpty = await waitForPageValue(
+      `(() => ({
+        heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+        notice: document.querySelector('.app-notice.success')?.textContent?.trim() ?? '',
+        rows: document.querySelectorAll('.data-table tbody tr').length,
+        source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+      }))()`,
+      (value) => value?.heading === 'Ledger' && value?.notice.includes('imported locally'),
+      'Valid newer fictional YTD retry after zero-byte rejection',
+      20_000,
+    )
+    assert.equal(recoveredAfterEmpty.rows, 3)
+    assert.equal(recoveredAfterEmpty.source, 'Self-reported · not broker-verified')
+    assert.equal(getWorkerTargets().length, workersBeforeValidRetry + 1)
+
     return {
       mode: 'production Chrome with intercepted chooser and controlled Worker startup holds',
       interceptedChooserEntries: chooserEvents,
@@ -212,6 +295,11 @@ export async function testImportRecovery({
       cancelAndPreflightPreservedRows: 500,
       timeoutPreservedRows: 500,
       sameFileRetryRows: recovered.rows,
+      emptyFile: {
+        rejectedWithoutWorker: true,
+        preservedRows: retainedAfterEmpty.rows,
+        validNewerRetryRows: recoveredAfterEmpty.rows,
+      },
       recoveryFocus: 'main choose/cancel control retained; unrelated Demo-control focus not stolen',
     }
   } finally {

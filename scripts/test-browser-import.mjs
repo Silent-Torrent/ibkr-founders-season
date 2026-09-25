@@ -99,6 +99,8 @@ let profileDirectory
 let browserArtifactDirectory
 let downloadDirectory
 let invalidFixturePath
+let emptyFixturePath
+let newerFixturePath
 let invalidEventDateFixturePath
 let ambiguousEventFixturePath
 let conflictingEventCodeFixturePath
@@ -759,6 +761,8 @@ try {
   profileDirectory = join(browserArtifactDirectory, 'profile')
   downloadDirectory = join(browserArtifactDirectory, 'downloads')
   invalidFixturePath = join(browserArtifactDirectory, 'invalid-activity-statement.csv')
+  emptyFixturePath = join(browserArtifactDirectory, 'synthetic-empty.csv')
+  newerFixturePath = join(browserArtifactDirectory, 'synthetic-newer-ytd.csv')
   invalidEventDateFixturePath = join(browserArtifactDirectory, 'synthetic-invalid-event-date.csv')
   ambiguousEventFixturePath = join(browserArtifactDirectory, 'synthetic-ambiguous-event.csv')
   conflictingEventCodeFixturePath = join(browserArtifactDirectory, 'synthetic-conflicting-event-code.csv')
@@ -793,6 +797,15 @@ try {
   )
   writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
   const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  writeFileSync(emptyFixturePath, '', { flag: 'wx' })
+  assert.equal(statSync(emptyFixturePath).size, 0)
+  const originalPeriod = 'January 1, 2026 - August 15, 2026'
+  assert.equal(canonicalFixtureText.split(originalPeriod).length, 2)
+  writeFileSync(
+    newerFixturePath,
+    canonicalFixtureText.replace(originalPeriod, 'January 1, 2026 - August 16, 2026'),
+    { flag: 'wx' },
+  )
   const stockMtmRow = canonicalFixtureText.split('\n').find((line) =>
     line.startsWith('Mark-to-Market Performance Summary,Data,Stocks,ZZFICTA,'),
   )
@@ -2904,7 +2917,10 @@ try {
     releaseWorkerHold,
     getWorkerTargets: () => workerTargets,
     fixturePath,
+    emptyFixturePath,
+    newerFixturePath,
     invalidExtensionFixturePath,
+    accessibleNodeForSelector,
   })
 
   // Opt-in diagnostics run only after the ordinary, unprofiled timing gates.

@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.38 account-boundary recovery
+# Verification record — checkpoint 0.39 empty-file recovery
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.39 — empty-file guidance and interrupted phone continuation
+
+The `file_empty` recovery now conditionally distinguishes a cloud file still waiting to download from a genuinely zero-byte original, without attributing the 0.38 iCloud observation to a proven provider or parser cause. The three-locale privacy notice also distinguishes this app's in-memory data from the original CSV in device/cloud storage. A real production-Chrome chooser regression confirmed that a wholly fictional zero-byte file is rejected without a Worker, the prior three-row fictional Ledger remains unchanged, and a distinct valid fictional retry succeeds. Node 22 `npm run check`, standalone `npm run build`, the three-locale contract tests, `git diff --check`, and a high-severity dependency audit passed; the browser run reported 53 local requests and 35 Worker targets, and the final bundle is `index-C7PA4BIR.js` / `ibkrParser.worker-BSpPJ87-.js` / `index-D6ARIZiW.css`. See [0.39 evidence](docs/EMPTY_FILE_RECOVERY_039_EVIDENCE_2026-09-25.md).
+
+The iPhone's own Safari reopened the pre-existing local production bundle before this build; iPhone 15 Plus / iOS 27.0 and VoiceOver Off were directly rechecked. VoiceOver was turned On, Import and native-picker dismissal were visible, but the Mac locked before hearing/rotation could be verified. The owned preview was stopped and port 4174 had no listener. **Device cleanup remains pending:** last observed VoiceOver On, project tab open, and Mac input-source restoration unread. The user must unlock the Mac to permit scoped restoration. No new phone file was downloaded or selected. This does not close D07/D08 or any other fixed gate: **9 OPEN / 3 CLOSED**, L frozen.
 
 ## 2026-09-25 checkpoint 0.38 — iPhone visual-only continuation
 

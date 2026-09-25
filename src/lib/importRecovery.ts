@@ -3,7 +3,7 @@ import type { ParserDiagnostic, ParserDiagnosticCode } from '../types'
 
 const recoveryKeyByCode = {
   file_not_csv: 'recoveryFile',
-  file_empty: 'recoveryFile',
+  file_empty: 'recoveryEmptyFile',
   file_too_large: 'recoveryCapacity',
   statement_unreadable: 'recoveryFile',
   csv_too_large: 'recoveryCapacity',
