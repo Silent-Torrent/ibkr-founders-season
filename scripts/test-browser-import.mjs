@@ -21,6 +21,7 @@ import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
 import { testShortLandscape } from './test-short-landscape.mjs'
+import { testMobilePrivacyModal } from './test-mobile-privacy-modal.mjs'
 import { createWorkerHeapSampler } from './worker-heap-sampling.mjs'
 import { runBrowserWorkerHeapDiagnostic } from './test-browser-worker-heap.mjs'
 import {
@@ -797,6 +798,21 @@ try {
   )
   writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
   const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  const microMtmFixturePath = join(browserArtifactDirectory, 'synthetic-mtm-micro-difference.csv')
+  const canonicalMtmAllAssetsValues = '640.956111,101.387347,-14.620002,12.400000,740.123456'
+  assert.equal(
+    canonicalFixtureText.split(canonicalMtmAllAssetsValues).length,
+    2,
+    'The fictional All Assets MTM row changed or is duplicated.',
+  )
+  writeFileSync(
+    microMtmFixturePath,
+    canonicalFixtureText.replace(
+      canonicalMtmAllAssetsValues,
+      '640.956112,101.387347,-14.620002,12.400000,740.123457',
+    ),
+    { flag: 'wx' },
+  )
   writeFileSync(emptyFixturePath, '', { flag: 'wx' })
   assert.equal(statSync(emptyFixturePath).size, 0)
   const originalPeriod = 'January 1, 2026 - August 15, 2026'
@@ -1182,6 +1198,7 @@ try {
   assert.equal(firstUseState.activeTag, 'BODY', 'Initial document entry skipped the natural keyboard order.')
   assert.equal(firstUseState.scrollY, 0, 'The first-use screen moved away from the page top on initial load.')
   assert.match(firstUseState.heading, /demo or your own IBKR statement/i)
+  const mobilePrivacy = await testMobilePrivacyModal({ cdp, evaluate, waitForPageValue })
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     deviceScaleFactor: 1,
     height: 700,
@@ -2962,6 +2979,75 @@ try {
   }
   if (!measureWorkerHeap) assert.equal(heapSamplers.size, 0, 'Ordinary browser gates must not enable heap sampling.')
 
+  // A fresh page has no accepted snapshot, so this same-date fictional CSV
+  // reaches the real production Worker instead of snapshot replacement rules.
+  await navigateAndWait(previewUrl)
+  await waitForPageValue(
+    `Boolean(document.querySelector('nav.side-nav button'))`,
+    Boolean,
+    'Fresh page before CSV-tolerance browser regression',
+  )
+  await clickPrimaryNavigation('Import')
+  const workersBeforeMicroMtm = workerTargets.length
+  await cdp.send('DOM.setFileInputFiles', {
+    files: [microMtmFixturePath],
+    nodeId: await resolveFileInputNodeId(),
+  })
+  const microMtmLedger = await waitForPageValue(
+    `(() => {
+      const diffRow = [...document.querySelectorAll('.source-card dl > div')]
+        .find((row) => row.querySelector('dt')?.textContent?.trim() === 'All-assets MTM difference');
+      const mtmCheck = [...document.querySelectorAll('.reconciliation-item')]
+        .find((item) => item.querySelector('summary span')?.textContent?.trim() === 'All-assets MTM');
+      return {
+        heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
+        quality: document.querySelector('.quality-badge')?.textContent?.trim() ?? '',
+        source: document.querySelector('.trust-badge')?.textContent?.trim() ?? '',
+        difference: diffRow?.querySelector('dd')?.textContent?.trim() ?? '',
+        mtmStatus: mtmCheck?.querySelector('.reconciliation-status')?.textContent?.trim() ?? '',
+        warnings: document.querySelector('.warning-list')?.textContent?.trim() ?? '',
+        rows: document.querySelectorAll('.data-table tbody tr').length,
+      };
+    })()`,
+    (value) => value?.heading === 'Ledger' && value?.rows === 3,
+    'Signed micro-difference through the production Chrome Worker',
+    20_000,
+  )
+  assert.equal(workerTargets.length, workersBeforeMicroMtm + 1, 'The micro-difference CSV bypassed the real parser Worker.')
+  assert.equal(microMtmLedger.quality, 'Internal checks passed')
+  assert.equal(microMtmLedger.source, 'Self-reported · not broker-verified')
+  assert.match(microMtmLedger.difference, /^\+(?:US)?\$0\.000001$/)
+  assert.equal(microMtmLedger.mtmStatus, 'Within CSV tolerance')
+  assert(
+    !microMtmLedger.warnings.includes('IBKR reported all-assets YTD MTM minus the parsed detail sum'),
+    `A within-tolerance MTM difference was incorrectly warned: ${microMtmLedger.warnings}`,
+  )
+  await cdp.send('Emulation.setDeviceMetricsOverride', {
+    deviceScaleFactor: 1, mobile: false, screenHeight: 568, screenWidth: 320,
+    height: 568, width: 320,
+  })
+  const narrowReconciliation = await evaluate(`(() => {
+    const status = [...document.querySelectorAll('.reconciliation-item .reconciliation-status')]
+      .find((node) => node.textContent?.trim() === 'Within CSV tolerance');
+    const rect = status?.getBoundingClientRect();
+    return {
+      viewportWidth: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      fontSize: status ? Number.parseFloat(getComputedStyle(status).fontSize) : 0,
+      statusInsideViewport: Boolean(rect && rect.left >= 0 && rect.right <= innerWidth),
+      statusFits: Boolean(status && status.scrollWidth <= status.clientWidth + 1 &&
+        status.scrollHeight <= status.clientHeight + 1),
+    };
+  })()`)
+  assert.equal(narrowReconciliation.viewportWidth, 320)
+  assert(
+    narrowReconciliation.documentWidth <= 320 &&
+      narrowReconciliation.fontSize >= 12 &&
+      narrowReconciliation.statusInsideViewport && narrowReconciliation.statusFits,
+    `The CSV-tolerance status is clipped or too small at 320px: ${JSON.stringify(narrowReconciliation)}`,
+  )
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
+
   await delay(250)
 
   const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid]
@@ -3169,8 +3255,10 @@ try {
     shareInteractions,
     manualCopy,
     shortLandscape,
+    mobilePrivacy,
     pngSaveGuidance,
     importRecovery,
+    microMtmLedger,
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
     workerTargets: workerTargets.length,
   })

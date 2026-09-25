@@ -59,14 +59,13 @@ function reconciliationDifferenceMatches(
   reportedValue: number,
   calculatedValue: number,
   difference: number,
-  tolerance: number,
 ): boolean {
   const residual = sumExactNumbers([
     reportedValue,
     -calculatedValue,
     -difference,
   ])
-  return residual != null && Math.abs(residual) <= tolerance
+  return residual === 0
 }
 
 const REPORT_KEYS = [
@@ -601,12 +600,14 @@ function validateReconciliation(
       reportedValue,
       calculatedValue,
       difference,
-      tolerance,
     )
   ) {
     return false
   }
-  if (status === 'PASS_EXACT' || status === 'PASS_ROUNDED') {
+  // This Worker currently returns only CSV reconciliations. PASS_ROUNDED is
+  // reserved for a future PDF comparison and is not valid for these checks.
+  if (status === 'PASS_ROUNDED') return false
+  if (status === 'PASS_EXACT') {
     if (
       reasonCode !== 'within_tolerance' ||
       !isFiniteNumber(value.reportedValue) ||
@@ -619,10 +620,7 @@ function validateReconciliation(
         value.reportedValue,
         value.calculatedValue,
         value.difference,
-        value.tolerance,
-      ) ||
-      (status === 'PASS_EXACT' && value.difference !== 0) ||
-      (status === 'PASS_ROUNDED' && value.difference === 0)
+      )
     ) {
       return false
     }
@@ -639,7 +637,6 @@ function validateReconciliation(
             value.reportedValue,
             value.calculatedValue,
             value.difference,
-            value.tolerance,
           ) ||
           (value.id !== 'nav_bridge' &&
             Math.abs(value.difference) <= value.tolerance)))
@@ -843,12 +840,9 @@ function validateReport(
     mtmReconciliation.calculatedValue !== value.parsedAllAssetsYtdMtm ||
     mtmReconciliation.difference !== value.mtmReconciliationDifference ||
     mtmReconciliation.tolerance !== WORKER_RECONCILIATION_TOLERANCE ||
-    (value.mtmReconciliationDifference === 0 &&
+    (Math.abs(value.mtmReconciliationDifference) <=
+      WORKER_RECONCILIATION_TOLERANCE &&
       mtmReconciliation.status !== 'PASS_EXACT') ||
-    (value.mtmReconciliationDifference !== 0 &&
-      Math.abs(value.mtmReconciliationDifference) <=
-        WORKER_RECONCILIATION_TOLERANCE &&
-      mtmReconciliation.status !== 'PASS_ROUNDED') ||
     (Math.abs(value.mtmReconciliationDifference) >
       WORKER_RECONCILIATION_TOLERANCE &&
       (mtmReconciliation.status !== 'WARNING' ||

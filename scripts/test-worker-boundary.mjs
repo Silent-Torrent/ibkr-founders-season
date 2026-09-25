@@ -1022,6 +1022,89 @@ try {
     resolve(projectRoot, 'tests/fixtures/ibkr-current-schema-synthetic.csv'),
     'utf8',
   )
+  const exactCsvResult = parseIbkrActivityStatement(currentSchemaFixture, {
+    accountComparisonSalt: 'worker-boundary-salt',
+    currentDate: new Date(referenceTimeMs),
+  })
+  assert.deepEqual(exactCsvResult.errors, [])
+  assert.ok(exactCsvResult.report)
+  const forgedZeroDifferences = [
+    {
+      id: 'mtm_all_assets',
+      mutate(report) {
+        report.seasonPnl = 740.123457
+        report.reportedAllAssetsYtdMtm = 740.123457
+        report.reconciliations.find((check) => check.id === this.id).reportedValue = 740.123457
+      },
+    },
+    {
+      id: 'statement_period_pnl',
+      mutate(report) {
+        report.statementPeriodTotalPnl = 750.243456
+        report.reconciliations.find((check) => check.id === this.id).reportedValue = 750.243456
+      },
+    },
+    {
+      id: 'nav_bridge',
+      mutate(report) {
+        report.calculatedEndingNav = 33750.368456
+        report.reconciliations.find((check) => check.id === this.id).calculatedValue = 33750.368456
+      },
+    },
+  ]
+  for (const scenario of forgedZeroDifferences) {
+    const forged = structuredClone(exactCsvResult.report)
+    scenario.mutate(forged)
+    assert.equal(
+      isWorkerReportWithinLimits(forged, referenceTimeMs),
+      false,
+      `${scenario.id} accepted a fake zero difference for distinct CSV-scale values.`,
+    )
+  }
+
+  const actualMicroDifferences = [
+    {
+      id: 'mtm_all_assets',
+      input: currentSchemaFixture.replace(
+        '640.956111,101.387347,-14.620002,12.400000,740.123456',
+        '640.956112,101.387347,-14.620002,12.400000,740.123457',
+      ),
+      difference: 0.000001,
+    },
+    {
+      id: 'statement_period_pnl',
+      input: currentSchemaFixture.replace(
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243455,',
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243456,',
+      ),
+      difference: 0.000001,
+    },
+    {
+      id: 'nav_bridge',
+      input: currentSchemaFixture.replace(
+        'Change in NAV,Data,Deposits & Withdrawals,8000.000000',
+        'Change in NAV,Data,Deposits & Withdrawals,8000.000001',
+      ),
+      difference: -0.000001,
+    },
+  ]
+  for (const { id, input, difference } of actualMicroDifferences) {
+    assert.notEqual(input, currentSchemaFixture, `${id} fictional input did not change.`)
+    const parsed = parseIbkrActivityStatement(input, {
+      accountComparisonSalt: 'worker-boundary-salt',
+      currentDate: new Date(referenceTimeMs),
+    })
+    const check = parsed.report?.reconciliations.find((item) => item.id === id)
+    assert.deepEqual(parsed.errors, [])
+    assert.equal(parsed.report?.dataQuality, 'good')
+    assert.equal(check?.status, 'PASS_EXACT')
+    assert.equal(check?.difference, difference, `${id} lost its signed micro-difference.`)
+    assert.equal(
+      isWorkerParseResultWithinLimits(parsed, referenceTimeMs),
+      true,
+      `${id} genuine within-tolerance parser output was rejected by Worker validation.`,
+    )
+  }
   const missingRealizedResult = parseIbkrActivityStatement(
     currentSchemaFixture
       .split('\n')
@@ -1314,22 +1397,27 @@ try {
   )
   assert.equal(isWorkerReportWithinLimits(navMissingReport, referenceTimeMs), false)
 
+  const withinCsvToleranceReport = mutateReport((report) => {
+    report.seasonPnl = 6.0000005
+    report.reportedAllAssetsYtdMtm = 6.0000005
+    report.mtmReconciliationDifference = 0.0000005
+    report.reconciliations[0] = reconciliation('mtm_all_assets', {
+      status: 'PASS_EXACT',
+      reportedValue: 6.0000005,
+      difference: 0.0000005,
+    })
+  })
   assert.equal(
-    isWorkerReportWithinLimits(
-      mutateReport((report) => {
-        report.seasonPnl = 6.0000005
-        report.reportedAllAssetsYtdMtm = 6.0000005
-        report.mtmReconciliationDifference = 0.0000005
-        report.reconciliations[0] = reconciliation('mtm_all_assets', {
-          status: 'PASS_ROUNDED',
-          reportedValue: 6.0000005,
-          difference: 0.0000005,
-        })
-      }),
-      referenceTimeMs,
-    ),
+    isWorkerReportWithinLimits(withinCsvToleranceReport, referenceTimeMs),
     true,
-    'A supported rounded reconciliation inside tolerance was rejected.',
+    'A signed CSV difference inside the locked tolerance was rejected.',
+  )
+  const falselyRoundedCsvReport = structuredClone(withinCsvToleranceReport)
+  falselyRoundedCsvReport.reconciliations[0].status = 'PASS_ROUNDED'
+  assert.equal(
+    isWorkerReportWithinLimits(falselyRoundedCsvReport, referenceTimeMs),
+    false,
+    'A CSV-only reconciliation was incorrectly treated as a rounded PDF check.',
   )
   assert.equal(
     isWorkerReportWithinLimits(

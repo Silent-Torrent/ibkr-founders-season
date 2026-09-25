@@ -71,6 +71,19 @@ try {
       )
     }
   }
+  for (const locale of ['en', 'zh-CN', 'zh-TW']) {
+    const status = t(locale, 'reconciliationPassExact')
+    const guidance = t(locale, 'reconciliationToleranceNote')
+    assert.match(status, /CSV/i, `${locale} reconciliation status omits its CSV precision scope.`)
+    assert.doesNotMatch(
+      status,
+      /\bexact(?:ly)?\b|完全一致/i,
+      `${locale} claims literal exact equality for an allowed nonzero CSV difference.`,
+    )
+    assert.match(guidance, /0\.000001/, `${locale} guidance omits the locked CSV tolerance.`)
+    assert.match(guidance, /absolute|绝对值|絕對值/, `${locale} guidance omits absolute value.`)
+    assert.match(guidance, /source|来源|來源/, `${locale} guidance omits source checks.`)
+  }
 
   const noop = () => {}
   const renderers = {
@@ -112,6 +125,15 @@ try {
     for (const canary of localeCanaries[locale]) {
       assert.ok(markup.includes(canary), `${locale} rendered UI is missing: ${canary}`)
     }
+    const demoLedger = renderers.ledger(locale)
+    assert.ok(
+      demoLedger.includes(t(locale, 'reconciliationDemoMatch')),
+      `${locale} Demo reconciliation does not identify fictional figures.`,
+    )
+    assert.ok(
+      !demoLedger.includes('reconciliation-tolerance-note'),
+      `${locale} Demo incorrectly claims a CSV-specific tolerance check.`,
+    )
   }
 
   const visibleSourceDirectories = [

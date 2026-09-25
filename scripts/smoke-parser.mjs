@@ -3284,6 +3284,121 @@ try {
     'A broker total below the parsed sum did not produce a negative signed difference.',
   )
 
+  // The locked single-source CSV tolerance permits a micro-unit difference,
+  // but the SourceRef-backed difference must retain its actual signed value.
+  const microDifferenceCases = [
+    {
+      label: 'MTM above detail sum',
+      input: currentSchemaFixture.replace(
+        '640.956111,101.387347,-14.620002,12.400000,740.123456',
+        '640.956112,101.387347,-14.620002,12.400000,740.123457',
+      ),
+      differences: { mtm_all_assets: 0.000001, statement_period_pnl: -0.000001 },
+    },
+    {
+      label: 'MTM below detail sum',
+      input: currentSchemaFixture.replace(
+        '640.956111,101.387347,-14.620002,12.400000,740.123456',
+        '640.956110,101.387347,-14.620002,12.400000,740.123455',
+      ),
+      differences: { mtm_all_assets: -0.000001, statement_period_pnl: 0.000001 },
+    },
+    {
+      label: 'statement P/L above its components',
+      input: currentSchemaFixture.replace(
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243455,',
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243456,',
+      ),
+      differences: { statement_period_pnl: 0.000001, nav_bridge: -0.000001 },
+    },
+    {
+      label: 'statement P/L below its components',
+      input: currentSchemaFixture.replace(
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243455,',
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243454,',
+      ),
+      differences: { statement_period_pnl: -0.000001, nav_bridge: 0.000001 },
+    },
+    {
+      label: 'NAV component above its bridge',
+      input: currentSchemaFixture.replace(
+        'Change in NAV,Data,Deposits & Withdrawals,8000.000000',
+        'Change in NAV,Data,Deposits & Withdrawals,8000.000001',
+      ),
+      differences: { nav_bridge: -0.000001 },
+    },
+    {
+      label: 'NAV component below its bridge',
+      input: currentSchemaFixture.replace(
+        'Change in NAV,Data,Deposits & Withdrawals,8000.000000',
+        'Change in NAV,Data,Deposits & Withdrawals,7999.999999',
+      ),
+      differences: { nav_bridge: 0.000001 },
+    },
+  ]
+  for (const { label, input, differences } of microDifferenceCases) {
+    assert(input !== currentSchemaFixture, `The ${label} fictional fixture did not change.`)
+    const parsed = parseIbkrActivityStatement(input)
+    assert(parsed.errors.length === 0 && parsed.report, `${label} failed to parse.`)
+    assert(parsed.report.dataQuality === 'good', `${label} exceeded the locked CSV tolerance.`)
+    for (const [id, expectedDifference] of Object.entries(differences)) {
+      const check = parsed.report.reconciliations.find((item) => item.id === id)
+      assert(check?.status === 'PASS_EXACT', `${label} was not accepted within CSV tolerance.`)
+      assert(check.reportedValue !== check.calculatedValue, `${label} is not a genuine source difference.`)
+      assert(
+        check.difference === expectedDifference,
+        `${label} hid or reversed its signed CSV difference: ${check.difference}`,
+      )
+      if (id === 'mtm_all_assets') {
+        assert(
+          parsed.report.mtmReconciliationDifference === expectedDifference,
+          `${label} lost its report-level signed MTM difference.`,
+        )
+      }
+    }
+  }
+
+  const aboveToleranceCases = [
+    {
+      label: 'MTM',
+      input: currentSchemaFixture.replace(
+        '640.956111,101.387347,-14.620002,12.400000,740.123456',
+        '640.9561121,101.387347,-14.620002,12.400000,740.1234571',
+      ),
+      id: 'mtm_all_assets',
+      difference: 0.0000011,
+    },
+    {
+      label: 'statement P/L',
+      input: currentSchemaFixture.replace(
+        'Total P/L for Statement Period,,,,,,,,,,,,750.243455,',
+        'Total P/L for Statement Period,,,,,,,,,,,,750.2434561,',
+      ),
+      id: 'statement_period_pnl',
+      difference: 0.0000011,
+    },
+    {
+      label: 'NAV',
+      input: currentSchemaFixture.replace(
+        'Change in NAV,Data,Deposits & Withdrawals,8000.000000',
+        'Change in NAV,Data,Deposits & Withdrawals,8000.0000011',
+      ),
+      id: 'nav_bridge',
+      difference: -0.0000011,
+    },
+  ]
+  for (const { label, input, id, difference } of aboveToleranceCases) {
+    assert(input !== currentSchemaFixture, `The ${label} above-tolerance fixture did not change.`)
+    const parsed = parseIbkrActivityStatement(input)
+    const check = parsed.report?.reconciliations.find((item) => item.id === id)
+    assert(parsed.errors.length === 0 && parsed.report, `${label} warning lost its report.`)
+    assert(parsed.report.dataQuality === 'warning', `${label} above tolerance looked good.`)
+    assert(
+      check?.status === 'WARNING' && check.difference === difference,
+      `${label} above-tolerance difference was not visibly preserved.`,
+    )
+  }
+
   const missingNavComponent = currentSchemaFixture.replace(
     'Change in NAV,Data,Other FX Translations,-1.111111\n',
     '',

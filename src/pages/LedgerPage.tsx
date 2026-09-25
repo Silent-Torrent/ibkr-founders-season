@@ -46,8 +46,14 @@ function reconciliationLabel(locale: Locale, id: ReconciliationCheckId): string 
   return t(locale, 'reconciliationNavBridge')
 }
 
-function reconciliationStatusLabel(locale: Locale, status: ReconciliationStatus): string {
-  if (status === 'PASS_EXACT') return t(locale, 'reconciliationPassExact')
+function reconciliationStatusLabel(
+  locale: Locale,
+  status: ReconciliationStatus,
+  isDemo: boolean,
+): string {
+  if (status === 'PASS_EXACT') {
+    return t(locale, isDemo ? 'reconciliationDemoMatch' : 'reconciliationPassExact')
+  }
   if (status === 'PASS_ROUNDED') return t(locale, 'reconciliationPassRounded')
   if (status === 'WARNING') return t(locale, 'reconciliationWarning')
   if (status === 'BLOCKED') return t(locale, 'reconciliationBlocked')
@@ -326,6 +332,11 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
 
             <section className="provenance-group" aria-labelledby="reconciliation-title">
               <h4 id="reconciliation-title">{t(locale, 'reconciliationChecks')}</h4>
+              {report.source !== 'demo' && (
+                <p className="reconciliation-tolerance-note">
+                  {t(locale, 'reconciliationToleranceNote')}
+                </p>
+              )}
               {reconciliationIds.map((id) => {
                 const check = report.reconciliations.find((item) => item.id === id)
                 const status = check?.status ?? 'NOT_AVAILABLE'
@@ -334,7 +345,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                     <summary>
                       <span>{reconciliationLabel(locale, id)}</span>
                       <small className={`reconciliation-status ${reconciliationStatusClass(status)}`}>
-                        {reconciliationStatusLabel(locale, status)}
+                        {reconciliationStatusLabel(locale, status, report.source === 'demo')}
                       </small>
                     </summary>
                     <p className="reconciliation-help">{reconciliationHelp(locale, id)}</p>

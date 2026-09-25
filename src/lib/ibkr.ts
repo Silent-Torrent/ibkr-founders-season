@@ -2042,9 +2042,20 @@ function normalizedDifference(
   reported: number,
   calculated: number,
 ): number | undefined {
-  const difference = sumExactNumbers([reported, -calculated])
+  const difference = signedCsvDifference(reported, calculated)
   if (difference == null) return undefined
   return Math.abs(difference) <= CSV_RECONCILIATION_EPSILON ? 0 : difference
+}
+
+function signedCsvDifference(
+  reported: number,
+  calculated: number,
+): number | undefined {
+  return sumExactNumbers([reported, -calculated])
+}
+
+function isWithinCsvTolerance(difference: number): boolean {
+  return Math.abs(difference) <= CSV_RECONCILIATION_EPSILON
 }
 
 function exactAccountingValuesMatch(left: number, right: number): boolean {
@@ -3960,7 +3971,7 @@ function statementPnlDiagnostic(
       },
     }
   }
-  const difference = normalizedDifference(statementPeriodTotalPnl, calculatedValue)
+  const difference = signedCsvDifference(statementPeriodTotalPnl, calculatedValue)
   if (difference == null) {
     markInvalidAccounting(invalidNumericFields, checkSourceRefs)
     return {
@@ -3975,7 +3986,8 @@ function statementPnlDiagnostic(
       },
     }
   }
-  const status = hasUnsupportedComponent || difference !== 0 ? 'WARNING' : 'PASS_EXACT'
+  const withinTolerance = isWithinCsvTolerance(difference)
+  const status = hasUnsupportedComponent || !withinTolerance ? 'WARNING' : 'PASS_EXACT'
 
   return {
     statementPeriodTotalPnl,
@@ -3990,7 +4002,7 @@ function statementPnlDiagnostic(
       reasonCode:
         hasUnsupportedComponent
           ? 'unsupported_component'
-          : difference === 0
+          : withinTolerance
             ? 'within_tolerance'
             : 'difference_exceeds_tolerance',
       sourceRefs: checkSourceRefs,
@@ -4229,7 +4241,7 @@ function navDiagnostic(
       },
     }
   }
-  const difference = normalizedDifference(endingNav, calculatedEndingNav)
+  const difference = signedCsvDifference(endingNav, calculatedEndingNav)
   const componentDifference = normalizedDifference(
     endingNav,
     calculatedEndingFromChangeComponents,
@@ -4253,7 +4265,7 @@ function navDiagnostic(
   const status =
     conflicts ||
     hasUnsupportedComponent ||
-    difference !== 0 ||
+    !isWithinCsvTolerance(difference) ||
     componentDifference !== 0
       ? 'WARNING'
       : 'PASS_EXACT'
@@ -4275,7 +4287,7 @@ function navDiagnostic(
         ? 'ambiguous_schema'
         : hasUnsupportedComponent
           ? 'unsupported_component'
-          : difference === 0 && componentDifference === 0
+          : isWithinCsvTolerance(difference) && componentDifference === 0
           ? 'within_tolerance'
           : 'difference_exceeds_tolerance',
       sourceRefs: allSourceRefs,
@@ -5434,7 +5446,7 @@ function parseIndexedStatement(
   const mtmReconciliationDifference =
     reportedAllAssetsYtdMtm == null
       ? undefined
-      : normalizedDifference(reportedAllAssetsYtdMtm, parsedAllAssetsYtdMtm)
+      : signedCsvDifference(reportedAllAssetsYtdMtm, parsedAllAssetsYtdMtm)
   if (
     reportedAllAssetsYtdMtm != null &&
     mtmReconciliationDifference == null
@@ -5449,7 +5461,7 @@ function parseIndexedStatement(
     status:
       reportedAllAssetsYtdMtm == null
         ? 'BLOCKED'
-        : mtmReconciliationDifference === 0
+        : mtmReconciliationDifference != null && isWithinCsvTolerance(mtmReconciliationDifference)
           ? 'PASS_EXACT'
           : 'WARNING',
     reportedValue: reportedAllAssetsYtdMtm,
@@ -5459,7 +5471,7 @@ function parseIndexedStatement(
     reasonCode:
       reportedAllAssetsYtdMtm == null
         ? 'source_missing'
-        : mtmReconciliationDifference === 0
+        : mtmReconciliationDifference != null && isWithinCsvTolerance(mtmReconciliationDifference)
           ? 'within_tolerance'
           : 'difference_exceeds_tolerance',
     sourceRefs: dedupeSourceRefs([
@@ -5468,7 +5480,10 @@ function parseIndexedStatement(
     ]),
   }
 
-  if (mtmReconciliationDifference != null && mtmReconciliationDifference !== 0) {
+  if (
+    mtmReconciliationDifference != null &&
+    !isWithinCsvTolerance(mtmReconciliationDifference)
+  ) {
     warnings.push({
       code: 'mtm_difference',
       params: {

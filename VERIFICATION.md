@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.39 empty-file recovery
+# Verification record — checkpoint 0.40 signed CSV differences and mobile privacy
 
 Last updated: 2026-09-25
+
+## 2026-09-25 checkpoint 0.40 — 容差内差额不再伪装成零
+
+冻结的 CSV `abs(diff) <= 0.000001` 及混合来源严格相等规则不变。三项来源差额现在保留真实符号和数值，Worker 拒绝不一致的伪零差额；账本状态明确写“符合 CSV 容差”，纯虚构 Demo 则不冒称 CSV 核对。生产 Chrome 的真实 Worker 用全虚构 `+0.000001` MTM 文件得到 `+$0.000001`、内部检查通过且没有错误的超容差警告。三语隐私弹窗在模拟 320×568/375×667 六组中可完整滚动，正文 14px，按钮可点并回焦；新对账徽标在 320px 下至少 12px 且不裁切。完整 Node 22 `npm run check`、单独构建、差异检查及高危依赖审计通过；本轮浏览器测试 58 次本地请求、36 个 Worker target，构建产物 `index-Cy9qqHzK.js` / `ibkrParser.worker-DH4j2t4Z.js` / `index-CbOMChL0.css`。证据和范围见 [0.40 记录](docs/CSV_TOLERANCE_AND_MOBILE_PRIVACY_040_EVIDENCE_2026-09-25.md)。
+
+这不是 0.40 真机验收：用户回复解锁后镜像仍报告 Mac 锁定，上轮 VoiceOver 最后为 On，项目标签及输入法尚待读回/收尾。未开启新手机预览或处理个人报表；固定 **9 OPEN / 3 CLOSED**，L 冻结。
 
 ## 2026-09-25 checkpoint 0.39 — empty-file guidance and interrupted phone continuation
 
