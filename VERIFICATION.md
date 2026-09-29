@@ -1,6 +1,12 @@
-# Verification record — checkpoint 0.41 reconciliation equations
+# Verification record — checkpoint 0.42 local maintenance
 
-Last updated: 2026-09-25
+Last updated: 2026-09-29
+
+## 2026-09-29 checkpoint 0.42 — 分组边界与最终验收包一致性
+
+Review found that `getDivision` puts exactly USD 1,000,000 in Whale while Arena showed `> $1M`; the adjacent 25K/100K/500K range text was also ambiguous at exact boundaries. The five labels now explicitly match the unchanged half-open thresholds. Product-policy assertions render the current Arena card at each threshold and neighboring values, including non-USD exclusion. Separately, `VERIFY_MAC.command` now unsets `IBKR_BROWSER_IMPORT_SKIP_BUILD` and `IBKR_BROWSER_IMPORT_DIST_DIR` immediately before `npm run check`. The browser regression builds and exercises the production bundle, which remains the final `dist`; the previous extra build after browser acceptance was removed. Launcher contract tests guard that path. README, handoff, backlog, phone checklist and the repository agent contract were aligned to the current decisions/evidence, without rewriting historical phone results or lowering a release gate.
+
+On this Mac, Node 22.23.2 `npm run check` exited 0 across typecheck, parser, streaming, selective materialization, Worker boundary/sampling, i18n, accessibility, browser compatibility, product policy, launcher, synthetic iPhone stress-pack and production-Chrome suites. The Chrome run imported wholly fictional CSV through the real Worker, passed capacity/cancel/recovery/PNG regressions, recorded 58 local requests and 36 Worker targets, and built `index-GQYpcZSs.js` / `ibkrParser.worker-DH4j2t4Z.js` / `index-C91NXhFt.css`. `npm audit --audit-level=high` reported zero known vulnerabilities; `git diff --check` passed. This is **local desktop and dependency-advisory evidence only**: no 0.42 iPhone/Safari 16.4, complete VoiceOver/rotation, Worker true-peak, completed Exercise CSV, broker authenticity, HTTPS deployed sharing or host Network/Storage inspection was performed. The 0.39 device-state cleanup remains pending verification, not a claim about the phone's current setting. Fixed gates remain **9 OPEN / 3 CLOSED** and L deployment freeze remains in force.
 
 ## 2026-09-25 checkpoint 0.41 — 三项核对数字可追查
 

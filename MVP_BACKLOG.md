@@ -1,6 +1,8 @@
 # MVP backlog
 
-2026-09-25 current checkpoint 0.41: all three Ledger reconciliation details now show their complete reported/calculated/signed-difference equation when the numbers exist, without inventing missing Demo values. Full-precision decimal rendering and a scientific fallback distinguish accepted micro-values beyond 20 fractional places; source-reference and check text are readable at 320px in production Chrome. Fictional CSV/real-Worker, three-locale, keyboard-expand, full Node 22 check/build/audit passed; see `docs/RECONCILIATION_EQUATION_041_EVIDENCE_2026-09-25.md`. **The interrupted 0.39 device cleanup is still open** (VoiceOver last observed On, project tab open, Mac input source not restored/read back); no new Mac-unlock confirmation or 0.41 iPhone result was obtained. Fixed gates remain **9 OPEN/3 CLOSED**, L frozen. Older checkpoints below are historical.
+2026-09-29 current checkpoint 0.42: the Arena's displayed USD capital-division ranges now match the existing `<25K`, `[25K,100K)`, `[100K,500K)`, `[500K,1M)`, and `>=1M` thresholds, with current-card regression at each boundary and neighbors. The Mac full-verification launcher clears inherited browser-build overrides and retains the production bundle actually exercised by Chrome. Node 22 `npm run check` and a live high-severity dependency audit passed; see `VERIFICATION.md`. Documentation was aligned without changing the frozen scope. No new device, completed Exercise, Worker-peak or deployment gate closed: **9 OPEN/3 CLOSED**, L frozen.
+
+2026-09-25 earlier checkpoint 0.41: all three Ledger reconciliation details now show their complete reported/calculated/signed-difference equation when the numbers exist, without inventing missing Demo values. Full-precision decimal rendering and a scientific fallback distinguish accepted micro-values beyond 20 fractional places; source-reference and check text are readable at 320px in production Chrome. Fictional CSV/real-Worker, three-locale, keyboard-expand, full Node 22 check/build/audit passed; see `docs/RECONCILIATION_EQUATION_041_EVIDENCE_2026-09-25.md`. **The interrupted 0.39 device cleanup is still open** (VoiceOver last observed On, project tab open, Mac input source not restored/read back); no new Mac-unlock confirmation or 0.41 iPhone result was obtained. Fixed gates remain **9 OPEN/3 CLOSED**, L frozen. Older checkpoints below are historical.
 
 2026-09-25 checkpoint 0.40: the locked CSV tolerance remains unchanged, but signed micro-differences are now preserved instead of reported as zero, the Worker rejects forged zero differences, and the Ledger distinguishes CSV tolerance from fictional Demo matching. Production Chrome imported a fictional `+0.000001` MTM CSV through the real Worker; three-language narrow-screen privacy copy and the 320px status badge were checked. Full Node 22 check/build/audit passed; see `docs/CSV_TOLERANCE_AND_MOBILE_PRIVACY_040_EVIDENCE_2026-09-25.md`. **Immediate device cleanup remained open:** the user's unlock reply did not change the Mirroring tool's Mac-locked result. VoiceOver was last observed On, the project tab remained open, and the Mac input source was not read back/restored. No 0.40 iPhone or spoken/rotation result was obtained; fixed gates remained **9 OPEN/3 CLOSED** with L frozen.
 
@@ -77,7 +79,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Show all five IBKR export requirements before file selection: Activity Statement, Year to Date, CSV, English, and one account.
 - [x] Add a plain-language summary and a uniquely named expandable explanation for Season P&L, Season return/TWR, net liquidation value, and Options P&L.
 - [x] Present Data source and Internal calculation check as independent statuses, and label ordinary user data `Self-reported · not broker-verified` in the Ledger, Arena and every default share output.
-- [x] Map all 45 fixed parser/import diagnostics to localized, bounded recovery actions; explain that a failed or cancelled import preserves the current-tab report.
+- [x] Map all 46 fixed parser/import diagnostics to localized, bounded recovery actions; explain that a failed or cancelled import preserves the current-tab report.
 - [x] Replace duplicate, same-date and older-file blocking alerts with dismissible in-page notices, and carry successful-import feedback onto the Ledger.
 - [x] Require explicit English, Simplified Chinese, and Traditional Chinese keys with matching placeholders; render the first-user surfaces in every locale and reject functional hard-coded English regressions.
 - [x] Preserve natural keyboard order on a fresh document; reset scroll and restore main-region focus across in-app guide/application transitions and after notice dismissal; give each metric disclosure a unique accessible name; announce cancellation through one polite live region rather than two.
@@ -104,7 +106,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Option event detection.
 - [x] Ledger filters, sorting, and symbol detail drawer.
 - [x] Arena demo.
-- [x] Capital divisions.
+- [x] Capital divisions; displayed USD ranges now state their exact inclusive lower and exclusive upper bounds, with 25K/100K/500K/1M boundary regressions (0.42).
 - [x] Trophy rules and locked previews.
 - [x] PNG season card export.
 - [x] iOS secure-context file sharing plus an explicit local Blob-preview/Safari-save fallback when file sharing is unavailable.

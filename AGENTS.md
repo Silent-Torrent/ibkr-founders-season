@@ -37,7 +37,7 @@ Do not change these without explicit user approval:
 - Future ranking identity is an account-season record, not a nickname and not a claim of one natural person per account.
 - Supported browser baseline: iOS 16.4+ and Safari 16.4+; compatibility claims apply to the production bundle, not the Vite development server.
 - The beta remote must remain a GitHub private repository, and commits must use the user's approved GitHub `noreply` identity.
-- External deployment is restricted to an access-protected Vercel Preview. Never create, publish, or expose Production without a new explicit user decision and release-gate review.
+- The later 2026-08-30 decision L supersedes the earlier Preview-only authorization: external deployment is frozen while local development and private-GitHub backup continue. Do not retry Vercel or create any other hosted deployment without a new explicit user decision and provider-specific release-gate review; Production or public exposure requires its own explicit approval.
 
 ## 3. Financial-data correctness rules
 

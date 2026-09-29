@@ -54,8 +54,8 @@ if [[ -z "$dependency_hash" ]]; then
 fi
 print -r -- "$dependency_hash" > node_modules/.pnl-arena-dependencies.sha256
 npm audit --audit-level=high
+unset IBKR_BROWSER_IMPORT_SKIP_BUILD IBKR_BROWSER_IMPORT_DIST_DIR
 npm run check
-npm run build
 
 echo
 echo "Verification completed. Production files are in ./dist"

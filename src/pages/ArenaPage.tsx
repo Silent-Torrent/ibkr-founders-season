@@ -30,10 +30,10 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
 
   const divisions: Array<{ key: DivisionKey; range: string }> = [
     { key: 'rookieLeague', range: '< $25K' },
-    { key: 'retailLeague', range: '$25K–$100K' },
-    { key: 'sixFigureLeague', range: '$100K–$500K' },
-    { key: 'capitalLeague', range: '$500K–$1M' },
-    { key: 'whaleLeague', range: '> $1M' },
+    { key: 'retailLeague', range: '≥ $25K, < $100K' },
+    { key: 'sixFigureLeague', range: '≥ $100K, < $500K' },
+    { key: 'capitalLeague', range: '≥ $500K, < $1M' },
+    { key: 'whaleLeague', range: '≥ $1M' },
   ]
   const qualityLabel = report.dataQuality === 'good'
     ? t(locale, 'qualityGood')

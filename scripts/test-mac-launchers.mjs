@@ -9,6 +9,8 @@ const startPath = resolve(projectRoot, 'START_MAC.command')
 const verifyPath = resolve(projectRoot, 'VERIFY_MAC.command')
 const start = readFileSync(startPath, 'utf8')
 const verify = readFileSync(verifyPath, 'utf8')
+const packageScripts = JSON.parse(readFileSync(resolve(projectRoot, 'package.json'), 'utf8')).scripts
+const browserRegression = readFileSync(resolve(projectRoot, 'scripts/test-browser-import.mjs'), 'utf8')
 
 for (const path of [startPath, verifyPath]) {
   execFileSync('/bin/zsh', ['-n', path], { stdio: 'pipe' })
@@ -41,10 +43,23 @@ for (const command of [
   'npm ci --no-fund',
   'npm audit --audit-level=high',
   'npm run check',
-  'npm run build',
 ]) {
   assert(verify.includes(command), `Full verification lost required command: ${command}`)
 }
+const verificationLines = verify.split(/\r?\n/)
+const checkLine = verificationLines.indexOf('npm run check')
+assert.equal(
+  verificationLines[checkLine - 1],
+  'unset IBKR_BROWSER_IMPORT_SKIP_BUILD IBKR_BROWSER_IMPORT_DIST_DIR',
+  'Full verification must clear both browser build overrides immediately before the check.',
+)
+assert(!verify.includes('npm run build'), 'Full verification must not rebuild the bundle after browser acceptance.')
+assert(packageScripts.check.includes('npm run test:browser'), 'Full verification no longer runs the production browser regression.')
+assert.equal(packageScripts['test:browser'], 'node scripts/test-browser-import.mjs')
+assert(
+  browserRegression.includes("await runCommand('npm', ['run', 'build'], 'Production build')"),
+  'The production browser regression no longer builds the bundle it tests.',
+)
 assert(
   verify.includes('if [[ -t 0 ]]'),
   'Full verification must not return failure merely because an automated run has no interactive terminal.',

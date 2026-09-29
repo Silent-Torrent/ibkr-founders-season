@@ -2,7 +2,15 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## Current project state — checkpoint 0.38 account-boundary recovery
+## Current project state — checkpoint 0.42 local maintenance
+
+On 2026-09-29, Arena's five USD capital-division ranges were made explicit at every threshold without changing the calculation: each lower bound is included and each upper bound excluded. Boundary tests cover USD 25K, 100K, 500K and 1M and their neighbors. The full Node 22 check, including production Chrome with the real Worker, and the high-severity dependency audit passed. `VERIFY_MAC.command` now clears inherited browser-build overrides and keeps the bundle actually tested by Chrome as its final `dist`, instead of rebuilding afterward. The current handoff and phone checklist were aligned with their dated evidence; no 0.42 phone, 16.4, broker-authenticity or deployed-host check occurred. Fixed gates remain **9 OPEN / 3 CLOSED**, with **L frozen**. See [verification](VERIFICATION.md) and the [gate tracker](docs/RELEASE_GATE_TRACKER.md).
+
+### Earlier checkpoint 0.41 — reconciliation equations
+
+As of 2026-09-25, the Ledger's three reconciliation details show the reported value, calculated value and signed difference when all three numbers are available; missing Demo values are not invented. Full accepted decimal precision remains visible, including the scientific fallback for very small differences. The Node 22 full check, production-Chrome fictional-CSV/real-Worker regression, build and high-severity dependency audit passed at this checkpoint; see [0.41 evidence](docs/RECONCILIATION_EQUATION_041_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). This is desktop/local evidence, with no 0.41 iPhone result. The interrupted 0.39 device-setting cleanup is still pending: VoiceOver was last observed On, the project Safari tab remained open and the Mac input source had not been read back. Check their actual current state before resuming phone tests. Fixed gates remain **9 OPEN / 3 CLOSED**, and **L remains frozen**; see the [gate tracker](docs/RELEASE_GATE_TRACKER.md).
+
+### Earlier checkpoint 0.38 — account-boundary recovery
 
 The single-account MVP still rejects unverified `BOA`/`EOA` records, but now explains that this is an **unsupported structure, not evidence of forgery**. The separate three-language recovery text tells users to preserve the original CSV and never remove account-boundary rows by hand. A red parser test caught the old generic accounting error; the final Node 22 full suite, production-Chrome Worker rejection/preserved-Ledger cases, build and dependency audit passed. See [0.38 evidence](docs/ACCOUNT_BOUNDARY_RECOVERY_038_EVIDENCE_2026-09-25.md) and [verification](VERIFICATION.md). No device, completed Exercise, deployed-host or broker-authenticity gate closed; fixed gates remain **9 OPEN / 3 CLOSED** and **L remains frozen**.
 
@@ -151,7 +159,7 @@ The repository already contains:
 
 For ordinary daily use, double-click `START_MAC.command`. It selects the supported Node.js 22 runtime, checks the local dependency tree, installs the pinned dependencies only when they are missing or the dependency manifests have changed, and opens the local app on `127.0.0.1`. A first or repair installation may require network access. Keep the Terminal window open while using it; closing that window stops the local site. It does not upload or deploy anything.
 
-After code changes or before a handoff, double-click `VERIFY_MAC.command`. That separate full gate performs a clean locked install, dependency audit, every automated test—including the isolated production-Chrome import/PNG regression—and a final production build. The install and vulnerability audit require network access. Google Chrome or Chrome Canary must be installed in the standard macOS Applications folder for this full verification route.
+After code changes or before a handoff, double-click `VERIFY_MAC.command`. That separate full gate performs a clean locked install, dependency audit, and every automated test—including a production build that the isolated Chrome import/PNG regression actually checks. The checked bundle remains in `dist`; it is not rebuilt after browser acceptance. The install and vulnerability audit require network access. Google Chrome or Chrome Canary must be installed in the standard macOS Applications folder for this full verification route.
 
 ### Terminal route
 
@@ -160,6 +168,7 @@ cd ibkr-founders-season
 export PATH="/opt/homebrew/opt/node@22/bin:/usr/local/opt/node@22/bin:$PATH"
 node --version
 npm ci
+unset IBKR_BROWSER_IMPORT_SKIP_BUILD IBKR_BROWSER_IMPORT_DIST_DIR
 npm run check
 npm run dev -- --host 127.0.0.1
 ```
@@ -180,10 +189,11 @@ npm run dev -- --host 127.0.0.1
 ## Validate before a commit
 
 ```bash
+unset IBKR_BROWSER_IMPORT_SKIP_BUILD IBKR_BROWSER_IMPORT_DIST_DIR
 npm run check
 ```
 
-This runs TypeScript checking, the parser smoke, exhaustive CSV/Blob-streaming/hash equivalence, selective-materialization, strict Worker protocol, accessibility structure/keyboard, frozen browser-compatibility, product-policy/privacy and macOS launcher suites, plus a real local Chrome import/PNG regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install, vulnerability audit, and a final production build. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
+This runs TypeScript checking, the parser smoke, exhaustive CSV/Blob-streaming/hash equivalence, selective-materialization, strict Worker protocol, accessibility structure/keyboard, frozen browser-compatibility, product-policy/privacy and macOS launcher suites, plus a real local Chrome import/PNG regression against a freshly built production bundle. `VERIFY_MAC.command` also performs the locked install and vulnerability audit, and leaves the Chrome-tested production bundle in `dist`. The automated Chrome result does not establish the frozen Safari/iOS baseline. The expected bundled sample result is:
 
 ```text
 Season P&L:  $20,040
@@ -340,7 +350,7 @@ docs/
 
 ## Immediate next workstream
 
-1. Continue D07 from the September 25 hotel-Wi-Fi iPhone evidence: Safari loaded 0.30, a wholly fictional CSV imported, and the user confirmed hearing its success notification without giving its words/order. A fictional malformed file showed a visible error and the prior source badge, but its speech and the complete post-error Ledger were not confirmed. Full navigation, privacy/focus return, manual-selection and in-progress-cancellation speech remain open. The phone files were moved to recoverable Recently Deleted, the test tab/service closed, VoiceOver Off and original Pinyin restored. The newer 0.31/0.32 builds have no phone pass. Do not infer D07 closure from the partial hearing result, or retry actual-file/phone stages without explaining their scope and cleanup. D01 measurement remains developer-owned; D02/16.4 and full D08 rotation are open. See `docs/IPHONE_HOTEL_WIFI_VOICEOVER_EVIDENCE_2026-09-25.md`, `docs/WORKER_CSP_SCOPE_EVIDENCE_2026-09-25.md` and the fixed [gate tracker](docs/RELEASE_GATE_TRACKER.md); 9 gates and L remain unchanged.
-2. Obtain a qualified exercise-event fixture when one becomes available, then expand parser compatibility only from independently proven IBKR shapes rather than guesses. The iOS/Safari 16.4 floor, measured browser-Worker peak memory and complete VoiceOver behavior also remain separate open gates; a newer iPhone or desktop simulation cannot establish them.
-3. Keep all hosting work deferred under L. Secure-context HTTPS native sharing/exact naming, automatic clipboard permission behavior on that host, protected-host headers and deployed Network/Storage inspection remain deferred. The recorded HTTP naming and system-keyboard-copy passes are not deployment or release-readiness decisions; remaining local device checks do not authorize hosting.
+1. Resolve the interrupted 0.39 phone-session cleanup first. Once the Mac desktop is accessible, read back the actual iPhone VoiceOver setting, the identified project Safari tab, the Mac input source and any owned preview listener. Restore the original Off/Pinyin state and close only the identified test tab if still present. The prior preview was stopped and port 4174 had no listener at the last check, but the device and input-source state were not fully restored. No CSV was selected in that interrupted run. See [0.39 evidence](docs/EMPTY_FILE_RECOVERY_039_EVIDENCE_2026-09-25.md) and the [current handoff](WORK_HANDOFF.md#immediate-next-milestone).
+2. After that cleanup, continue D07's actual VoiceOver speech/focus sequence and D08's physical rotation on a verified production build, recording the tested build, device, steps and results separately. Older 0.24/0.30 audio confirmations and 0.33/0.38 visual results do not establish a pass for the current build. D03 keyboard focus, D04 Simplified Chinese native touch copying and D05 copy-action geometry are already closed within their recorded 2026-09-09 paths; D07 remains open. D01 Worker peak/phone threshold, D02 real iOS/Safari 16.4 and D06 old Photos-card identification also remain open in the [fixed gate tracker](docs/RELEASE_GATE_TRACKER.md).
+3. Keep F01 open until a qualified completed-Exercise Activity Statement CSV shape is independently established; only then extend parser compatibility from that evidence. R03 requires the user's explicit deployment decision before R01 deployed Network/Storage/header checks and R02 HTTPS native file sharing/exact-name acceptance can run. L currently freezes deployment.
 4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.

@@ -91,6 +91,30 @@ try {
   assert.equal(getDivision(Number.NaN, 'USD'), undefined, 'Invalid NAV was assigned to a capital division.')
   assert.equal(getDivision(0, 'USD'), 'rookieLeague', 'A valid zero NAV did not use the lowest capital division.')
   assert.equal(getDivision(25_000, 'USD'), 'retailLeague', 'A valid USD NAV used the wrong division.')
+  for (const [nav, expectedDivision, expectedCard] of [
+    [24_999.99, 'rookieLeague', '<strong>Starter Capital</strong><p>&lt; $25K</p>'],
+    [25_000, 'retailLeague', '<strong>Retail League</strong><p>≥ $25K, &lt; $100K</p>'],
+    [99_999.99, 'retailLeague', '<strong>Retail League</strong><p>≥ $25K, &lt; $100K</p>'],
+    [100_000, 'sixFigureLeague', '<strong>Six-Figure League</strong><p>≥ $100K, &lt; $500K</p>'],
+    [100_000.01, 'sixFigureLeague', '<strong>Six-Figure League</strong><p>≥ $100K, &lt; $500K</p>'],
+    [499_999.99, 'sixFigureLeague', '<strong>Six-Figure League</strong><p>≥ $100K, &lt; $500K</p>'],
+    [500_000, 'capitalLeague', '<strong>Capital League</strong><p>≥ $500K, &lt; $1M</p>'],
+    [500_000.01, 'capitalLeague', '<strong>Capital League</strong><p>≥ $500K, &lt; $1M</p>'],
+    [999_999.99, 'capitalLeague', '<strong>Capital League</strong><p>≥ $500K, &lt; $1M</p>'],
+    [1_000_000, 'whaleLeague', '<strong>Whale League</strong><p>≥ $1M</p>'],
+    [1_000_000.01, 'whaleLeague', '<strong>Whale League</strong><p>≥ $1M</p>'],
+  ]) {
+    assert.equal(getDivision(nav, 'USD'), expectedDivision, `USD NAV ${nav} used the wrong division.`)
+    const boundaryReport = cloneReport()
+    boundaryReport.source = 'local'
+    boundaryReport.baseCurrency = 'USD'
+    boundaryReport.netLiquidationValue = nav
+    const arenaMarkup = renderToStaticMarkup(
+      createElement(ArenaPage, { locale: 'en', report: boundaryReport }),
+    )
+    const currentCard = arenaMarkup.match(/<article class="division-card current">[\s\S]*?<\/article>/)?.[0]
+    assert.ok(currentCard?.includes(expectedCard), `USD NAV ${nav} has an incorrect Arena range or current division.`)
+  }
   assert.equal(getDivision(33_750, 'HKD'), undefined, 'A HKD NAV was compared with USD division thresholds.')
   assert.equal(getDivision(33_750, 'CNY'), undefined, 'A CNY NAV was compared with USD division thresholds.')
   assert.ok(
