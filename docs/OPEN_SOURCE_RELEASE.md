@@ -25,7 +25,9 @@ Pattern and contextual checks found no credential or real financial-statement bl
 
 ## GitHub visibility
 
-**Pending verification.** The source changes prepare the repository for publication. The GitHub repository must be switched to Public by an administrator and its public visibility verified before this task is described as fully completed or the repository is submitted as a public open-source project.
+**Public — verified on 2026-10-21.** Repository settings show "This repository is currently public", and GitHub repository metadata returns `visibility: public`. The MIT source publication is complete at https://github.com/Silent-Torrent/ibkr-founders-season.
+
+The 13 prepared files were committed to `main` in `db065c45db37e57a7c0dc6f75ae5a6fa9307028a` and `e2e744fc82a78544a2a9a9387b7ca71d5f8a8a4d`. Every published file matched the reviewed Git blob hash; no unrelated file was changed or removed. Both commits use the approved GitHub noreply author identity and GitHub noreply committer identity. The application remains at checkpoint 0.42, and hosted deployment remains frozen.
 
 ## Validation boundary
 
