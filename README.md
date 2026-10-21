@@ -2,6 +2,14 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
+## Open source
+
+The source code and documentation are licensed under the [MIT License](LICENSE). This is an independent community project and is not affiliated with or endorsed by Interactive Brokers.
+
+The reusable core includes local TypeScript statement parsing, underlying-level stock-and-options aggregation, reconciliation with source-row references, and fully synthetic regression fixtures. The application remains an early-stage local prototype; the Arena is a synthetic demo.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and test-data guidance. Public source publication was authorized on 2026-10-21; [publication status](docs/OPEN_SOURCE_RELEASE.md) records the remaining GitHub visibility step. Hosted application deployment remains frozen.
+
 ## Current project state — checkpoint 0.42 local maintenance
 
 On 2026-09-29, Arena's five USD capital-division ranges were made explicit at every threshold without changing the calculation: each lower bound is included and each upper bound excluded. Boundary tests cover USD 25K, 100K, 500K and 1M and their neighbors. The full Node 22 check, including production Chrome with the real Worker, and the high-severity dependency audit passed. `VERIFY_MAC.command` now clears inherited browser-build overrides and keeps the bundle actually tested by Chrome as its final `dist`, instead of rebuilding afterward. The current handoff and phone checklist were aligned with their dated evidence; no 0.42 phone, 16.4, broker-authenticity or deployed-host check occurred. Fixed gates remain **9 OPEN / 3 CLOSED**, with **L frozen**. See [verification](VERIFICATION.md) and the [gate tracker](docs/RELEASE_GATE_TRACKER.md).
@@ -175,16 +183,16 @@ npm run dev -- --host 127.0.0.1
 
 `node --version` must show Node 22.12 or newer within the Node 22 line; this Mac currently uses v22.23.2. Repeat the `export PATH=...` line in each new Terminal window. The full check also requires Google Chrome or Chrome Canary. If its executable is not in a standard macOS Applications location, run `export CHROME_PATH="/absolute/path/to/Chrome"` before `npm run check`. Open the local URL printed by Vite, normally `http://127.0.0.1:5173`.
 
-## Frozen source-control and deployment boundary
+## Source publication and deployment boundary
 
 - Browser support begins at iOS 16.4 and Safari 16.4.
-- The remote must be a GitHub private repository.
+- Public source publication under MIT was authorized on 2026-10-21, replacing the earlier private-repository requirement.
 - Git commits must use the user's approved GitHub `noreply` email rather than a personal email address.
 - The earlier access-protected Vercel Preview authorization is paused because Vercel forced the empty project's first Preview request into Production.
-- The user selected A + C on 2026-08-30: keep Vercel empty and research private-test alternatives only. No alternate provider or external upload is approved yet.
-- The user then selected L: continue local development and private-GitHub backup, and revisit deployment only after the local product is ready.
+- The user selected A + C on 2026-08-30: keep Vercel empty and research private-test alternatives only. No alternate provider or hosting upload is approved yet.
+- Decision L continues to freeze hosted deployment while local development and GitHub source maintenance continue. The source-publication decision does not authorize a hosted application.
 - Do not create, publish, or expose any external deployment or public/Production domain without a separate future approval and provider-specific release-gate review.
-- The local `main` branch now tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and this Mac connects through a repository-scoped read/write deploy key. The Standard-Protected Vercel project remains at zero deployments. The read-only alternative comparison is recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
+- The source repository is `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity. The earlier Mac setup used a repository-scoped read/write deploy key; this is historical connection evidence, not a requirement to share credentials. The Standard-Protected Vercel project remains at zero deployments. The read-only alternative comparison is recorded in `docs/PRIVATE_TEST_HOSTING_RESEARCH_2026-08-30.md`.
 
 ## Validate before a commit
 

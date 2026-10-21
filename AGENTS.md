@@ -36,8 +36,8 @@ Do not change these without explicit user approval:
 - MVP does not include real public leaderboards, posts, comments, or chat.
 - Future ranking identity is an account-season record, not a nickname and not a claim of one natural person per account.
 - Supported browser baseline: iOS 16.4+ and Safari 16.4+; compatibility claims apply to the production bundle, not the Vite development server.
-- The beta remote must remain a GitHub private repository, and commits must use the user's approved GitHub `noreply` identity.
-- The later 2026-08-30 decision L supersedes the earlier Preview-only authorization: external deployment is frozen while local development and private-GitHub backup continue. Do not retry Vercel or create any other hosted deployment without a new explicit user decision and provider-specific release-gate review; Production or public exposure requires its own explicit approval.
+- Public source publication under the MIT License was authorized on 2026-10-21, superseding the earlier private-repository restriction. Commits must still use the user's approved GitHub `noreply` identity.
+- The 2026-08-30 decision L continues to supersede the earlier Preview-only authorization: hosted application deployment is frozen while local development and GitHub source maintenance continue. The 2026-10-21 source-publication authorization does not authorize Vercel or another hosted deployment; Production deployment or public application exposure still requires an explicit user decision and provider-specific release-gate review.
 
 ## 3. Financial-data correctness rules
 

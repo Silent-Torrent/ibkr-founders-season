@@ -1,6 +1,6 @@
-# Locked product decisions — v0.3
+# Locked product decisions — v0.4
 
-This record includes the user's approved decisions through 2026-08-30 plus implementation safeguards that do not expand the approved scope. It supersedes conflicting v0.1 and v0.2 storage, identity, verification, PDF-input, browser-support, source-control, and deployment assumptions.
+This record includes the user's approved decisions through 2026-10-21 plus implementation safeguards that do not expand the approved scope. It supersedes conflicting v0.1 and v0.2 storage, identity, verification, PDF-input, browser-support, source-control, and deployment assumptions. The 2026-10-21 decision replaces the v0.3 private-source requirement with authorization to publish the source under MIT; hosted application deployment remains frozen.
 
 ## Product
 
@@ -63,11 +63,11 @@ Exact account balance is private by default. Net liquidation value determines a 
 - `localStorage` is limited to non-sensitive preferences such as locale. A future “remember locally” feature requires explicit opt-in and separate review.
 - The supported browser baseline is iOS 16.4+ and Safari 16.4+.
 - That baseline applies to the production bundle. The Vite development server is not compatibility evidence for Safari/iOS 16.4.
-- The remote source repository must be a GitHub private repository during the current beta stage.
+- The user authorized public source publication under the MIT License on 2026-10-21. The earlier beta-stage private-repository restriction is superseded; see `docs/OPEN_SOURCE_RELEASE.md` for publication status.
 - Git commits must use the user's approved GitHub `noreply` email, not a personal email address.
 - The earlier authorization for an access-protected Vercel Preview is paused because the provider forced the empty project's first Preview request into Production.
-- On 2026-08-30 the user chose **A + C**: keep Vercel at zero deployments and perform read-only research into private-test alternatives. No alternate provider or external upload is approved by that choice.
-- The user then chose **L**: continue local development and private-GitHub backup until the local product is ready, and discuss deployment only afterwards. Hosting research remains reference material, not authorization.
+- On 2026-08-30 the user chose **A + C**: keep Vercel at zero deployments and perform read-only research into private-test alternatives. No alternate provider or hosting upload is approved by that choice.
+- The user chose **L** on 2026-08-30: continue local development and defer hosted deployment until the local product is ready. Its original private-GitHub requirement was superseded by the 2026-10-21 source-publication decision. Hosting research remains reference material, not deployment authorization.
 - Do not create, publish, or expose any external deployment until the user explicitly approves a researched route and its provider-specific release gate.
 - Any future public or Production deployment requires a new explicit user decision and a fresh release-gate review.
 

@@ -1,6 +1,13 @@
 # Verification record — checkpoint 0.42 local maintenance
 
-Last updated: 2026-09-29
+Last updated: 2026-10-21
+
+## 2026-10-21 source-publication preparation
+
+On 2026-10-21, the user authorized publishing this source repository under the MIT License. This supersedes the earlier private-repository requirement only. Hosted application deployment remains frozen under decision L; source publication does not close any product release gate.
+
+This change adds MIT licensing, package license metadata and contributor guidance, and aligns current governance documents with the explicit open-source decision. It changes no application, parser, accounting, privacy or test logic. GitHub visibility remains a separately verified publication step; see `docs/OPEN_SOURCE_RELEASE.md`. No new Node, browser, iPhone, security-audit or deployed-host pass is claimed by this documentation change. The fixed product gates remain **9 OPEN / 3 CLOSED**.
+
 
 2026-09-29 device preflight only: the user stated that the earlier iPhone 15 Plus is no longer at hand. Its 0.39 VoiceOver/tab cleanup is not proven complete and cannot be copied to a replacement phone. A read-only Mac preference check returned selected input mode `com.apple.inputmethod.SCIM.ITABC` (Simplified Pinyin), addressing only that Mac-side readback. Mirroring briefly connected to a different selected iPhone while an unrelated app verification prompt was visible; no password was entered or submitted. The phone then became actively used and Mirroring requested that it be locked before reconnecting. This was not a project-page load, an iOS-version check, a file import or a VoiceOver test. No project service was started and port 4174 had no listener when checked. New-device tests await an accessible Home/locked phone and confirmation for temporary VoiceOver; fixed **9 OPEN / 3 CLOSED**, L frozen.
 
@@ -167,11 +174,11 @@ Starting from clean `a155d16`, the user explicitly consented to temporary VoiceO
 - The supported baseline is iOS 16.4+ and Safari 16.4+.
 - The production build target is explicitly frozen to Chrome 111, Edge 111, Firefox 114, Safari 16.4, and iOS 16.4. A contract check also requires every standard `backdrop-filter` declaration to retain its Safari 16.4 `-webkit-` counterpart.
 - TypeScript's application target/library guard is ES2022 to reduce accidental use of newer built-in APIs. This guard does not provide runtime polyfills or replace versioned browser testing.
-- The remote must be a GitHub private repository, and commits must use the user's approved GitHub `noreply` email rather than a personal email address.
+- The 2026-10-21 decision authorizes public source publication under MIT, superseding the private-repository requirement. Commits must continue to use the user's approved GitHub `noreply` email rather than a personal email address.
 - The earlier access-protected Vercel Preview authorization is paused because the provider forced the first request into Production.
-- The user selected A + C on 2026-08-30: keep Vercel at zero deployments and research alternatives only. No alternate host, external upload, Production deployment, or public domain is approved without a new explicit user decision.
-- The user then selected L: continue local/private-GitHub development and defer all deployment discussion until the local product is ready.
-- The local `main` branch tracks the private GitHub remote `Silent-Torrent/ibkr-founders-season`. Commits use the approved GitHub `noreply` identity, and a repository-scoped read/write deploy key authenticates this Mac.
+- The user selected A + C on 2026-08-30: keep Vercel at zero deployments and research alternatives only. No alternate host, hosting upload, Production deployment, or public application domain is approved without a new explicit user decision.
+- Decision L continues to freeze hosted deployment while local development and GitHub source maintenance continue; the later source-publication decision does not reopen deployment.
+- The source repository is `Silent-Torrent/ibkr-founders-season`, and commits use the approved GitHub `noreply` identity. The repository-scoped deploy-key setup recorded for the earlier Mac session is historical evidence, not authentication evidence for other workspaces.
 - Commit `a9df475` records the iPhone Safari sharing fix and partial-device evidence; local `main` and `origin/main` matched after that push.
 - Commit `5e51511` records the repository-external fictional iPhone stress-pack workflow; local `main` and `origin/main` matched before the checkpoint 0.15 evidence sync began.
 - An empty Vercel project exists with Standard Protection enabled and build settings frozen to Vite, `npm ci`, `npm run build`, `dist`, and Node 22.x. It currently has zero deployments.

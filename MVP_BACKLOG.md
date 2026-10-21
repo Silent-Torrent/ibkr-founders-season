@@ -1,5 +1,14 @@
 # MVP backlog
 
+## 2026-10-21 source publication
+
+- [x] Record the user's authorization to open-source this repository; supersede private-source rules while preserving decision L for hosted deployment.
+- [x] Add the MIT License, package license metadata, and contribution guidance.
+- [ ] Verify GitHub public visibility; see `docs/OPEN_SOURCE_RELEASE.md`.
+
+The product remains at checkpoint 0.42 with **9 OPEN / 3 CLOSED** release gates. Source publication is not a hosted-application release.
+
+
 2026-09-29 current checkpoint 0.42: the Arena's displayed USD capital-division ranges now match the existing `<25K`, `[25K,100K)`, `[100K,500K)`, `[500K,1M)`, and `>=1M` thresholds, with current-card regression at each boundary and neighbors. The Mac full-verification launcher clears inherited browser-build overrides and retains the production bundle actually exercised by Chrome. Node 22 `npm run check` and a live high-severity dependency audit passed; see `VERIFICATION.md`. Documentation was aligned without changing the frozen scope. No new device, completed Exercise, Worker-peak or deployment gate closed: **9 OPEN/3 CLOSED**, L frozen.
 
 2026-09-25 earlier checkpoint 0.41: all three Ledger reconciliation details now show their complete reported/calculated/signed-difference equation when the numbers exist, without inventing missing Demo values. Full-precision decimal rendering and a scientific fallback distinguish accepted micro-values beyond 20 fractional places; source-reference and check text are readable at 320px in production Chrome. Fictional CSV/real-Worker, three-locale, keyboard-expand, full Node 22 check/build/audit passed; see `docs/RECONCILIATION_EQUATION_041_EVIDENCE_2026-09-25.md`. **The interrupted 0.39 device cleanup is still open** (VoiceOver last observed On, project tab open, Mac input source not restored/read back); no new Mac-unlock confirmation or 0.41 iPhone result was obtained. Fixed gates remain **9 OPEN/3 CLOSED**, L frozen. Older checkpoints below are historical.
@@ -216,11 +225,11 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Verify close-tab/reopen clearing: the closed imported report did not persist and the newly opened tab returned to Demo data.
 - [x] Add a three-locale privacy notice and disclaimer modal.
 - [x] Initialize local Git history with the approved GitHub `noreply` identity.
-- [x] Create and verify the GitHub private remote backup with a repository-scoped read/write deploy key.
+- [x] Create and verify the historical GitHub private remote backup with a repository-scoped read/write deploy key. The private-only source restriction was superseded on 2026-10-21.
 - [x] Record the user's A + C decision: keep Vercel at zero deployments and research alternative private-test routes without external action.
 - [x] Compare owner-only Netlify Private Draft, Tailscale Serve, Cloudflare Pages + Access, GitHub Pages and Render against the non-public-first-deployment gate.
-- [x] Record the user's L decision: defer every hosting route until the local product is ready and continue only local/private-GitHub development.
-- [ ] Revisit hosting only after the user explicitly reopens deployment; until then, create no alternate account, authorization, project, upload or paid plan.
+- [x] Record the user's L decision: defer every hosting route until the local product is ready. Its historical private-GitHub requirement was superseded on 2026-10-21; hosted deployment remains frozen.
+- [ ] Revisit hosting only after the user explicitly reopens deployment; until then, create no alternate hosting account, authorization, project, hosting upload or paid plan.
 - [x] Detect and surface conflicting Financial Instrument Information aliases instead of silently choosing an underlying.
 - [x] Harden the Worker response protocol against oversized or malformed serialized payloads beyond the existing object-count caps.
 - [x] Add an automated local-browser import regression for the synthetic fixture.

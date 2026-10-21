@@ -15,7 +15,7 @@ tests/fixtures/private/
 *.private.*
 *.secret.*
 
-# Local test/build output must not enter the private remote by accident.
+# Local test/build output must not enter the source repository by accident.
 coverage/
 test-results/
 playwright-report/
