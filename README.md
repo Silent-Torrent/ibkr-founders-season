@@ -8,7 +8,7 @@ The source code and documentation are licensed under the [MIT License](LICENSE).
 
 The reusable core includes local TypeScript statement parsing, underlying-level stock-and-options aggregation, reconciliation with source-row references, and fully synthetic regression fixtures. The application remains an early-stage local prototype; the Arena is a synthetic demo.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and test-data guidance. Public source publication was authorized on 2026-10-21; [publication status](docs/OPEN_SOURCE_RELEASE.md) records the remaining GitHub visibility step. Hosted application deployment remains frozen.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and test-data guidance. Public source publication was authorized on 2026-10-21; [publication status](docs/OPEN_SOURCE_RELEASE.md) records verified GitHub public visibility. Hosted application deployment remains frozen.
 
 ## Current project state — checkpoint 0.42 local maintenance
 

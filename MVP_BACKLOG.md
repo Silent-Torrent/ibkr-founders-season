@@ -4,7 +4,7 @@
 
 - [x] Record the user's authorization to open-source this repository; supersede private-source rules while preserving decision L for hosted deployment.
 - [x] Add the MIT License, package license metadata, and contribution guidance.
-- [ ] Verify GitHub public visibility; see `docs/OPEN_SOURCE_RELEASE.md`.
+- [x] Verify GitHub public visibility on 2026-10-21; see `docs/OPEN_SOURCE_RELEASE.md`.
 
 The product remains at checkpoint 0.42 with **9 OPEN / 3 CLOSED** release gates. Source publication is not a hosted-application release.
 
