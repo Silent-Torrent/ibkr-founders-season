@@ -1,5 +1,14 @@
 # MVP backlog
 
+## 2026-10-29 cloud development
+
+- [x] Reconcile the old desktop checkout with the latest public GitHub source.
+- [x] Record authorization for Codespaces and private development previews.
+- [ ] Configure and validate reproducible cloud tooling, browser preview, and cross-device entry.
+- [ ] Record cloud test results and Chinese handoff instructions.
+
+This development migration does not itself close the 9 remaining product-release gates.
+
 ## 2026-10-21 source publication
 
 - [x] Record the user's authorization to open-source this repository; supersede private-source rules while preserving decision L for hosted deployment.

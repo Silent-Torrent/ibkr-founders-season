@@ -9,8 +9,10 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:cloud": "node scripts/start-cloud.mjs dev",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "preview:cloud": "node scripts/start-cloud.mjs preview",
     "typecheck": "tsc -b --pretty false",
     "measure:parser-memory": "node --expose-gc scripts/measure-parser-memory.mjs",
     "measure:browser-worker-memory": "node scripts/test-browser-import.mjs --measure-worker-heap",
@@ -41,6 +43,6 @@
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.1.0",
     "typescript": "6.0.2",
-    "vite": "8.2.2"
+    "vite": "8.2.4"
   }
 }

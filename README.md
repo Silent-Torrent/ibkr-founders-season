@@ -2,6 +2,12 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
+## 跨设备云端开发
+
+从 [我的 Codespaces](https://github.com/codespaces) 恢复本项目已有工作区；首次使用可 [创建 Codespace](https://codespaces.new/Silent-Torrent/ibkr-founders-season)。Node 22 和锁定依赖由开发容器配置安装。运行 `npm run dev:cloud`，从 Ports 打开 5173 的 **Private** 预览。换设备仍进入同一个工作区，完成修改后提交并推送到 GitHub。
+
+[中文操作说明](docs/CLOUD_DEVELOPMENT.md) · [迁移验收记录](docs/CLOUD_MIGRATION_2026-10-29.md)。云端开发于 2026-10-29 获准；个人预览不代表公共应用发布，真实报表不会随代码同步。
+
 ## Open source
 
 The source code and documentation are licensed under the [MIT License](LICENSE). This is an independent community project and is not affiliated with or endorsed by Interactive Brokers.

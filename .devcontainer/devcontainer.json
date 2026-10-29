@@ -1,0 +1,34 @@
+{
+  "name": "P&L Arena · Cloud Development",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "node",
+  "containerEnv": {
+    "CHROME_PATH": "/usr/bin/chromium"
+  },
+  "postCreateCommand": "npm ci --no-fund",
+  "forwardPorts": [5173, 4173],
+  "portsAttributes": {
+    "5173": {
+      "label": "P&L Arena · Development",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    "4173": {
+      "label": "P&L Arena · Production preview",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

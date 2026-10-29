@@ -39,6 +39,10 @@ Do not change these without explicit user approval:
 - Public source publication under the MIT License was authorized on 2026-10-21, superseding the earlier private-repository restriction. Commits must still use the user's approved GitHub `noreply` identity.
 - The 2026-08-30 decision L continues to supersede the earlier Preview-only authorization: hosted application deployment is frozen while local development and GitHub source maintenance continue. The 2026-10-21 source-publication authorization does not authorize Vercel or another hosted deployment; Production deployment or public application exposure still requires an explicit user decision and provider-specific release-gate review.
 
+## 2026-10-29 cloud-development authorization
+
+The user authorized moving project development to the cloud and explicitly keeping the source public. GitHub Codespaces with authenticated private development/production-build preview ports is authorized, including reproducible Node 22 tooling and cross-device development. This supersedes the local-only part of L for that development scope. It does not authorize a public application deployment, billing upgrades, raw brokerage data uploads, or automatic financial-data synchronization. Keep the product release gates separate. Read `docs/CLOUD_DEVELOPMENT.md` and the dated migration evidence before cloud work.
+
 ## 3. Financial-data correctness rules
 
 This is a financial analytics product. A visually attractive but numerically incorrect result is a failed implementation.

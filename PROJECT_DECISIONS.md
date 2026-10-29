@@ -71,6 +71,10 @@ Exact account balance is private by default. Net liquidation value determines a 
 - Do not create, publish, or expose any external deployment until the user explicitly approves a researched route and its provider-specific release gate.
 - Any future public or Production deployment requires a new explicit user decision and a fresh release-gate review.
 
+### Cloud development — 2026-10-29
+
+The user requested cloud migration for cross-device access, editing and development and reaffirmed public source visibility. Use the existing GitHub repository as the durable source of truth and a personal GitHub Codespace for development, with private authenticated forwarded ports. This explicitly reopens cloud development and its private previews; public/Production application release remains a separate decision. No backend, financial persistence, IBKR credentials, raw-statement uploads or paid upgrade is added. Historical local-only text below describes its earlier decision date. See `docs/CLOUD_DEVELOPMENT.md`.
+
 ### Deployment implementation status — 2026-08-30
 
 - An empty Hobby-plan Vercel project now exists with Vercel Authentication set to Standard Protection. It has no surviving deployment and no connected Git repository.
