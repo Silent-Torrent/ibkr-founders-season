@@ -4,7 +4,9 @@ Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Acti
 
 ## GPT 内跨设备云端开发：尚未完成
 
-用户已明确：目标是在 **ChatGPT/OpenAI 内整体进行云端开发**。当前 Codex Cloud 环境未创建成功：已看到设置入口、已连接 GitHub 并选择本仓库，但初始化及重试均在建立设置对话前失败，相关请求返回 HTTP 403；根因尚未确认。用户随后授权的纯云端 Work 对话已在现有 IBKR ChatGPT 项目中创建，并已在 Linux 云端通过 HTTPS 克隆、读取本仓库。目前仅确认对话创建和仓库读取通过；环境安装、编辑保存、构建、完整测试及版本回写仍在验收中。
+用户已明确：目标是在 **ChatGPT/OpenAI 内整体进行云端开发**。现有 IBKR ChatGPT 项目中的纯云端 Work 对话已完成仓库读取、Node 22 安装、依赖安装、文件编辑保存、构建及 GitHub 分支/提交/草稿 PR 回写；[公开验收草稿 PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1) 已独立回读。依赖审计、类型检查与全部 11 项非浏览器检查通过；下一回合也确认原目录、Node、依赖及验收文档保留。Chrome 156 已安装，但完整检查在浏览器就绪前失败；另有短检查确认运行权限限制，也观察到跨调用的大文件截断，不能将长检查失败只归于单一原因。未降低浏览器安全设置绕过。用户可视的私有预览及第二台设备仍未验收。重要修改须保存到 GitHub，不能把一次跨回合保留视为云虚拟机永久保留的保证。
+
+独立的 Codex Cloud 环境创建路径仍未成功：初始化及重试均在建立设置对话前失败，相关请求返回 HTTP 403；根因尚未确认。这与上述 Work 路径的实测结果分别记录。
 
 后续从 [GPT 云端交接说明](docs/GPT_CLOUD_HANDOFF.md) 继续。此前 [Codespaces 操作说明](docs/CLOUD_DEVELOPMENT.md) 和 [验收记录](docs/CLOUD_MIGRATION_2026-10-29.md) 保留为可选备用；其中的编辑、构建和推送成功不等于 GPT 迁移完成。代码仍由 GitHub 保存，真实报表与凭据不随迁移上传，公开应用发布仍需单独决定。
 

@@ -2,7 +2,19 @@
 
 Last updated: 2026-10-29
 
-## 2026-10-29 cloud-development recovery
+## 2026-10-29 GPT cloud Work — first round and observed continuation
+
+The user's intended destination is ChatGPT/OpenAI cloud development. The authorized cloud-only Work chat ran in Linux, cloned `main` at `576997f` (167 tracked files), then pulled `ca1c76e` (168 files) and read `docs/GPT_CLOUD_HANDOFF.md`. These execution results came from that cloud runtime, not tests delegated to the Mac. Official Node 22.23.4/npm 10.9.9 became usable after re-extracting the initial incomplete installation. `npm ci`, dependency audit (zero vulnerabilities), production build and every non-browser check passed. **The complete `npm run check` failed because Google Chrome was not found**; no browser pass or isolation bypass is claimed.
+
+An evidence file was created and read back in the cloud, then written through the platform's GitHub integration to a branch, commit and [draft PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1). The first independently read-back head was `8eb71bda01ed66549755f9b6b8d531b1b8991958`. After the second-round update, independent GitHub readback confirmed head `7e0002c0fc4fafc6fd45e115be33563f96941785` and its only change: the now 49-line `docs/GPT_CLOUD_WORK_VERIFICATION_2026-10-29.md`. The PR remains a draft and is not merged. This establishes cloud source writeback, not a completed migration.
+
+Internal development/production-preview HTTP checks on 5173/4173 and static assets returned 200 within the same execution session. A cross-execution attempt returned connection refused, and the temporary services were stopped. **No user-visible authenticated private preview was established.** The next Work turn retained the original cloud directory, Node 22, all dependencies and an evidence file matching the draft PR; that bounded continuation passed. Another physical device remains untested. Important changes must be saved to GitHub; one observed cross-turn continuation does not establish a permanent Codex Cloud VM.
+
+In the second round, official Chrome 156 and its required libraries were available. The unchanged complete `npm run check` at `ca1c76e` passed typecheck and all 11 non-browser suites. The browser script built the production bundle, but **the browser exited before DevTools was ready: full check FAIL/BLOCKED**. Separately, a short probe of the complete Chrome executable directly reported `Running as root without --no-sandbox is not supported`, and the platform rejected a normal non-root switch with `cannot set groups: Operation not permitted`. Large Chrome files were also observed truncated across execution calls. These are distinct observations: the long check's exit is not proven to have only the short probe's root cause. Browser isolation was preserved; no `--no-sandbox` rerun or browser pass is claimed. Further unchanged-runtime attempts stopped. Missing Chrome is first-round history; the final limitation is the lack of a stable, supported browser execution path in the observed cloud runtime.
+
+The separate Codex Cloud environment setup still failed twice before its setup chat, with HTTP 403 on `environment-configs/.../drafts`; its cause is unconfirmed. The Work results do not convert those attempts into a success. No product source, financial policy or release gate changed; fixed gates remain **9 OPEN / 3 CLOSED**.
+
+## 2026-10-29 Codespaces recovery — optional fallback evidence
 
 Local exact-host/port checks and the complete Node 22 `VERIFY_MAC.command` passed after locking Vite 8.2.4 and source-map-js 1.2.2; audit reported zero known vulnerabilities. On the replacement cloud workspace, dependency installation, the non-browser suites and production build passed, but the complete cloud check failed because Chromium cannot create its OS namespace (`Operation not permitted`). Browser isolation was not bypassed.
 

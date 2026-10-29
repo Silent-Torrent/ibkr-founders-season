@@ -5,7 +5,7 @@
 用户已纠正目标：在 **ChatGPT/OpenAI 内进行整个项目的云端开发**，并能换终端继续工作。GitHub 保存公开源码、开发文档、虚构测试数据和版本历史；GitHub Codespaces 是此前实现的可选备用，不是用户当前要求的终点。
 
 - 仓库：[Silent-Torrent/ibkr-founders-season](https://github.com/Silent-Torrent/ibkr-founders-season)，默认分支 `main`。
-- 本次文档纠正前的已提交基线：`576997f`。后续先核对实时分支和提交，不把此基线当成永久最新版本。
+- 云端初次读取 `main` 的 `576997f`（167 个跟踪文件），随后拉取并读取本交接文档的 `ca1c76e`（168 个跟踪文件）。后续先核对实时分支和提交，不把这些基线当成永久最新版本。
 - 产品仍为 checkpoint 0.42，发布门槛 **9 OPEN / 3 CLOSED**。开发环境迁移不等于产品上线或金融数据验证。
 
 ## 已观察到什么
@@ -16,18 +16,23 @@
 | 创建 Codex Cloud 环境 | 选择本仓库后，初始化在设置对话出现前失败；重试同样失败。没有成功创建环境。 |
 | 失败证据 | Chrome 控制台确认 `environment-configs/.../drafts` 请求返回 HTTP 403。未保存请求中的凭据或认证值。 |
 | 根因 | 尚未确认。403 不能独立证明是套餐、账号权限、仓库授权或服务故障，不能将其中任何一项写成结论。 |
-| 纯云端 Work 路径 | 用户已明确授权；现有 IBKR ChatGPT 项目中的纯云端 Work 对话已创建。其 Linux 云端已通过 HTTPS 克隆 `main` 的 `576997f`，读取到 167 个跟踪文件。目前仅对话创建、云端仓库读取通过；环境安装、编辑保存、构建、完整测试及版本回写仍在进行。 |
-| Work 运行环境 | 云端预装 Node 24，正在安装官方 Node 22。初次安装出现解压后的可执行文件不完整或崩溃，正在排查；尚不能记为安装通过，也未确认根因。 |
+| 纯云端 Work 路径 | 用户已明确授权；现有 IBKR ChatGPT 项目中的纯云端 Work 对话已创建。Linux 云端通过 HTTPS 克隆仓库，并拉取 `ca1c76e`、读取本交接文档。以下运行结果来自该云端，没有使用 Mac 代跑。 |
+| Work 运行环境 | 云端预装 Node 24；官方 Node 22 初次解压后不可用，重新解压后 Node 22.23.4/npm 10.9.9 已实际运行。`npm ci`、依赖审计（零漏洞）、生产构建及全部非浏览器检查通过。 |
+| 完整检查 | 首轮因找不到 Chrome 失败。第二轮官方 Chrome 156 与所需链接库已安装；在 `ca1c76e` 原样运行 `npm run check`，类型检查及全部 11 项非浏览器测试通过，浏览器脚本完成生产构建后在 DevTools 就绪前退出：完整检查为 **FAIL/BLOCKED**。未关闭浏览器隔离，已停止在相同运行条件下继续尝试。 |
+| 浏览器限制证据 | 独立的完整 Chrome 短探针直接报 `Running as root without --no-sandbox is not supported`；正常切换非 root 又被平台拒绝：`cannot set groups: Operation not permitted`。还观察到跨执行调用的 Chrome 大文件截断，不能把长检查失败完全归因于短探针的 root 错误。当前没有稳定且符合隔离要求的浏览器运行路径。 |
+| 编辑与 GitHub 回写 | 云端创建验收文档并读回，再通过平台 GitHub 集成写入分支、提交及[草稿 PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1)。第二轮更新后的独立远程回读确认 head [`7e0002c`](https://github.com/Silent-Torrent/ibkr-founders-season/commit/7e0002c0fc4fafc6fd45e115be33563f96941785)，仅新增 49 行 `docs/GPT_CLOUD_WORK_VERIFICATION_2026-10-29.md`。仍为草稿且尚未合并。 |
+| 预览服务 | 同一执行会话内的 5173/4173 页面与静态资源返回 HTTP 200；跨执行会话访问曾返回 connection refused，临时服务已停止。没有建立用户可视的私有预览网址。 |
+| 连续使用 | 下一 Work 回合已确认原云端目录、Node 22、全部依赖及验收文档保留，文档与草稿 PR 一致；这一次跨回合继续通过。第二台实体设备未测，一次保留不能证明普通 Work 对话背后是永久保留的 Codex Cloud 虚拟机。 |
 | 此前 Codespaces | 有独立网页编辑、构建、正常 HTTPS 推送和重建/恢复证据；这些不证明 GPT 云端已就绪。 |
 
-不要把“已连接 GitHub”“能读取仓库”“已出现云端入口”写成“项目已迁入 GPT 云端”。这三个状态也不能替代文件修改、实际执行、版本保存和跨终端继续的验收。
+首轮已打通云端读取、编辑、构建和 GitHub 回写。完整浏览器检查、用户可视的私有预览与跨终端继续仍未通过，因此不能写成“整个迁移已完成”。重要代码和交接记录应保存到 GitHub，不以某次 Work 会话中的未提交文件作为唯一副本。
 
 ## 下一步接力
 
 1. 先读取本文件，再按 `AGENTS.md` 阅读 `WORK_HANDOFF.md`、`PROJECT_DECISIONS.md`、`MVP_BACKLOG.md`、`VERIFICATION.md` 和 `README.md`。本次用户澄清优先于旧文档中的 Codespaces 默认路径。
-2. 用户已授权且已创建纯云端 Work 对话，无需重复询问或另建对话。继续现有云端对话：云端仓库读取已通过，下一步完成 Node 22 安装并验证版本，再逐项验收本节后续步骤。只有取得实际结果后才能将相应状态标记为通过；不要将私人对话标识或链接写入公开仓库。
+2. 用户已授权且已创建纯云端 Work 对话，无需重复询问或另建对话。保留两轮已确认的读取、修改、构建、GitHub 回写及跨回合继续证据。完整浏览器检查受当前执行环境限制；待具备稳定的浏览器文件、正常非 root 执行与浏览器隔离条件后再重跑，不在相同条件下反复尝试或关闭隔离。不要将私人对话标识或链接写入公开仓库。
 3. 若继续 Codex Cloud 环境路径，记录具体创建结果；出现相同错误时保留真实失败状态，不通过伪造环境、复制令牌或修改浏览器安全设置绕过。
-4. 在实际可用的 GPT 云端会话中核对仓库提交、安装环境、读取并修改一个可审阅的小范围文件，运行构建和完整检查，并核对版本保存/提交结果。
+4. 保留首轮的文件读写、构建及草稿 PR 回写证据；后续核对实时提交，按实际变更运行检查并读回 GitHub 保存结果。不要把已存在的草稿 PR 记为已合并，也不要以构建成功替代完整检查。
 5. 记录如何在另一终端返回同一个云端任务，并实际验收。新建另一个任务不能自动视为已恢复上一任务的未提交文件。
 
 ## 运行要求与通用命令
@@ -48,7 +53,7 @@ unset IBKR_BROWSER_IMPORT_SKIP_BUILD IBKR_BROWSER_IMPORT_DIST_DIR
 npm run check
 ```
 
-该检查包括生产构建和真实浏览器/Worker 回归。保留实际失败；不要跳过浏览器测试、放宽阈值或关闭浏览器隔离来宣称成功。Codespaces 曾有 Chromium namespace 失败，但这不是尚未运行的 GPT 云端测试结果。
+该检查包括生产构建和真实浏览器/Worker 回归。保留实际失败；不要跳过浏览器测试、放宽阈值或关闭浏览器隔离来宣称成功。GPT Work 首轮缺少 Chrome，第二轮完整检查仍未进入可用的浏览器阶段，另有 root/普通用户切换限制与跨调用大文件截断证据；此前 Codespaces 的 Chromium namespace 失败属于另一环境，不能混用结论。
 
 通用开发服务：
 
@@ -81,4 +86,4 @@ npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 
 此前的 [Codespaces 操作说明](CLOUD_DEVELOPMENT.md) 和 [Codespaces 验收记录](CLOUD_MIGRATION_2026-10-29.md) 保留原有证据，默认路径由本文件纠正。如果明确需要使用备用，可从 [现有 Codespace 启动入口](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter) 进入，再使用其 [独立私有编辑器](https://ibkr-cloud-development-v2-96jq957j797v39x64-8888.app.github.dev/lab)；是否正在运行须现场核对。该备用的成功不计作 GPT 云端验收。
 
-本文件记录目标和交接状态，当前仅新增 Work 对话创建与云端仓库读取证据，不新增构建或测试通过结论；`VERIFICATION.md` 中已有结果继续保留其原有平台、时间和测试范围。
+本文件记录 Work 读取、编辑、构建、非浏览器检查、GitHub 回写与下一回合的有限保留验证，并分别记录第二轮完整检查失败、独立短探针结果及大文件截断现象。`VERIFICATION.md` 中各结果应继续标明平台、时间和测试范围，不能将部分通过写成全部迁移完成。

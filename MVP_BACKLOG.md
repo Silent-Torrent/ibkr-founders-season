@@ -7,11 +7,15 @@
 - [ ] Create and publish a working Codex Cloud environment; no environment was created successfully in the observed attempts.
 - [x] Receive explicit authorization to create and verify a separate cloud-only Work chat in the existing IBKR ChatGPT project.
 - [x] Create the authorized cloud-only Work chat and verify repository reading in its Linux cloud runtime: HTTPS clone of `main` at `576997f`, with 167 tracked files.
-- [ ] Complete the cloud runtime installation; the initial Node 22 installation attempt has not yet produced a verified working runtime.
-- [ ] In the chosen GPT cloud route, verify file reading/editing, locked installation, build, complete tests and source-control handoff; report each result separately.
+- [x] Pull the corrected handoff at `ca1c76e` in the Work cloud runtime, with 168 tracked files, and read it.
+- [x] Install official Node 22.23.4/npm 10.9.9, perform locked dependency installation and audit (zero vulnerabilities), and pass production build and all non-browser checks in the cloud.
+- [x] Create/read back an evidence file and save it through the platform's GitHub integration to a branch, commit and [draft PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1); independently read back the remote commit and complete file.
+- [ ] Pass the unchanged complete cloud check. At `ca1c76e`, typecheck and all 11 non-browser suites passed, and the browser script built production assets before exiting prior to DevTools readiness. A separate complete-Chrome short probe confirmed root/sandbox incompatibility and the platform rejected a normal non-root switch; large Chrome files were also observed truncated across execution calls. Full-check status is FAIL/BLOCKED, without assigning its entire failure to the short probe's root error. Browser isolation remains enabled; further unchanged-runtime attempts stopped.
+- [x] Verify the next Work turn retains the original cloud directory, Node 22, all dependencies and the evidence file matching the draft PR. This is one observed continuation, not permanent-storage proof.
+- [ ] Establish a user-visible authenticated private preview. Same-execution HTTP 200 responses are recorded, but cross-execution access returned connection refused and the temporary services were stopped.
 - [ ] Verify continuation of that same GPT cloud task from another terminal/device.
 
-Current handoff: `docs/GPT_CLOUD_HANDOFF.md`. The Work chat and repository reading are verified; editing, execution and source-control writeback remain under acceptance. This is not a completed migration. Cloud-development acceptance does not itself close the 9 remaining product-release gates.
+Current handoff: `docs/GPT_CLOUD_HANDOFF.md`. The core Work read/edit/build/GitHub-writeback path and one cross-turn continuation passed; complete browser checks are blocked by the observed runtime restrictions, and visible private preview and second-device continuation remain unverified. Save important changes to GitHub rather than assuming a permanent VM behind an ordinary Work chat. This is not a completed migration. Cloud-development acceptance does not itself close the 9 remaining product-release gates.
 
 ### Earlier Codespaces work — retained fallback evidence
 
