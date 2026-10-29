@@ -2,6 +2,8 @@
 
 本项目以 [GitHub 仓库](https://github.com/Silent-Torrent/ibkr-founders-season) 保存代码、开发文档、测试和版本历史，以 GitHub Codespaces 提供浏览器里的开发电脑。2026-10-29 用户授权跨设备云端开发，并明确保留公开代码。
 
+> 2026-10-29 验收状态：代码与配置已在云端，个人工作区已创建，本机全量测试通过；当前网页编辑器连接超时，云端运行与第二设备验收尚未完成。详见 [迁移记录](CLOUD_MIGRATION_2026-10-29.md)。
+
 ## 从哪里进入
 
 - **日常继续开发：**打开 [我的 Codespaces](https://github.com/codespaces)，登录自己的 GitHub 账号，选择本项目已有的工作区。换电脑时也打开同一个工作区，不必每次新建。

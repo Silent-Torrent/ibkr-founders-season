@@ -4,8 +4,9 @@
 
 - [x] Reconcile the old desktop checkout with the latest public GitHub source.
 - [x] Record authorization for Codespaces and private development previews.
-- [ ] Configure and validate reproducible cloud tooling, browser preview, and cross-device entry.
-- [ ] Record cloud test results and Chinese handoff instructions.
+- [x] Commit reproducible cloud tooling, pass exact-host launcher checks and the full local verification, and create the 2-core cloud work area.
+- [ ] Complete cloud terminal, private preview and cross-device acceptance; the web editor connection currently times out.
+- [x] Record observed results, connection blocker and Chinese handoff instructions.
 
 This development migration does not itself close the 9 remaining product-release gates.
 

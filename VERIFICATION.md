@@ -4,7 +4,7 @@ Last updated: 2026-10-29
 
 ## 2026-10-29 cloud-development preparation
 
-Codespaces configuration, exact-host development launchers and Chinese cross-device guidance were added. Local launcher host/port checks passed. The initial dependency audit found two high-severity packages; Vite 8.2.4 and source-map-js 1.2.2 now pass the fresh audit with zero known vulnerabilities. Complete runtime evidence and unresolved checks are tracked in `docs/CLOUD_MIGRATION_2026-10-29.md`; configuration is not a claim of cloud completion. No product source, financial policy or production CSP changed.
+Codespaces configuration, exact-host development launchers and Chinese cross-device guidance were added. Local launcher host/port checks passed. The initial dependency audit found two high-severity packages; Vite 8.2.4 and source-map-js 1.2.2 now pass the fresh audit with zero known vulnerabilities. The complete local `VERIFY_MAC.command` passed, including the production Chrome/real Worker regression. Codespace creation and stop/resume control-plane actions were observed, but its web file tree/terminal remained unavailable with remote connection/extension timeouts. No cloud test or preview pass is claimed. Complete evidence and recovery steps are tracked in `docs/CLOUD_MIGRATION_2026-10-29.md`. No product source, financial policy or production CSP changed.
 
 ## 2026-10-21 source-publication preparation
 
