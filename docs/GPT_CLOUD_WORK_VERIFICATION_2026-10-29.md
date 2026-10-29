@@ -36,3 +36,14 @@
 下一步继续当前 IBKR Founders Season 项目内的本 Work 对话。换设备登录同一 ChatGPT 账号后打开本项目及同一对话；能否在第二台设备继续使用 Work 执行能力仍须实测。若临时目录已回收，以 GitHub main 加本验收 PR/分支恢复，重新准备 Node 22 和 npm ci；聊天同步本身不是文件迁移或运行进程持久化。不要把本轮普通 Work 能力等同于成功创建 Codex Cloud 专用环境，也不要重试绕过此前 403。
 
 边界：不上传真实报表、私钥或 `.env`；不增加数据库/API/券商账号；不关闭浏览器沙箱，不伪造 Codespaces 变量，不创建公开隧道或应用部署。会计规则、Self-Reported、浏览器内解析和无后台/交易/支付保持不变。产品门槛 9 OPEN / 3 CLOSED，公共应用部署仍冻结。第二台实体设备尚未测试。
+
+## 同一云端对话跨回合验收 — 2026-10-29 第二回合
+
+- **跨回合保留 PASS（仅本次间隔）**：新回合开始时原目录仍为 `/workspace/scratch/30be535d68fe/ibkr-founders-season`，HEAD 为 `ca1c76e65874582bbefaa4ba88cec74581b21af0`。没有重新克隆或重装项目依赖；原 Node 22.23.4 可运行，`npm ls --depth=0` 完整列出原 8 项直接依赖且退出 0。
+- 原验收文件重新读取，Git blob 为 `0c3b6c4445e8eda7988df6beb7e46ab1d0121bbd`，与草稿 PR #1 的 `8eb71bd` 远端文件一致。锁文件 SHA-256 仍为 `89e279b8dfdbc6f58818689fb158439c78c5d081d8465a3115b3682baa635218`。这证明同一对话两回合之间这些文件实际保留，不证明任意闲置时长、进程持续运行或第二台实体设备已通过。
+- **官方 Chrome 准备：有条件完成**。从 Google 官方 HTTPS 地址 `https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb` 下载并解包到仓库外的 `browser-official/`。包版本 `156.0.8078.73-1`；下载包 SHA-256 为 `fd19c6895dad77f4d7f712c2d9f0d5eb682f4a6e7ff22b1bd0d40d03710d288c`（本次文件指纹，不冒称官方独立校验）。完整可执行文件为 302824776 字节，`--version` 返回 Google Chrome 156.0.8078.73；`ldd` 未发现缺失的直接链接库，因此未额外安装系统库。采用工作区内解包运行，未改项目依赖，也未注册系统级浏览器安装。
+- **文件限制**：首次解包后跨调用观察到 Chrome 文件截断、缺失 ELF section headers，`--version`/ldd 崩溃。独立目录同会话重新解包可正确报告版本；长检查随后仍出现浏览器启动前退出。因此不保证本环境大型二进制跨调用完整保留，也不把这些崩溃直接定性为 namespace 错误。最后独立短探针在同会话解包、确认完整大小后立即启动，取得下述明确 root 错误。
+- **非 root 条件 BLOCKED**：实际 `id` 为 uid=0/gid=0；`/proc/self/uid_map` 与 gid_map 均仅显示 `0 0 1`。正常 `runuser -u nobody -- id` 返回 `runuser: cannot set groups: Operation not permitted`。没有更改 UID 映射、capability、系统策略或尝试绕过。
+- **完整检查 FAIL / 浏览器 BLOCKED**：在上述 HEAD、Node 22 下，将 `CHROME_PATH` 指向实际解包的 `.../browser-official/verified/opt/google/chrome/chrome`，清除两个 IBKR_BROWSER_IMPORT 构建跳过/替代目录变量，原样运行 `npm run check`，退出 1。typecheck 及全部 11 项非浏览器测试完成通过；浏览器脚本完成其生产构建并启动内部预览，随后在 `scripts/test-browser-import.mjs:271` 报 `Chrome exited before its DevTools endpoint became ready.`。初次损坏文件尝试也退出 1，不能记为通过。
+- **独立启动诊断**：另一个完整官方 Chrome 文件在临时独立 user-data-dir、headless、保留沙箱的条件下启动 `about:blank`，退出 1，并明确报 `Running as root without --no-sandbox is not supported.`。结合禁止切换非 root 的实际结果，本平台当前无法完成此浏览器隔离条件下的验收；未使用 `--no-sandbox`、未关闭 setuid/namespace 隔离，不宣称 namespace 本身已经测试失败。
+- **范围与保存**：只追加本文并更新现有草稿 PR #1，未新建 PR、合并 main 或改变产品/脚本/锁文件。未创建公开隧道，正式用户可视私有预览仍未验证。第二台实体设备尚未测试；9 OPEN / 3 CLOSED 与部署冻结不变。下一步浏览器全量验收需要平台正常提供可用的非 root、支持浏览器隔离的执行条件。
