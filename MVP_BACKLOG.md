@@ -1,6 +1,19 @@
 # MVP backlog
 
-## 2026-10-29 cloud development
+## 2026-10-29 GPT cloud development — corrected target
+
+- [x] Record the user's clarification: develop inside ChatGPT/OpenAI's cloud; Codespaces is only an optional fallback.
+- [x] Inspect the ChatGPT Codex Cloud entry and connected GitHub account, select this repository, and record the two initialization failures plus the observed HTTP 403 without inventing a cause.
+- [ ] Create and publish a working Codex Cloud environment; no environment was created successfully in the observed attempts.
+- [x] Receive explicit authorization to create and verify a separate cloud-only Work chat in the existing IBKR ChatGPT project.
+- [x] Create the authorized cloud-only Work chat and verify repository reading in its Linux cloud runtime: HTTPS clone of `main` at `576997f`, with 167 tracked files.
+- [ ] Complete the cloud runtime installation; the initial Node 22 installation attempt has not yet produced a verified working runtime.
+- [ ] In the chosen GPT cloud route, verify file reading/editing, locked installation, build, complete tests and source-control handoff; report each result separately.
+- [ ] Verify continuation of that same GPT cloud task from another terminal/device.
+
+Current handoff: `docs/GPT_CLOUD_HANDOFF.md`. The Work chat and repository reading are verified; editing, execution and source-control writeback remain under acceptance. This is not a completed migration. Cloud-development acceptance does not itself close the 9 remaining product-release gates.
+
+### Earlier Codespaces work — retained fallback evidence
 
 - [x] Reconcile the old desktop checkout with the latest public GitHub source.
 - [x] Record authorization for Codespaces and private development previews.
@@ -10,11 +23,11 @@
 - [x] Rebuild the pinned editor container; verify dependencies, build and restarted preview HTTP responses.
 - [x] Verify post-rebuild and idle-resume browser editing, build, HTTPS push and production-preview import after Mac unlock; document the official-startup plus independent-editor route.
 - [x] Document the VS Code/embedded-frame limitations and the verified independent Jupyter editor route.
-- [ ] Resolve the Chromium OS namespace block and pass the unchanged complete cloud suite.
-- [ ] Verify an actual second physical device/mobile development session.
+- [ ] If this fallback is used further, resolve its Chromium OS namespace block and pass its unchanged complete cloud suite.
+- [ ] An actual second physical-device/mobile Codespaces development session remains untested.
 - [x] Record observed results, connection blocker and Chinese handoff instructions.
 
-This development migration does not itself close the 9 remaining product-release gates.
+These completed Codespaces tasks do not establish GPT cloud migration or close product-release gates.
 
 ## 2026-10-21 source publication
 
