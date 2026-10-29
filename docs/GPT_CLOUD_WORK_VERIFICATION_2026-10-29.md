@@ -6,7 +6,7 @@
 - 正常 HTTPS 克隆 `https://github.com/Silent-Torrent/ibkr-founders-season.git` 的 main 成功。
 - 验收基线：`576997f6efff919d04911b8b14b908d4557e0155`，167 个受版本控制的文件。
 - 已检查 AGENTS.md、WORK_HANDOFF.md、PROJECT_DECISIONS.md、MVP_BACKLOG.md、VERIFICATION.md、README.md；用户当前 GPT 云端指令优先于旧 Codespaces 默认指引。
-- 三次检查 main 均为上述基线，尚无 `docs/GPT_CLOUD_HANDOFF.md`；未来继续时优先读取它（如已加入）。
+- 前三次检查 main 为上述基线。创建 PR 期间 main 更新为 `ca1c76e65874582bbefaa4ba88cec74581b21af0`（168 个受控文件）；已拉取、快进云端本地 main，优先读完新增 `docs/GPT_CLOUD_HANDOFF.md` 并检查四份规则/状态文档的更新。差异仅五份 Markdown，产品代码、测试脚本、依赖及 Vite 配置均未变；上述构建/检查实跑于 `576997f`，不冒称在新提交重跑。
 - 默认 Node 24.22.1 不用于验收；Node 官方源 Node 22.23.4 Linux x64 压缩包通过官方 SHASUMS256 校验。首次解压所有权/文件完整性异常，独立目录重新解压后 Node 22.23.4、npm 10.9.9 启动成功。
 - 本文由本对话实际新建，随后从云端文件系统重新读取，作为编辑与保存证据。临时工作目录不作为长期保存保证。
 
@@ -17,6 +17,7 @@
 | 云端读取 | PASS | HTTPS clone 成功，167 个受控文件，main 提交如上 |
 | 云端修改/重新读取 | PASS | 本文新建并 cat 读回；初稿 SHA-256 为 `130ac6bb5a010e13a50c63207335f0b2bf9f36817ab7f614110ea1f45bd3af53`，随后补充实际结果 |
 | Node 22 / 锁定安装 | PASS | Node 22.23.4、npm 10.9.9；`npm ci --registry=https://registry.npmjs.org` 退出 0，安装 27 包；锁文件未改 |
+| 依赖审计 | PASS | `npm audit --audit-level=high --registry=https://registry.npmjs.org` 退出 0，found 0 vulnerabilities |
 | 生产构建 | PASS | `npm run build` 退出 0；Vite 8.2.4，46 modules |
 | 原样完整检查 | FAIL | `npm run check` 退出 1；没有删除或跳过阶段 |
 | 非浏览器检查 | PASS | typecheck、parser、streaming、materialization、worker、worker-heap-sampling（14 个模拟案例）、i18n、a11y、compat、policy、launchers、iphone-stress-pack 全部完成 |
@@ -30,7 +31,7 @@
 
 ## 持久保存与继续方式
 
-已通过当前平台授权 GitHub 接口建立独立分支 `docs/gpt-cloud-work-verification-2026-10-29`，基于上述确切提交。仅将本文写入该分支并建立草稿 PR，最终提交与 PR 回读结果由本对话交付；未合并 main，也不覆盖并行变更。`git diff --exit-code` 确认原受控文件没有修改，只有本文新增。用户本轮“只允许验收文档”要求优先于旧 AGENTS 要求同步修改 backlog/VERIFICATION 的通用规则。
+已通过当前平台授权 GitHub 接口建立独立分支 `docs/gpt-cloud-work-verification-2026-10-29`，基于最初验收提交。本文首次写回提交为 `bf8fcfbc313c8c51539741efd9bef904c2a587d6`，使用已批准的 GitHub noreply 身份；已从远端重新读取全文。已创建并回读 [草稿 PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1)，draft=true、merged=false，变更文件列表确认只有本文。此补充仅更新同一文档，记录并行 main 交接与最终保存证据；未合并 main，也不覆盖并行变更。`git diff --exit-code` 确认原受控文件没有修改，只有本文新增。用户本轮“只允许验收文档”要求优先于旧 AGENTS 要求同步修改 backlog/VERIFICATION 的通用规则。GitHub 版本保存和写回为 PASS，临时文件系统及运行进程的长期保留不作保证。
 
 下一步继续当前 IBKR Founders Season 项目内的本 Work 对话。换设备登录同一 ChatGPT 账号后打开本项目及同一对话；能否在第二台设备继续使用 Work 执行能力仍须实测。若临时目录已回收，以 GitHub main 加本验收 PR/分支恢复，重新准备 Node 22 和 npm ci；聊天同步本身不是文件迁移或运行进程持久化。不要把本轮普通 Work 能力等同于成功创建 Codex Cloud 专用环境，也不要重试绕过此前 403。
 
