@@ -21,6 +21,7 @@ test-results/
 playwright-report/
 screenshots/
 *.tsbuildinfo
+.ipynb_checkpoints/
 
 # Credentials and signing material are always local-only.
 *.pem

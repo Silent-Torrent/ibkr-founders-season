@@ -13,7 +13,7 @@
     "CHROME_PATH": "/usr/bin/chromium"
   },
   "postCreateCommand": "npm ci --no-fund",
-  "forwardPorts": [5173, 4173],
+  "forwardPorts": [5173, 4173, 8888],
   "portsAttributes": {
     "5173": {
       "label": "P&L Arena · Development",
@@ -22,6 +22,11 @@
     },
     "4173": {
       "label": "P&L Arena · Production preview",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    "8888": {
+      "label": "P&L Arena · Backup editor (token required)",
       "onAutoForward": "notify",
       "protocol": "http"
     }
