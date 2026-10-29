@@ -4,7 +4,7 @@ Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Acti
 
 ## 跨设备云端开发
 
-从 [我的 Codespaces](https://github.com/codespaces) 恢复本项目已有工作区；首次使用可 [创建 Codespace](https://codespaces.new/Silent-Torrent/ibkr-founders-season)。Node 22 和锁定依赖由开发容器配置安装。运行 `npm run dev:cloud`，从 Ports 打开 5173 的 **Private** 预览。换设备仍进入同一个工作区，完成修改后提交并推送到 GitHub。
+当前主工作区为 **IBKR Cloud Development v2**。JupyterLab 网页编辑、终端构建和 GitHub 推送已实测通过；[官方启动入口](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter) 的重开流程仍待最终复测。也可从 [我的 Codespaces](https://github.com/codespaces) 找到该工作区。开发容器固定 Node 22、项目依赖和 JupyterLab，实际重建已通过。运行 `npm run dev:cloud` 后使用 5173 的 **Private** 预览；完成修改后提交并推送到 GitHub。VS Code 网页连接和云端自动浏览器测试的现有限制见下方验收记录。
 
 [中文操作说明](docs/CLOUD_DEVELOPMENT.md) · [迁移验收记录](docs/CLOUD_MIGRATION_2026-10-29.md)。云端开发于 2026-10-29 获准；个人预览不代表公共应用发布，真实报表不会随代码同步。
 

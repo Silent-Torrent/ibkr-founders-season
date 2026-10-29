@@ -2,9 +2,11 @@
 
 Last updated: 2026-10-29
 
-## 2026-10-29 cloud-development preparation
+## 2026-10-29 cloud-development recovery
 
-Codespaces configuration, exact-host development launchers and Chinese cross-device guidance were added. Local launcher host/port checks passed. The initial dependency audit found two high-severity packages; Vite 8.2.4 and source-map-js 1.2.2 now pass the fresh audit with zero known vulnerabilities. The complete local `VERIFY_MAC.command` passed, including the production Chrome/real Worker regression. Codespace creation and stop/resume control-plane actions were observed, but its web file tree/terminal remained unavailable with remote connection/extension timeouts. No cloud test or preview pass is claimed. Complete evidence and recovery steps are tracked in `docs/CLOUD_MIGRATION_2026-10-29.md`. No product source, financial policy or production CSP changed.
+Local exact-host/port checks and the complete Node 22 `VERIFY_MAC.command` passed after locking Vite 8.2.4 and source-map-js 1.2.2; audit reported zero known vulnerabilities. On the replacement cloud workspace, dependency installation, the non-browser suites and production build passed, but the complete cloud check failed because Chromium cannot create its OS namespace (`Operation not permitted`). Browser isolation was not bypassed.
+
+Private HTTPS 5173 welcome/Demo and 4173 production-preview synthetic import passed; the latter showed the fictional-test label, internal checks passed, +$740, +7.7% and 3 symbols. JupyterLab's private HTTPS browser editor saved and read back a document, ran `npm run build`, committed and pushed through the default HTTPS helper (`d22a698`). No real brokerage statement was used. The VS Code web editor remains a separate limitation. Pinned editor configuration in `78a9011` was rebuilt successfully; dependency checks, build and restarted preview HTTP responses passed. Mac lock prevented the final browser recheck. Browser reopen and second-device status are maintained in `docs/CLOUD_MIGRATION_2026-10-29.md`. No product source, financial policy or production CSP changed.
 
 ## 2026-10-21 source-publication preparation
 

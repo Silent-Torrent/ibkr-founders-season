@@ -5,7 +5,12 @@
 - [x] Reconcile the old desktop checkout with the latest public GitHub source.
 - [x] Record authorization for Codespaces and private development previews.
 - [x] Commit reproducible cloud tooling, pass exact-host launcher checks and the full local verification, and create the 2-core cloud work area.
-- [ ] Complete cloud terminal, private preview and cross-device acceptance; the web editor connection currently times out.
+- [x] Verify cloud JupyterLab file editing, browser-terminal build and ordinary HTTPS commit/push.
+- [x] Verify private 5173 development and 4173 production previews, including fictional CSV import.
+- [x] Rebuild the pinned editor container; verify dependencies, build and restarted preview HTTP responses.
+- [ ] Complete the official Jupyter entry and post-rebuild browser recheck after Mac unlock.
+- [ ] Resolve or document the VS Code client limitation and the Chromium OS namespace block; do not claim a full cloud-suite pass.
+- [ ] Verify an actual second physical device/mobile development session.
 - [x] Record observed results, connection blocker and Chinese handoff instructions.
 
 This development migration does not itself close the 9 remaining product-release gates.
