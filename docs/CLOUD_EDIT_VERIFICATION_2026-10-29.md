@@ -9,3 +9,5 @@ This record was created and saved in the cloud workspace through the JupyterLab 
 - A synthetic CSV import also passed through an authenticated SSH preview connection.
 
 This is development-environment evidence only. It does not close product release gates or establish real brokerage-data correctness.
+
+A second browser session opened this file through the authenticated private HTTPS port 8888 and saved this sentence directly, without a localhost preview URL.
