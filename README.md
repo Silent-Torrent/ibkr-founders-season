@@ -4,7 +4,7 @@ Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Acti
 
 ## 跨设备云端开发
 
-当前主工作区为 **IBKR Cloud Development v2**。JupyterLab 网页编辑、终端构建和 GitHub 推送已实测通过；[官方启动入口](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter) 的重开流程仍待最终复测。也可从 [我的 Codespaces](https://github.com/codespaces) 找到该工作区。开发容器固定 Node 22、项目依赖和 JupyterLab，实际重建已通过。运行 `npm run dev:cloud` 后使用 5173 的 **Private** 预览；完成修改后提交并推送到 GitHub。VS Code 网页连接和云端自动浏览器测试的现有限制见下方验收记录。
+当前主工作区为 **IBKR Cloud Development v2**。先 [启动工作区](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter)，再 [打开项目编辑器](https://ibkr-cloud-development-v2-96jq957j797v39x64-8888.app.github.dev/lab)。这条独立网页路径已在实际重建和闲置恢复后通过打开、修改保存、终端构建与 GitHub 推送验收；官方启动页的嵌入窗口仍不稳定。换设备时登录自己的同一 GitHub 账号，继续使用这个工作区；第二台实体设备尚未实测。停止后需重新运行 `npm run dev:cloud` 或构建预览命令。Node 22、项目依赖和 JupyterLab 均由开发容器安装，所有预览端口保持 **Private**。
 
 [中文操作说明](docs/CLOUD_DEVELOPMENT.md) · [迁移验收记录](docs/CLOUD_MIGRATION_2026-10-29.md)。云端开发于 2026-10-29 获准；个人预览不代表公共应用发布，真实报表不会随代码同步。
 

@@ -8,8 +8,9 @@
 - [x] Verify cloud JupyterLab file editing, browser-terminal build and ordinary HTTPS commit/push.
 - [x] Verify private 5173 development and 4173 production previews, including fictional CSV import.
 - [x] Rebuild the pinned editor container; verify dependencies, build and restarted preview HTTP responses.
-- [ ] Complete the official Jupyter entry and post-rebuild browser recheck after Mac unlock.
-- [ ] Resolve or document the VS Code client limitation and the Chromium OS namespace block; do not claim a full cloud-suite pass.
+- [x] Verify post-rebuild and idle-resume browser editing, build, HTTPS push and production-preview import after Mac unlock; document the official-startup plus independent-editor route.
+- [x] Document the VS Code/embedded-frame limitations and the verified independent Jupyter editor route.
+- [ ] Resolve the Chromium OS namespace block and pass the unchanged complete cloud suite.
 - [ ] Verify an actual second physical device/mobile development session.
 - [x] Record observed results, connection blocker and Chinese handoff instructions.
 

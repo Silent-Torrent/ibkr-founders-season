@@ -2,25 +2,30 @@
 
 代码、开发文档、虚构测试数据和版本历史保存在 [GitHub 仓库](https://github.com/Silent-Torrent/ibkr-founders-season)；Codespaces 提供浏览器里的开发电脑。用户已授权跨设备云端开发，并保留公开源码。
 
-> 2026-10-29 当前状态：云端已实测打开文件、修改保存，并在 JupyterLab 网页终端完成构建、提交和推送。VS Code 网页编辑器仍有连接故障；重建后后台已恢复，网页复测因 Mac 锁屏待完成；官方启动入口、完整云端测试及第二台设备尚未全部验收，不能视为迁移完成。详细证据见 [迁移记录](CLOUD_MIGRATION_2026-10-29.md)。
+> 2026-10-29 当前状态：日常云端开发流程已通过当前 Mac 浏览器验收，包括启动、打开和编辑文件、构建、提交推送，以及重建和空闲停止后的恢复。使用下方“两步入口”进入 JupyterLab。VS Code 网页编辑器仍有连接故障，完整云端自动测试尚未通过，第二台实体设备与手机开发尚未验收。详细证据见 [迁移记录](CLOUD_MIGRATION_2026-10-29.md)。
 
-## 从哪里进入
+## 一、启动云端工作区
 
-- **当前主要工作区：**打开 [我的 Codespaces](https://github.com/codespaces)，选择 **IBKR Cloud Development v2**。换设备也进入同一个工作区。旧的 **IBKR Cloud Development** 已停止并保留，暂不要在旧工作区继续改文件。
-- **目前已验证的网页编辑入口：**[JupyterLab 文件与终端](https://ibkr-cloud-development-v2-96jq957j797v39x64-8888.app.github.dev/lab)。它使用个人工作区的私有端口，需登录自己的 GitHub 账号；新会话可能还需要 Jupyter 的当次登录令牌，优先使用下面的官方启动入口，不公开分享带令牌的链接。工作区停止或服务未启动时不可用。本次重建后的网页仍待解锁复测。
-- **可收藏的官方启动入口，尚在验收：**[用 JupyterLab 打开该工作区](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter)。此入口由 GitHub 官方支持，但本工作区尚未完成从停止到可编辑的完整验证。
-- **只看代码或小幅修改文档：**[GitHub 浏览器编辑器](https://github.dev/Silent-Torrent/ibkr-founders-season) 可以编辑仓库文件，不提供本项目的运行终端。
-- **首次创建或原工作区被删除后：**[创建项目 Codespace](https://codespaces.new/Silent-Torrent/ibkr-founders-season)，选择 `main`、仓库开发容器配置、2 核机器；先核对免费额度与预算。JupyterLab 4.6.4 和依赖版本已固定在容器配置，实际重建及依赖检查已通过。
+打开 [启动 IBKR Cloud Development v2](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter)，登录自己的 GitHub 账号，等待工作区启动。这个官方入口会启动 JupyterLab 服务；其内嵌页面目前可能出现 **Blocked** 或空白框，接着使用第二步的独立入口即可。
+
+在 [我的 Codespaces](https://github.com/codespaces) 中也可以核对 **IBKR Cloud Development v2** 是否已启动。旧的 **IBKR Cloud Development** 已停止并保留，暂不要在旧工作区继续改文件。
+
+## 二、打开编辑器并保存
+
+启动后，打开 [JupyterLab 文件与终端](https://ibkr-cloud-development-v2-96jq957j797v39x64-8888.app.github.dev/lab)。这是独立的私有 HTTPS 编辑页，按正常 GitHub 登录跳转即可。本次恢复流程无需手工输入 Jupyter 令牌，也没有修改浏览器安全设置。
+
+在左侧文件列表打开项目文件，修改后选择 **File → Save**。如果出现旧目录提示，点击 **Close** 关闭提示，再从左侧进入项目目录；列表没有更新时刷新网页后重试。工作区内的项目路径是 `/workspaces/ibkr-founders-season`。本次已实测重建及空闲停止恢复后重新打开原文档、追加内容、保存并推送。
+
+只查看代码或小幅修改文档，也可用 [GitHub 浏览器编辑器](https://github.dev/Silent-Torrent/ibkr-founders-season)，但它没有本项目的运行终端。原工作区被删除后，可 [创建项目 Codespace](https://codespaces.new/Silent-Torrent/ibkr-founders-season)，选择 `main`、仓库开发容器配置和 2 核机器，并核对额度。JupyterLab 4.6.4 和依赖已固定，实际容器重建及依赖检查通过。
 
 电脑浏览器是主要入口，GitHub 推荐 Chrome/Edge。手机适合查看和轻量修改；目前没有第二台实体设备或手机开发验收结果。
 
-## 打开、修改和运行
+## 三、运行和预览
 
-在 JupyterLab 左侧文件列表打开项目文件，修改后选择 **File → Save**。本次已实测创建文档、保存并读回一致；网页终端也已成功构建项目。
-
-打开 **File → New → Terminal**，确认位于 `ibkr-founders-season` 项目目录，再运行：
+**工作区停止后，应用预览不会自动重新运行。** 每次恢复后，在 JupyterLab 打开 **File → New → Terminal**，运行：
 
 ```sh
+cd /workspaces/ibkr-founders-season
 npm run dev:cloud
 ```
 
@@ -29,20 +34,21 @@ npm run dev:cloud
 查看构建后的版本时，在另一个终端运行：
 
 ```sh
+cd /workspaces/ibkr-founders-season
 npm run build && npm run preview:cloud
 ```
 
-[构建预览 4173](https://ibkr-cloud-development-v2-96jq957j797v39x64-4173.app.github.dev) 已通过直接私有 HTTPS 访问和文件选择器导入验收：虚构样例显示内部检查通过、+$740、+7.7% 和 3 个标的。两种预览都应保持 **Private**。源码公开不会要求个人开发预览公开；Safari/iPhone 正式兼容性须另外测试构建版本。
+[构建预览 4173](https://ibkr-cloud-development-v2-96jq957j797v39x64-4173.app.github.dev) 已通过直接私有 HTTPS 访问和文件选择器导入验收；停止恢复并重启服务后再次导入也通过，虚构样例显示内部检查通过、+$740、+7.7% 和 3 个标的。两种预览都应保持 **Private**。源码公开不会要求个人开发预览公开；Safari/iPhone 正式兼容性须另外测试构建版本。
 
 ## 保存到云端与换设备
 
-**保存文件只保存到当前 Codespace；提交并推送才会进入 GitHub 的长期版本历史。** 本次已在 JupyterLab 网页终端完成“保存 → 提交 → 推送”验收，使用正常 HTTPS 登录凭据，无需复制密钥或开启临时密钥转发。单独使用本机 CLI 的 SSH 会话尚有凭据继承限制，不影响已验证的网页终端路径。
+**保存文件只保存到当前 Codespace；提交并推送才会进入 GitHub 的长期版本历史。** 本次已在 JupyterLab 网页终端完成“保存 → 提交 → 推送”验收，并在重建及停止恢复后重复通过，使用正常 HTTPS 登录凭据，无需复制密钥或开启临时密钥转发。单独使用本机 CLI 的 SSH 会话尚有凭据继承限制，不影响已验证的网页终端路径。
 
 日常修改后，在网页终端先运行 `git status` 和 `git diff` 查看改动，再只提交本次需要的文件，填写说明，执行 `git push origin main`。具体文件名和提交说明由当次开发任务确定，不要盲目把所有文件加入。推送后在 GitHub 仓库核对最新提交，而不只看编辑器的“已保存”。
 
-提交前确认没有真实券商报表、密钥或个人资料；不要把 SSH 私钥或凭据粘贴进网页终端、文档或仓库。当前工作区已重建并恢复后台服务，网页最终复测仍待解锁完成；继续使用它即可。
+提交前确认没有真实券商报表、密钥或个人资料；不要把 SSH 私钥或凭据粘贴进网页终端、文档或仓库。当前工作区的重建、网页编辑和停止恢复已通过；继续使用同一个工作区即可。
 
-换设备时登录同一 GitHub 账号并恢复 **IBKR Cloud Development v2**。重建后后台及预览服务已恢复，重新打开网页的最后检查仍待完成；停止后预览服务通常需要重新运行。如果还使用本机副本，先拉取 GitHub 最新版本再修改，避免同时改同一文件。
+换设备时登录同一 GitHub 账号，按“一、启动 → 二、编辑 → 三、运行”进入 **IBKR Cloud Development v2**。这套恢复流程已在当前 Mac 浏览器验证，第二台实体设备仍需实测。停止后请重新运行预览命令。如果还使用本机副本，先拉取 GitHub 最新版本再修改，避免同时改同一文件。
 
 工作结束在 [我的 Codespaces](https://github.com/codespaces) 选择 **Stop codespace**。关闭浏览器不会立即停止云电脑。默认停止后 30 天不再使用的工作区可能自动删除，未推送工作不应只留在其中。
 
