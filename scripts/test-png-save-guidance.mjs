@@ -279,6 +279,45 @@ export async function testPngSaveGuidance({
     assert.equal(starts.length, 1, 'PNG guidance started an extra unrequested download.')
     assert(progress.every(({ guid }) => guid === namedDownload.guid))
     await setLocale('en')
+    // Render all output combinations via the same UI and real browser encoder.
+    await setLocale('en')
+    for (const [size,width,height] of [['portrait',1200,1500],['story',1080,1920],['3x4',1080,1440]]) {
+      for (const template of ['feast','noodles']) {
+        for (const amount of [false,true]) {
+          await evaluate(`(() => {
+            for (const [selector,value] of [['[data-card-size]',${JSON.stringify(size)}],['[data-card-template]',${JSON.stringify(template)}]]) {
+              const el=document.querySelector(selector); el.value=value; el.dispatchEvent(new Event('change',{bubbles:true}));
+            }
+            const box=document.querySelector('[data-card-amount]'); if(box.checked!==${amount}) box.click();
+          })()`)
+          await evaluate(`(() => {
+            globalThis.__pnlArenaCanvasCapture.fillText.length=0;
+            document.querySelector('[data-action="download-card"]').click();
+          })()`)
+          const card=await waitForPageValue(`(() => {
+            const img=document.querySelector('.png-fallback-panel img');
+            return {width:img?.naturalWidth,height:img?.naturalHeight,
+              name:document.querySelector('[data-png-filename="full"]')?.textContent,
+              texts:[...globalThis.__pnlArenaCanvasCapture.fillText]};
+          })()`,v=>v?.width>0,'batch medal PNG')
+          assert.deepEqual([card.width,card.height],[width,height])
+          assert.equal(card.name,'pnl-arena-2026-season'+(size==='portrait'?'':'-'+size)+'.png')
+          assert(card.texts.includes(template==='feast'?'Gain Day Feast':'Noodles in the Dark'))
+          assert(card.texts.includes('Not investment advice'))
+          assert.equal(card.texts.includes('+$740'),amount)
+          assert(!card.texts.some(s=>s.includes('ZZFICT')||s.includes('33,750')))
+          if(!amount)assert(!card.texts.some(s=>s.includes('$')))
+          await evaluate(`document.querySelector('.png-fallback-panel button').click()`)
+        }
+      }
+    }
+    await evaluate(`(() => {
+      for(const [selector,value] of [['[data-card-size]','portrait'],['[data-card-template]','auto']]){
+        const el=document.querySelector(selector);el.value=value;el.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      const box=document.querySelector('[data-card-amount]');if(box.checked)box.click();
+    })()`)
+    console.log('All 12 PNG size/template/amount combinations passed.')
     assert.equal(await evaluate(`document.querySelector('.data-table tbody')?.textContent ?? ''`), initialReport)
     return { locales: checkedLocales, width: 320, realLocalPreviews: blobs.length, namedDownload }
   } finally {

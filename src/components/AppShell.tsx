@@ -1,3 +1,5 @@
+import { SettingsPanel } from './Preferences'
+import { advice } from '../data/medals'
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { Locale, PageId, PortfolioReport } from '../types'
 import { t } from '../i18n'
@@ -161,8 +163,9 @@ export function AppShell({
         </header>
 
         <div className="page-content">{children}</div>
+        <SettingsPanel locale={locale} currency={report.baseCurrency} />
         <footer className="site-footer">
-          <span>{t(locale, 'footerDisclaimer')}</span>
+          <span>{t(locale, 'footerDisclaimer')} · {advice(locale)}</span>
           <button
             className="footer-privacy-button"
             data-action="open-guide"

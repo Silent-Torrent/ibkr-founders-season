@@ -1,3 +1,5 @@
+import { Settings } from './components/Preferences'
+import { defaults,type Preferences } from './lib/cardOptions'
 import { useEffect, useRef, useState } from 'react'
 import type { Locale, PageId, PortfolioReport } from './types'
 import type { MessageKey } from './i18n'
@@ -54,6 +56,21 @@ function hasSeenGettingStarted(): boolean {
 
 export default function App() {
   const [locale, setLocale] = useState<Locale>(loadStoredLocale)
+  const [prefs,setPrefs] = useState<Preferences>(() => {
+    try {
+      const raw=JSON.parse(window.localStorage.getItem('pnl-arena.settings.v1') ?? '{}')
+      const prices:Record<string,number>={}
+      for(const [k,n] of Object.entries(raw.prices??{})) if(/^[A-Z]{3}$/.test(k)&&typeof n==='number'&&n>0&&Number.isFinite(n)) prices[k]=n
+      return {roast:raw.roast!==false,amount:raw.amount===true,hideTickers:raw.hideTickers!==false,
+        colors:raw.colors==='red'||raw.colors==='green'?raw.colors:'auto',prices,
+        firstMonth:/^2026-(0[1-9]|1[0-2])$/.test(raw.firstMonth)?raw.firstMonth:undefined}
+    } catch {return defaults}
+  })
+  function updatePrefs(next:Preferences) {
+    setPrefs(next)
+    try { window.localStorage.setItem('pnl-arena.settings.v1',JSON.stringify(next)) } catch { /* session-only */ }
+  }
+  useEffect(()=>{document.documentElement.dataset.gains=prefs.colors==='auto'?(locale==='zh-CN'?'red':'green'):prefs.colors},[prefs.colors,locale])
   const [page, setPage] = useState<PageId>('ledger')
   const [report, setReport] = useState<PortfolioReport>(demoReport)
   const [isPrivacyNoticeOpen, setIsPrivacyNoticeOpen] = useState(false)
@@ -103,6 +120,7 @@ export default function App() {
       return decision
     }
 
+    if(nextReport.source==='local' && nextReport.seasonYear===2026 && !prefs.firstMonth) updatePrefs({...prefs,firstMonth:nextReport.importedAt.slice(0,7)})
     setReport(nextReport)
     setPage('ledger')
     showNotice('importSuccess', 'success')
@@ -164,7 +182,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <Settings.Provider value={{prefs,update:updatePrefs}}>
       <AppShell
         focusOnMount={focusAppOnMount}
         locale={locale}
@@ -208,6 +226,6 @@ export default function App() {
         locale={locale}
         onClose={() => setIsPrivacyNoticeOpen(false)}
       />
-    </>
+    </Settings.Provider>
   )
 }

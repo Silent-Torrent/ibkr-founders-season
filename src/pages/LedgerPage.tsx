@@ -1,3 +1,6 @@
+import {useContext} from 'react'
+import {Settings} from '../components/Preferences'
+import {ramen} from '../lib/cardOptions'
 import { useEffect, useMemo, useState } from 'react'
 import type {
   Locale,
@@ -85,6 +88,7 @@ function useRenderedSymbols(symbols: SymbolPnl[]) {
 }
 
 export function LedgerPage({ report, locale }: LedgerPageProps) {
+  const {prefs}=useContext(Settings)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterMode>('all')
   const [sort, setSort] = useState<SortMode>('pnl')
@@ -172,6 +176,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
         />
       </section>
 
+      <p className="ramen-summary">{ramen(report,locale,prefs)}</p>
       <section className="ledger-layout">
         <div className="panel table-panel">
           <div className="section-heading">

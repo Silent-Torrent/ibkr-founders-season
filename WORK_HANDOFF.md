@@ -1,5 +1,7 @@
 # Work handoff — P&L Arena / IBKR Founders Season
 
+2026-11-01 batch 1：18 条勋章规则和本地分享设置开发于独立草稿分支。D01、D02、D07、D08、R02 改为负责人执行云端 Linux Chrome 移动模拟验收，接受 Safari 特有风险。五项仍 OPEN，固定 9 OPEN / 3 CLOSED。具体验收条件见 [门禁追踪](docs/RELEASE_GATE_TRACKER.md)。
+
 ## Current status
 
 2026-10-29 cloud-development recovery: the main workspace is `IBKR Cloud Development v2` (`ibkr-cloud-development-v2-96jq957j797v39x64`); the original remains stopped. The pinned editor image was rebuilt, then the idle-stopped workspace was resumed after the user unlocked the Mac. The supported workflow is to open the official Jupyter startup URL, then open its private 8888 editor as a top-level page if the embedded frame is blank/blocked. That independent browser editor passed file open/save, terminal build and ordinary HTTPS commit/push again (`157d032`); production-preview synthetic import also passed after restarting the preview services. Keep the private ports and default authentication. The VS Code web client remains unreliable and the complete cloud Chromium regression remains blocked by OS namespace restrictions; second physical-device development is not yet tested. Follow `docs/CLOUD_DEVELOPMENT.md` for the two-step startup and service restart instructions and `docs/CLOUD_MIGRATION_2026-10-29.md` for evidence. Public source and authenticated cloud development are authorized; public application release and the 9 OPEN / 3 CLOSED product gates remain separate.

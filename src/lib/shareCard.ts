@@ -1,3 +1,5 @@
+import {cardBadges,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
+import {advice} from '../data/medals'
 import type { Locale, PortfolioReport } from '../types'
 import { formatCurrency, formatDate, formatPercent } from './format'
 import { getDivision } from './season'
@@ -136,13 +138,14 @@ function drawArenaMark(
 export async function downloadSeasonCard(
   report: PortfolioReport,
   locale: Locale,
-  { signal }: { signal?: AbortSignal } = {},
+  { signal,prefs=defaults,size='portrait',template='auto' }: { signal?: AbortSignal; prefs?:Preferences; size?:CardSize; template?:Template } = {},
 ): Promise<SeasonCardDelivery | null> {
-  const filename = `pnl-arena-${report.seasonYear}-season.png`
+  const filename = `pnl-arena-${report.seasonYear}-season${size==='portrait'?'':'-'+size}.png`
   if (signal?.aborted) return { filename, kind: 'cancelled' }
   const canvas = document.createElement('canvas')
-  canvas.width = 1200
-  canvas.height = 1500
+  const [width,height]=dimensions[size]
+  canvas.width = width
+  canvas.height = height
   const context = canvas.getContext('2d')
   if (!context) return null
 
@@ -152,92 +155,49 @@ export async function downloadSeasonCard(
   const sourceLabel = getShareSourceLabel(report, locale)
   const qualityLabel = getShareQualityLabel(report, locale)
 
-  const background = context.createLinearGradient(0, 0, 1200, 1500)
-  background.addColorStop(0, '#070a0f')
-  background.addColorStop(0.55, '#101722')
-  background.addColorStop(1, '#07110f')
-  context.fillStyle = background
-  context.fillRect(0, 0, canvas.width, canvas.height)
-
-  context.strokeStyle = 'rgba(255,255,255,0.08)'
-  context.lineWidth = 2
-  roundedRect(context, 72, 72, 1056, 1356, 44)
+  if (document.fonts) await document.fonts.load('30px ArenaSeason')
+  if (signal?.aborted) return { filename, kind: 'cancelled' }
+  const theme=cardTheme(report,locale,prefs,template)
+  const background=context.createLinearGradient(0,0,width,height)
+  background.addColorStop(0,theme.feast?'#4a2c1c':'#222637')
+  background.addColorStop(1,theme.feast?'#201710':'#0c101a')
+  context.fillStyle=background
+  context.fillRect(0,0,width,height)
+  context.strokeStyle=theme.feast?'#e6b869':'#677593'
+  context.lineWidth=3
+  roundedRect(context,50,50,width-100,height-100,36)
   context.stroke()
-
-  context.fillStyle = '#8aa0b5'
-  context.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(`${report.seasonYear} ${t(locale, 'seasonLabel').toUpperCase()}`, 120, 150)
-
-  context.fillStyle = '#f3f7fb'
-  context.font = '700 72px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(t(locale, 'seasonPnl'), 120, 270)
-
-  context.fillStyle = report.seasonPnl >= 0 ? '#62e6ac' : '#ff7d86'
-  context.font = '800 126px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(formatCurrency(report.seasonPnl, currency, locale), 120, 410)
-
-  context.fillStyle = '#a8b6c5'
-  context.font = '600 38px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(`${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`, 120, 485)
-  context.fillText(`${t(locale, 'division')}: ${division}`, 120, 545)
-
-  const cards = [
-    {
-      label: t(locale, 'stocks'),
-      value: formatCurrency(report.stockPnl, currency, locale),
-      pnl: report.stockPnl,
-    },
-    {
-      label: t(locale, 'options'),
-      value: formatCurrency(report.optionPnl, currency, locale),
-      pnl: report.optionPnl,
-    },
-  ]
-
-  cards.forEach((card, index) => {
-    const x = 120 + index * 500
-    roundedRect(context, x, 630, 460, 190, 28)
-    context.fillStyle = 'rgba(255,255,255,0.045)'
-    context.fill()
-    context.fillStyle = '#91a2b3'
-    context.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(card.label, x + 36, 690)
-    context.fillStyle = card.pnl >= 0 ? '#62e6ac' : '#ff7d86'
-    context.font = '750 58px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(card.value, x + 36, 775)
-  })
-
-  const rows = [
-    { label: t(locale, 'dataThrough'), value: formatDate(report.endDate, locale) },
-    { label: t(locale, 'sourceType'), value: sourceLabel },
-    { label: t(locale, 'trustCalculationCheck'), value: qualityLabel },
-  ]
-
-  rows.forEach((row, index) => {
-    const y = 885 + index * 120
-    context.fillStyle = '#718397'
-    context.font = '650 25px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(row.label, 120, y)
-    context.fillStyle = '#f3f7fb'
-    context.font = '750 48px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(row.value, 120, y + 52)
-  })
-
-  context.fillStyle = '#6f8193'
-  context.font = '500 25px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(t(locale, 'shareNoHoldings'), 120, 1285)
+  function line(text:string,y:number,px:number,color='#f5efe6') {
+    context!.font=`650 ${px}px ArenaSeason, sans-serif`
+    context!.fillStyle=color
+    context!.fillText(text,100,height*y,width-200)
+  }
+  line(`${report.seasonYear} ${t(locale,'seasonLabel').toUpperCase()}`,.10,32)
+  line(division,.15,40)
+  line(sourceLabel,.19,31)
+  line(theme.title,.32,72)
+  line(formatShareSeasonReturn(report.seasonReturn,locale),.46,126)
+  line(theme.line,.52,32)
+  if(prefs.amount)line(formatCurrency(report.seasonPnl,currency,locale),.58,48)
+  line(t(locale,'trustCalculationCheck'),.63,24)
+  line(qualityLabel,.66,26)
+  line(t(locale,'dataThrough')+' · '+formatDate(report.endDate,locale),.70,26)
+  cardBadges(report,locale,prefs).forEach((badge,i)=>line(badge,.735+i*.023,24))
+  line(ramen(report,locale,prefs),.82,30)
+  line(t(locale,'shareNoHoldings'),.85,24)
+  line(advice(locale),.89,28)
 
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
   context.font = '700 30px -apple-system, BlinkMacSystemFont, sans-serif'
   const brand = 'P&L ARENA'
-  const labelRight = 1080
+  const labelRight = width-100
   const metrics = context.measureText(brand)
   const labelLeft = labelRight - Math.max(metrics.width, metrics.actualBoundingBoxLeft)
   const markScale = 2.25
   // Place the entire 24-unit mark before the label, including room for its stroke.
-  drawArenaMark(context, labelLeft - 24 - 24 * markScale, 1329, markScale)
-  context.fillText(brand, labelRight, 1367)
+  drawArenaMark(context, labelLeft - 24 - 24 * markScale, height*.94-27, markScale)
+  context.fillText(brand, labelRight, height*.94+11)
   context.textAlign = 'left'
 
   const dataUrl = canvas.toDataURL('image/png')
@@ -274,16 +234,17 @@ export async function downloadSeasonCard(
   return { filename, kind: 'downloadStarted' }
 }
 
-export function buildSeasonSummary(report: PortfolioReport, locale: Locale): string {
+export function buildSeasonSummary(report: PortfolioReport, locale: Locale, prefs=defaults): string {
   return [
     `${report.seasonYear} ${t(locale, 'seasonLabel')}`,
-    `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
+    prefs.amount && `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`,
-    `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
+    prefs.amount && `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'dataThrough')}: ${report.endDate}`,
     `${t(locale, 'sourceType')}: ${getShareSourceLabel(report, locale)}`,
     `${t(locale, 'trustCalculationCheck')}: ${getShareQualityLabel(report, locale)}`,
     t(locale, 'shareNoHoldings'),
+    advice(locale),
   ]
     .filter(Boolean)
     .join('\n')

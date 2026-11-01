@@ -2068,23 +2068,12 @@ try {
   )
   const capturedCanvasText = canvasCapture.fillText
   const expectedCanvasText = [
-    '2026 FOUNDERS SEASON',
-    'Season P&L',
-    '+$740',
-    'Season return: +7.7%',
-    'Division: Retail League',
-    'Stocks',
-    '+$168',
-    'Options',
-    '+$450',
-    'Data through',
-    'Aug 15, 2026',
-    'Source',
-    'Fully synthetic test',
-    'Internal calculation check',
-    'Internal checks passed',
+    '2026 FOUNDERS SEASON', 'Retail League', 'Fully synthetic test', 'Gain Day Feast',
+    '+7.7%', 'The market has a cure for swagger.', 'Internal calculation check',
+    'Internal checks passed', 'Data through · Aug 15, 2026',
+    'Fees in ramen · Insufficient data',
     'Excludes holdings, account identifiers, and exact net liquidation value.',
-    'P&L ARENA',
+    'Not investment advice', 'P&L ARENA',
   ]
   assert.deepEqual(
     capturedCanvasText,
@@ -2480,9 +2469,12 @@ try {
   assert.equal(refreshState.seenGuide, 'seen', 'The explicit first-use choice was not remembered after refresh.')
   assert.deepEqual(
     refreshState.storageKeys,
-    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1'],
+    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1', 'pnl-arena.settings.v1'],
     'The browser persisted data beyond the two approved non-financial preferences.',
   )
+  const savedPrefs = await evaluate("JSON.parse(localStorage.getItem('pnl-arena.settings.v1'))")
+  assert.deepEqual(savedPrefs, {roast:true,amount:false,hideTickers:true,colors:'auto',prices:{},
+    ...(savedPrefs.firstMonth ? {firstMonth:'2026-08'} : {})})
   assert.deepEqual(refreshState.sessionStorageKeys, [], 'The browser wrote sessionStorage data.')
   assert.deepEqual(refreshState.indexedDbNames, [], 'The browser created an IndexedDB database.')
   assert.deepEqual(refreshState.cacheKeys, [], 'The browser created a Cache Storage entry.')
@@ -3154,6 +3146,7 @@ try {
   })
   const nonGetRequests = requests.filter(({ method }) => method?.toUpperCase() !== 'GET')
   const allowedLocalPathPatterns = [
+    /^\/assets\/season-ui-[A-Za-z0-9_-]+\.woff$/,
     /^\/$/,
     /^\/index\.html$/,
     /^\/favicon\.svg$/,

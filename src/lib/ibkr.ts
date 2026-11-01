@@ -1,3 +1,4 @@
+import { medalIndex } from './medalRules'
 import type {
   AssetClass,
   OptionEvent,
@@ -477,6 +478,7 @@ interface HeaderBlockState {
 }
 
 interface StatementIndex {
+  medals: ReturnType<typeof medalIndex>
   bofAccountIds: string[]
   eofAccountIds: string[]
   bofPeriodConflict: boolean
@@ -511,6 +513,7 @@ interface StatementIndexBuilder {
 }
 
 function createStatementIndexBuilder(): StatementIndexBuilder {
+  const medals = medalIndex()
   const store = new Map<string, SectionRecord[]>()
   const headersBySection = new Map<string, HeaderState>()
   const sectionNames = new Set<string>()
@@ -531,6 +534,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
   } | undefined
 
   const visit = (row: string[], rowNumber: number): void => {
+    medals.visit(row)
     const rawSection = row[0]?.trim() ?? ''
     const rawSectionUpper = rawSection.toUpperCase()
 
@@ -760,6 +764,7 @@ function createStatementIndexBuilder(): StatementIndexBuilder {
   return {
     visit,
     finish: (rowCount) => ({
+      medals,
       bofAccountIds: [...bofAccountIds],
       eofAccountIds: [...eofAccountIds],
       bofPeriodConflict,
@@ -5666,6 +5671,7 @@ function parseIndexedStatement(
     KNOWN_SYNTHETIC_STATEMENTS.has(source.knownSyntheticIdentity())
 
   const report: PortfolioReport = {
+    medalValues: statementIndex.medals.finish(endIso,baseCurrency),
     source: isKnownSyntheticStatement ? 'synthetic' : 'local',
     fingerprint,
     accountComparisonKey: sha256Hex(

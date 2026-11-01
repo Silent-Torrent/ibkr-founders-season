@@ -1,3 +1,5 @@
+import { tr } from '../data/medals'
+import { MedalWall } from '../components/MedalWall'
 import type { Locale, PortfolioReport, TrophyDefinition } from '../types'
 import type { MessageKey } from '../i18n'
 import { t } from '../i18n'
@@ -106,6 +108,8 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
         </div>
       </div>
 
+      <MedalWall locale={locale} report={report} />
+      <details><summary>{tr(locale,'旧版成就档案','舊版成就檔案','Legacy achievement archive')}</summary>
       <section aria-label={t(locale, 'trophiesTitle')} className="trophy-grid" role="list">
         {presentations.map(({ status, trophy }) => {
           return (
@@ -148,7 +152,7 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
             </article>
           )
         })}
-      </section>
+      </section></details>
     </>
   )
 }

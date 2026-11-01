@@ -1,3 +1,7 @@
+import {useContext} from 'react'
+import {Settings} from './Preferences'
+import {cardBadges,cardTheme,ramen,type Template,type CardSize} from '../lib/cardOptions'
+import {advice,tr} from '../data/medals'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
@@ -43,7 +47,21 @@ const cardDeliveryStatusKeys = {
   preview: 'shareCardPreviewReady',
 } as const
 
-export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
+export function ShareCardPreview({report,locale}:ShareCardPreviewProps){
+  const {prefs,update}=useContext(Settings)
+  const [size,setSize]=useState<CardSize>('portrait')
+  const [template,setTemplate]=useState<Template>('auto')
+  return <><div className="card-options">
+    <label>{tr(locale,'图片尺寸','圖片尺寸','Image size')} <select data-card-size value={size} onChange={e=>setSize(e.target.value as CardSize)}><option value="portrait">1200×1500</option><option value="story">1080×1920</option><option value="3x4">1080×1440</option></select></label>
+    <label>{tr(locale,'模板','範本','Template')} <select data-card-template value={template} onChange={e=>setTemplate(e.target.value as Template)}><option value="auto">{tr(locale,'自动','自動','Automatic')}</option><option value="feast">{tr(locale,'吃肉','吃肉','Gain Day Feast')}</option><option value="noodles">{tr(locale,'关灯吃面','關燈吃麵','Noodles in the Dark')}</option></select></label>
+    <label><input type="checkbox" data-card-amount checked={prefs.amount} onChange={e=>update({...prefs,amount:e.target.checked})}/>{tr(locale,'显示金额','顯示金額','Show amounts')}</label>
+    <label><input type="checkbox" checked={prefs.hideTickers} onChange={e=>update({...prefs,hideTickers:e.target.checked})}/>{tr(locale,'隐藏股票代码','隱藏股票代碼','Hide tickers')}</label>
+  </div><CardPreview key={JSON.stringify([size,template,prefs])} report={report} locale={locale} size={size} template={template}/></>
+}
+
+function CardPreview({ report, locale,size,template }: ShareCardPreviewProps & {size:CardSize;template:Template}) {
+  const {prefs}=useContext(Settings)
+  const theme=cardTheme(report,locale,prefs,template)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const [cardStatus, setCardStatus] = useState<CardDeliveryStatus>('idle')
   const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
@@ -169,7 +187,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
       activeRequestRef.current === requestedContext && downloadRequestRef.current === controller
     setCardStatus('preparing')
     try {
-      const result = await downloadSeasonCard(report, locale, { signal: controller.signal })
+      const result = await downloadSeasonCard(report, locale, { signal: controller.signal, prefs, size, template })
 
       if (!isCurrent()) {
         if (result?.kind === 'preview') URL.revokeObjectURL(result.previewUrl)
@@ -205,7 +223,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
     setCopyStatus('copying')
     let nextStatus: 'copied' | 'failed'
     try {
-      await navigator.clipboard.writeText(buildSeasonSummary(report, locale))
+      await navigator.clipboard.writeText(buildSeasonSummary(report, locale,prefs))
       nextStatus = 'copied'
     } catch {
       nextStatus = 'failed'
@@ -321,7 +339,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             readOnly
             ref={manualTextRef}
             spellCheck={false}
-            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale)}
+            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale,prefs)}
           />
           <button
             className="secondary-button"
@@ -405,7 +423,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         </div>
       ) : null}
 
-      <div className="share-card-preview">
+      <div className={'share-card-preview '+(theme.feast?'feast':'noodles')}>
         <div className="share-card-top">
           <div>
             <span>{report.seasonYear}</span>
@@ -416,10 +434,12 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             <span>P&amp;L ARENA</span>
           </span>
         </div>
-        <p>{t(locale, 'seasonPnl')}</p>
+        <p>{theme.title}</p>
         <div className={`share-pnl ${pnlClass(report.seasonPnl)}`}>
-          {formatCurrency(report.seasonPnl, report.baseCurrency, locale)}
+          {formatShareSeasonReturn(report.seasonReturn,locale)}
         </div>
+        <p>{theme.line}</p>
+        {prefs.amount&&<strong>{formatCurrency(report.seasonPnl,report.baseCurrency,locale)}</strong>}
         <div className="share-grid">
           <div>
             <span>{t(locale, 'seasonReturn')}</span>
@@ -440,7 +460,8 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             <strong>{qualityLabel}</strong>
           </div>
         </div>
-        <div className="share-card-bottom">
+        <p>{cardBadges(report,locale,prefs).join(' · ')}</p><p>{ramen(report,locale,prefs)}</p>
+        <div className="share-card-bottom"><span>{advice(locale)}</span>
           <span>{t(locale, 'dataThrough')} {formatDate(report.endDate, locale)}</span>
           <span>{t(locale, 'shareNoHoldings')}</span>
         </div>

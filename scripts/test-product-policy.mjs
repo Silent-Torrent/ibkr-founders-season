@@ -397,7 +397,7 @@ try {
   )
   assert.ok(smallValueLedger.includes('-$0.40'), 'The Ledger hid a small loss.')
   assert.ok(smallValueLedger.includes('+0.04%'), 'The Ledger hid a small positive return.')
-  const smallValueSummary = buildSeasonSummary(smallValueReport, 'en')
+  const smallValueSummary = buildSeasonSummary(smallValueReport, 'en', {amount:true})
   assert.ok(smallValueSummary.includes('-$0.40'), 'The share summary hid a small loss.')
   assert.ok(smallValueSummary.includes('+$0.40'), 'The share summary hid a small gain.')
   assert.ok(smallValueSummary.includes('+0.04%'), 'The share summary hid a small return.')
@@ -619,7 +619,7 @@ try {
   const preferenceKeys = [...new Set(functionalSource.match(/pnl-arena\.[a-z.-]+\.v1/g) ?? [])].sort()
   assert.deepEqual(
     preferenceKeys,
-    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1'],
+    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1', 'pnl-arena.settings.v1'],
     'App persistence expanded beyond the two approved non-financial preferences.',
   )
   for (const [label, pattern] of [
@@ -643,7 +643,7 @@ try {
   const localStorageCalls = functionalSourceFiles.flatMap(({ name, source }) =>
     [...source.matchAll(/\blocalStorage\s*\.\s*(getItem|setItem|removeItem|clear|key)\s*\(/g)]
       .map((match) => ({ method: match[1], name })))
-  assert.equal(localStorageCalls.length, 4, 'The approved localStorage call surface changed.')
+  assert.equal(localStorageCalls.length, 6, 'The approved localStorage call surface changed.')
   assert.ok(
     localStorageCalls.every(({ method, name }) =>
       name.endsWith('/src/App.tsx') && (method === 'getItem' || method === 'setItem')),
