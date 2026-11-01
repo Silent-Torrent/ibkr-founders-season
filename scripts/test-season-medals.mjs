@@ -181,6 +181,12 @@ try {
       }
     }
   }
+  const {medals,local} = await vite.ssrLoadModule('/src/data/medals.ts')
+  for (const locale of ['zh-CN','zh-TW','en']) {
+    for (const medal of medals) {
+      for (const line of medal.slice(1)) assert.match(local(line,locale), /[。！？.!?]$/u, local(line,locale))
+    }
+  }
   const {Settings} = await vite.ssrLoadModule('/src/components/Preferences.tsx')
   for (const [locale, fractional] of [['en','less than 1 bowl'], ['zh-CN','不到 1 碗'], ['zh-TW','不到 1 碗']]) {
     for (const fee of [0, 0.01, 11.99, 12]) {

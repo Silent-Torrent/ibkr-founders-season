@@ -2278,6 +2278,14 @@ h2 {
   padding-bottom: 28px;
 }
 
+.trophy-hero .eyebrow {
+  margin-bottom: 12px;
+}
+
+.page-content[data-page="trophies"] {
+  padding-bottom: 4px;
+}
+
 .trophy-counter {
   text-align: right;
 }
@@ -3417,9 +3425,9 @@ h2 {
 .share-card-preview[data-size="3x4"] .share-card-face > * {grid-column:1/-1}
 .share-card-preview[data-size="3x4"] .face-title {grid-column:1;font-size:5cqw}
 .share-card-preview[data-size="3x4"] .share-pnl {grid-column:2;font-size:9cqw}
-.share-card-preview[data-size="3x4"] .face-lower {grid-template-columns:1.15fr 1fr;align-items:stretch}
+.share-card-preview[data-size="3x4"] .face-lower {grid-template-columns:minmax(0,1fr);align-items:stretch}
 .share-card-preview[data-size="3x4"] .face-lower > * {padding:2cqw;background:rgba(255,255,255,.07);border-radius:1.8cqw}
-.share-card-preview[data-size="3x4"] .face-medals {flex-direction:column;gap:1cqw}
+.share-card-preview[data-size="3x4"] .face-medals {gap:1cqw 2cqw}
 @media(max-width:780px){
   :root {--reading-floor:14px}
   small,legend {font-size:max(14px,.875em)}

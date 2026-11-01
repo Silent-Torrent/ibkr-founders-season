@@ -3164,6 +3164,13 @@ try {
     })()`)
     assert(bar.account.includes('0000') && bar.text===bar.full && bar.fits && bar.single && bar.target,
       locale+' 393px synthetic topbar: '+JSON.stringify(bar))
+    await evaluate(`document.querySelector('[data-card-size="3x4"]').click()`)
+    const lines = await evaluate(`(() => {
+      const range = document.createRange()
+      range.selectNodeContents(document.querySelector('.share-card-preview[data-size="3x4"] .face-lower p'))
+      return new Set([...range.getClientRects()].map(rect => rect.top)).size
+    })()`)
+    assert(lines >= 1 && lines <= 2, locale+' 3x4 ramen line count: '+lines)
     if (locale === 'zh-TW') {
       const loss = await evaluate(`(() => {
         const row = [...document.querySelectorAll('tbody tr')].find(r => r.querySelector('strong')?.textContent === 'FICTLOSS')
@@ -3174,8 +3181,14 @@ try {
         'Traditional Chinese fictional loss row: '+JSON.stringify(loss))
     }
   }
-  await cdp.send('Emulation.clearDeviceMetricsOverride')
   await clickPrimaryNavigation('Trophies')
+  const gaps = await evaluate(`(() => {
+    const rect = sel => document.querySelector(sel).getBoundingClientRect()
+    return [rect('.trophy-hero h1').top - rect('.trophy-hero .eyebrow').bottom,
+      rect('.batch-settings').top - rect('.page-content > details').bottom]
+  })()`)
+  assert(gaps[0] >= 12 && gaps[1] >= 0 && gaps[1] <= 24, '393px trophy gaps: '+gaps)
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
   const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
   assert.equal(await evaluate("document.querySelector('.medal.earned[data-tier=gold] summary strong')?.textContent"), 'Dividend Napper')
   assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')

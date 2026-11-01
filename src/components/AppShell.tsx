@@ -162,7 +162,7 @@ export function AppShell({
           </div>
         </header>
 
-        <div className="page-content">{children}</div>
+        <div className="page-content" data-page={page}>{children}</div>
         <SettingsPanel locale={locale} currency={report.baseCurrency} />
         <footer className="site-footer">
           <span>{t(locale, 'footerDisclaimer')} · {advice(locale)}</span>

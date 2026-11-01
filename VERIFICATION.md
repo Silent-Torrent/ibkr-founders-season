@@ -551,3 +551,5 @@ The 2026-09-06 checkpoint 0.19 (`8cf0496`) follow-up closes bounded same-tab rec
 - VoiceOver was enabled for one visible cancellation path, but device audio was not captured and the complete navigation/dialog focus and spoken-reading order remains unverified. The desktop keyboard/focus pass, the 320 px simulated-width pass, and the visible VoiceOver cancellation result do not establish full real-device screen-reader accessibility.
 
 Batch 1.4 regression coverage: `npm run test:medals` checks fees below one bowl, medal copy in both tones across three locales, and exact reconciliation of the complete fictional fixture. The browser import check uses that same CSV at 393px to inspect the Traditional Chinese loss color for FICTLOSS and the earned gold Dividend Napper badge.
+
+Batch 1.5 checks the trophy heading and archive spacing at 393px, measures the 3:4 preview ramen line count in all three locales after a fictional import, and checks sentence endings in every medal description.

@@ -1,6 +1,6 @@
 import {ribbon,seal,sealLines} from './medalArt'
 import {cardMedals,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
-import {advice,tr} from '../data/medals'
+import {advice} from '../data/medals'
 import type { Locale, PortfolioReport } from '../types'
 import { formatCurrency, formatDate, formatPercent } from './format'
 import { getDivision } from './season'
@@ -251,23 +251,17 @@ export async function downloadSeasonCard(
     textAt(t(locale,'trustCalculationCheck'),98,697,29)
     textAt(qualityLabel,98,778,43,430)
     textAt(date,550,776,30,425)
-    panel(65,865,500,323)
-    panel(585,865,430,323)
-    textAt(t(locale,'trophiesTitle'),95,938,35,439,accent)
-    badges.forEach((badge,i)=>medalAt(badge,95,1018+i*61,438,29))
-    if(!badges.length) textAt(t(locale,'trophyStatusNotMet'),95,1034,31,438)
-    textAt(tr(locale,'手续费换算','手續費換算','Fees in ramen'),618,938,35,366,accent)
-    const words=locale==='en'?cost.split(' '):Array.from(cost)
+    panel(65,850,950,224)
+    textAt(t(locale,'trophiesTitle'),95,908,35,890,accent)
+    badges.forEach((badge,i)=>medalAt(badge,95,959+i*47,890,29))
+    if(!badges.length) textAt(t(locale,'trophyStatusNotMet'),95,999,31,890)
+    panel(65,1090,950,116)
     context.font='650 33px ArenaSeason, sans-serif'
-    const target=Math.min(366,Math.ceil(context.measureText(cost).width / Math.max(1,Math.ceil(context.measureText(cost).width/366)))+12)
-    let row='', baseline=1018
-    for(const word of words) {
-      const next=row+(row&&locale==='en'?' ':'')+word
-      if(row && context.measureText(next).width>target && !/^[。，！？、]/.test(word)) {
-        textAt(row,618,baseline,33,366); baseline+=49;row=word
-      } else row=next
-    }
-    textAt(row,618,baseline,33,366)
+    // Keep the conversion and its quip intact when they need separate lines.
+    const pause = locale === 'en' ? cost.indexOf('. ') : cost.indexOf('，')
+    const costLines = context.measureText(cost).width > 890 && pause >= 0
+      ? [cost.slice(0,pause+1), cost.slice(pause+1).trimStart()] : [cost]
+    costLines.forEach((line,i)=>textAt(line,95,costLines.length===1?1160:1139+i*42,33,890))
     textAt(t(locale,'shareNoHoldings'),82,1251,25)
     textAt(advice(locale),82,1315,28)
   }
