@@ -368,3 +368,9 @@ docs/
 2. Independently test D07's actual VoiceOver speech/focus sequence and D08's physical rotation on the replacement phone with the verified production build, recording the tested build, device, steps and results separately and restoring its own settings. Older 0.24/0.30 audio confirmations and 0.33/0.38 visual results do not establish a pass for the current build or device. D03 keyboard focus, D04 Simplified Chinese native touch copying and D05 copy-action geometry remain closed only within their recorded 2026-09-09 paths; D07 remains open. D01 Worker peak/phone threshold, D02 real iOS/Safari 16.4 and D06 old Photos-card identification also remain open in the [fixed gate tracker](docs/RELEASE_GATE_TRACKER.md).
 3. Keep F01 open until a qualified completed-Exercise Activity Statement CSV shape is independently established; only then extend parser compatibility from that evidence. R03 requires the user's explicit deployment decision before R01 deployed Network/Storage/header checks and R02 HTTPS native file sharing/exact-name acceptance can run. L currently freezes deployment.
 4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.
+
+### 手机体验用虚构对账单
+
+[下载完整虚构 CSV](tests/fixtures/full-season-medals-fictional.csv)，在 Import 页用文件选择器打开。GitHub 网页中请选择 **Download raw file**。这是 2026 YTD 示例，仅在应用支持的对应赛季内导入；包含明显虚构的账户、USD、MTM、订单和期权事件。勋章属于示例，原始 CSV 只在浏览器内解析。
+
+`tests/fixtures/season-medals-fictional.csv` 是按 Scenario 分组的规则单测材料，不是一份可导入的对账单。

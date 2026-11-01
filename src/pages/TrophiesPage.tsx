@@ -84,8 +84,8 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
     trophy,
   }))
   const unlocked = presentations.filter(({ status }) => status === 'unlocked').length
-  const seasonCount = isSynthetic ? 0 : report.medalValues?.filter(v=>v!=null && v!==0).length ?? 0
-  const counterLabel = t(locale, isSynthetic ? 'achievementPreview' : 'trophyCounterLabel')
+  const seasonCount = report.medalValues?.filter(v=>v!=null && v!==0).length ?? 0
+  const counterLabel = isSynthetic ? tr(locale,'虚构示例勋章','虛構範例勳章','Fictional sample medals') : t(locale,'trophyCounterLabel')
 
   return (
     <>

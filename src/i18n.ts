@@ -194,7 +194,7 @@ const en = {
   trophyCounterLabel: 'Local achievements',
   achievementPreview: 'Achievement preview',
   trophyDemoNotice:
-    'Demo and fully synthetic test data are preview-only and do not earn achievements.',
+    'These medals illustrate a fictional season. They belong to the sample, not to a personal record.',
   trophyLocalNotice:
     'Local achievements are calculated from a user-supplied, self-reported statement in this tab. They are not broker-verified or official awards.',
   shareableEyebrow: 'SHAREABLE',
@@ -523,7 +523,7 @@ const zhCN: typeof en = {
   trophiesSubtitle: '盈亏必须严肃，华尔街可以荒诞。',
   trophyCounterLabel: '本机成就',
   achievementPreview: '成就预览',
-  trophyDemoNotice: '演示数据和全虚构测试数据都只用于预览，不会获得成就。',
+  trophyDemoNotice: '点亮的勋章属于这份虚构示例，不计入个人记录。',
   trophyLocalNotice: '本机成就根据用户在当前标签页提供的自报报表计算，不是券商验证或官方授予。',
   shareableEyebrow: '可分享战绩',
   pngLocalEyebrow: 'PNG · 本机生成',
@@ -842,7 +842,7 @@ const zhTW: typeof en = {
   trophiesSubtitle: '損益必須嚴肅，華爾街可以荒誕。',
   trophyCounterLabel: '本機成就',
   achievementPreview: '成就預覽',
-  trophyDemoNotice: '示範資料和全虛構測試資料都只用於預覽，不會獲得成就。',
+  trophyDemoNotice: '點亮的勳章屬於這份虛構範例，不計入個人紀錄。',
   trophyLocalNotice: '本機成就根據使用者在目前分頁提供的自報報表計算，不是券商驗證或官方授予。',
   shareableEyebrow: '可分享戰績',
   pngLocalEyebrow: 'PNG · 本機產生',

@@ -746,6 +746,7 @@ try {
   const drawnText = []
   const gradient = { addColorStop() {} }
   const context = {
+    translate() {}, scale() {},
     arc() {},
     beginPath() {},
     createLinearGradient() { return gradient },
@@ -769,6 +770,8 @@ try {
     download: '',
     href: '',
   }
+  const originalPath=globalThis.Path2D
+  globalThis.Path2D=class Path2D {}
   const originalDocument = globalThis.document
   const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
   globalThis.document = {
@@ -905,6 +908,7 @@ try {
     assert.equal(downloadClickCount, 1, 'iOS preview fallback unexpectedly triggered a hidden download.')
     URL.revokeObjectURL(iosResult.previewUrl)
   } finally {
+    if(originalPath)globalThis.Path2D=originalPath;else delete globalThis.Path2D
     globalThis.document = originalDocument
     if (originalNavigator) {
       Object.defineProperty(globalThis, 'navigator', originalNavigator)

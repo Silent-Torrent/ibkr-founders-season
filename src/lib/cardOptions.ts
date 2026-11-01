@@ -93,7 +93,7 @@ export function medalOutcome(
   prefs: Preferences,
 ) {
   const value = report.medalValues?.[index] ?? null
-  const earned = report.source === 'local' && value !== null && value !== 0
+  const earned = value !== null && value !== 0
   let tier: number | null = null,
     detail = ''
   if (earned && value !== null) {

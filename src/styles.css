@@ -3370,3 +3370,32 @@ h2 {
 .medal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,195px),1fr));gap:12px}.medal,.batch-settings{padding:16px;border:1px solid #3b4149;border-radius:12px;background:#151b21}.medal summary,.batch-settings summary{cursor:pointer}.medal summary strong,.medal summary small{display:block;margin:5px 0}.medal svg{width:52px;color:#747a83}.medal.earned svg{color:#ffbd68}.medal.founder{border-color:#a58245}.medal-wall{margin:20px 0}.batch-settings{margin:12px 0}.batch-settings label,.card-options label{display:inline-flex;align-items:center;gap:7px;margin:8px;flex-wrap:wrap}.batch-settings input[type=number]{width:6em}.card-options{margin:12px 0}.ramen-summary{color:var(--muted);font-size:.95rem}.share-card-preview.feast{border-color:#c9984c;background:linear-gradient(145deg,#442716,#1e1814)}.share-card-preview.noodles{background:linear-gradient(145deg,#202532,#0d1016)}html[data-gains=red] .positive{color:#ff858d!important}html[data-gains=red] .negative{color:#68e3ad!important}
 
 .medal:not(.earned) svg path[stroke]{visibility:hidden}.medal[data-tier=bronze] svg{color:#d49d77}.medal[data-tier=silver] svg{color:#b9ccd7}.medal[data-tier=gold] svg,.medal.founder.earned svg{color:#f4c659}
+
+/* The preview scales with the export canvas, independent of its text height. */
+.share-card-preview[data-size] { width:100%; max-width:540px; min-height:0; margin-inline:auto; padding:0; container-type:inline-size; aspect-ratio:4/5; }
+.share-card-preview[data-size=story] { aspect-ratio:9/16; }
+.share-card-preview[data-size="3x4"] { aspect-ratio:3/4; }
+.share-card-face { position:absolute; inset:5%; display:flex; flex-direction:column; justify-content:space-between; gap:0; font-size:3cqw; line-height:1.2; }
+.share-card-face > p { margin:0; overflow-wrap:anywhere; }
+.share-card-face > p:empty {display:none}
+.share-card-face .share-pnl {font-size:11cqw;}
+.share-card-face .share-grid {display:grid;grid-template-columns:1fr 1fr;gap:1.8cqw;margin:0}
+.share-card-face .share-grid div,.share-card-face .share-grid div:last-child {padding-top:1cqw;grid-column:auto}
+.share-card-face .share-grid strong{margin-top:.4cqw;font-size:3.2cqw}
+.share-card-face .share-grid span,.share-card-face .share-card-top span,.share-card-face .share-card-top strong,.share-card-face .share-card-bottom span {font-size:2.6cqw;letter-spacing:.03em}
+.share-card-face .share-card-bottom {position:static; margin:0;gap:.8cqw;align-items:start;flex-direction:column}
+.share-card-face .share-watermark {gap:1cqw}
+.share-card-face .share-arena-mark {width:4cqw;height:4cqw}
+.card-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:8px;color-scheme:dark}
+.card-options label {margin:0;min-height:44px;display:flex;align-items:center;gap:6px;color:var(--text)}
+.card-options fieldset{grid-column:1/-1;display:flex;min-width:0;margin:0;padding:4px;gap:3px;border:1px solid var(--border-strong);border-radius:12px;background:#141a22}
+.card-options legend{padding:0 4px;font-size:.85rem;color:var(--muted)}
+.card-options button{min-height:44px;min-width:44px;flex:1;touch-action:manipulation;background:transparent;color:var(--text);border:1px solid transparent;border-radius:8px;font:inherit;font-size:.8rem;overflow-wrap:anywhere}
+.card-options button[aria-pressed=true]{background:#323c25;color:#efffb8;border-color:#a7c657}
+.card-switch{cursor:pointer;touch-action:manipulation}
+.card-switch input{appearance:none;position:relative;flex:none;width:40px;height:24px;border-radius:20px;border:1px solid #79879a;background:#222a34;margin:0}
+.card-switch input::before{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#dae1e9}
+.card-switch input:checked{background:#a9ce52;border-color:#bbdb73}
+.card-switch input:checked::before{transform:translateX(15px);background:#192117}
+.card-options :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.welcome-choice-card button {touch-action:manipulation}

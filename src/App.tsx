@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom'
 import { Settings } from './components/Preferences'
 import { defaults,type Preferences } from './lib/cardOptions'
 import { useEffect, useRef, useState } from 'react'
@@ -142,16 +143,16 @@ export default function App() {
   }
 
   function completeGettingStarted(target: 'ledger' | 'import') {
-    try {
-      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, 'seen')
-    } catch {
-      // This non-financial preference is optional; no product data is persisted.
-    }
-    setNotice(null)
-    setPage(target)
-    setFocusAppOnMount(true)
-    setFocusGuideOnMount(false)
-    setIsGettingStartedOpen(false)
+    flushSync(() => {
+      setNotice(null)
+      setPage(target)
+      setFocusAppOnMount(true)
+      setFocusGuideOnMount(false)
+      setIsGettingStartedOpen(false)
+    })
+    window.setTimeout(() => {
+      try { window.localStorage.setItem(ONBOARDING_STORAGE_KEY, 'seen') } catch { /* optional preference */ }
+    }, 0)
   }
 
   function changePage(nextPage: PageId) {

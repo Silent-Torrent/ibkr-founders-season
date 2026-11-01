@@ -137,6 +137,22 @@ try {
     assert(!text.includes('9,753')&&!text.includes('9753'))
     assert(text.includes(locale==='en'?'Not investment advice':locale==='zh-CN'?'非投资建议':'非投資建議'))
   }
+  const full=readFileSync(new URL('../tests/fixtures/full-season-medals-fictional.csv',import.meta.url))
+  const imported=await parseIbkrActivityStatementBlob(new Blob([full]),options)
+  assert.deepEqual(imported.errors,[])
+  assert.equal(imported.report.source,'synthetic')
+  assert(isWorkerParseResultWithinLimits(imported,options.currentDate.getTime()))
+  assert(imported.report.reconciliations.every(r=>r.status==='PASS_EXACT'))
+  const lit=imported.report.medalValues.filter(Boolean).length
+  assert(lit>=12)
+  assert(imported.report.events.length>=2)
+  const {demoReport}=await vite.ssrLoadModule('/src/data/demo.ts')
+  assert.equal(demoReport.medalValues.filter(Boolean).length,7)
+  assert.equal(medalOutcome(6,demoReport,'en',defaults).tier,2)
+  assert.equal(medalOutcome(0,demoReport,'en',defaults).tier,1)
+  assert(demoReport.medalValues[4]&&demoReport.medalValues[16])
+  assert.match(ramen(demoReport,'en',defaults),/12 bowls/)
+  console.log('Fictional Activity Statement: '+lit+'/18 medals. Built-in demo: 7/18.')
   console.log(count + ' fictional medal cases passed across all 18 rules.')
 } finally {
   await vite.close()

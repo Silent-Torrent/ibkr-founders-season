@@ -41,22 +41,12 @@ export function MedalWall({
                 </svg>
                 <strong>{local(m[0], l)}</strong>
                 <small>
-                  {r.source !== 'local'
-                    ? tr(l, '预览', '預覽', 'Preview')
-                    : n == null
-                      ? insufficient(l)
-                      : earned
-                        ? tier == null
-                          ? tr(l, '已获得', '已獲得', 'Earned')
-                          : local(
-                              ['铜|銅|Bronze', '银|銀|Silver', '金|金|Gold'][
-                                tier
-                              ],
-                              l,
-                            )
-                        : tr(l, '未获得', '未獲得', 'Locked')}
+                  {n == null ? insufficient(l) : !earned ? tr(l,'未获得','未獲得','Locked') :
+                    tier == null ? tr(l,'已获得','已獲得','Earned') : local(['铜|銅|Bronze','银|銀|Silver','金|金|Gold'][tier],l)}
                 </small>
               </summary>
+              {tier!=null && <p className="medal-tier">{tr(l,'等级','等級','Tier')} · {local(['铜|銅|Bronze','银|銀|Silver','金|金|Gold'][tier],l)}</p>}
+              {r.source!=='local' && <small>{tr(l,'虚构示例','虛構範例','Fictional sample')}</small>}
               <p>{local(m[1], l)}</p>
               {detail && <p>{detail}</p>}
               <p>{local(m[p.roast ? 2 : 3], l)}</p><small>{advice(l)}</small>

@@ -1235,12 +1235,16 @@ try {
     return window.scrollY;
   })()`)
   assert(welcomeScroll > 0, 'The first-use transition test could not establish a scrolled starting point.')
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   const choseImport = await evaluate(`(() => {
     const button = document.querySelector('[data-action="welcome-import"]');
     if (!(button instanceof HTMLButtonElement)) return false;
+    const start=performance.now()
     button.click();
-    return true;
+    return Boolean(document.querySelector('input[type=file]')) && performance.now()-start<250;
   })()`)
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false})
   assert.equal(choseImport, true, 'Could not choose the first-use import path.')
   await resolveFileInputNodeId()
   assert.equal(
@@ -2071,7 +2075,7 @@ try {
     '2026 FOUNDERS SEASON', 'Retail League', 'Fully synthetic test', 'Gain Day Feast',
     '+7.7%', 'The market has a cure for swagger.', 'Internal calculation check',
     'Internal checks passed', 'Data through · Aug 15, 2026',
-    'Fees in ramen · Insufficient data',
+    'Founders Season 2026', 'Fees in ramen · Insufficient data',
     'Excludes holdings, account identifiers, and exact net liquidation value.',
     'Not investment advice', 'P&L ARENA',
   ]
@@ -2427,7 +2431,7 @@ try {
     'Trophies navigation',
   )
   assert.equal(trophyState.unlocked, 0, 'Synthetic fixture unlocked a local achievement.')
-  assert(trophyState.text.includes('Achievement preview'), 'Synthetic trophy state was not labelled as a preview.')
+  assert(trophyState.text.includes('Fictional sample medals'), 'Synthetic trophy state was not labelled as a preview.')
   assert(!trophyState.text.includes('Local achievement'), 'Synthetic fixture displayed a local achievement label.')
   const lockedTrophyStyle = await evaluate(`(() => {
     const card = document.querySelector('.trophy-card.locked');
@@ -3123,6 +3127,15 @@ try {
 
   await delay(250)
 
+  await clickPrimaryNavigation('Import')
+  await cdp.send('DOM.setFileInputFiles',{
+    files:[resolve(projectRoot,'tests/fixtures/full-season-medals-fictional.csv')],nodeId:await resolveFileInputNodeId(),
+  })
+  await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','UI import of complete fictional medal statement')
+  await clickPrimaryNavigation('Trophies')
+  const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
+  assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')
+  console.log('UI file picker import: '+exampleCount+'/18 fictional medals')
   const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid]
   assert.equal(new Set(expectedDownloadGuids).size, 2, 'The two explicit PNG downloads must have distinct GUIDs.')
   assert.equal(downloadStarts.length, 2, 'An unrequested browser download was observed.')

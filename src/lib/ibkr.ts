@@ -330,6 +330,7 @@ const MATERIALIZED_SECTION_ALIASES = [
   ...OPTION_LIFECYCLE_SECTION_ALIASES,
 ]
 const KNOWN_SYNTHETIC_STATEMENTS = new Set([
+  'bc9ad0daf692b2bc730d1369e97a3a6866947c47d28f88fee3ef4a9fa02dfabc',
   'a81d783777ab4bd84bf8066764425489be96d60f67270cbbc2ffebac495a0d7f',
   '80831483527003e501aa63f1691a2f155a37b8279f68e2e3e31cb244a219d7ff',
 ])
@@ -2879,8 +2880,14 @@ function findStatementPeriod(
   return firstBofPeriod ?? {}
 }
 
-function inferEventType(value: string | undefined): OptionEvent['type'] | 'conflict' | undefined {
+function inferEventType(value: string | undefined, section?: string): OptionEvent['type'] | 'conflict' | undefined {
   if (!value) return undefined
+
+  // An Order may carry the close flag alongside a single lifecycle code.
+  if (section && normalizeKey(section) === TRADES_SECTION_KEY) {
+    if (value === 'C;Ep') return 'expiration'
+    if (value === 'C;A') return 'assignment'
+  }
 
   // Match complete event words and code tokens. Substring matching would
   // mistake "Cancelled Assignment" or "Exercise Reversal" for completed
@@ -3002,7 +3009,7 @@ function parseOptionEvents(
   for (const record of eventRecords) {
     if (record.recordType !== 'DATA') continue
     const codeMatch = fieldFor(record, ['Transaction Type', 'Type', 'Code'])
-    const type = inferEventType(codeMatch?.value)
+    const type = inferEventType(codeMatch?.value, record.section)
     if (!type) continue
     if (type === 'conflict') {
       conflictingEventType = true
@@ -3116,7 +3123,7 @@ function parseOptionEvents(
 function isOptionEventRecordCandidate(record: SectionRecord): boolean {
   if (record.recordType !== 'DATA') return false
   const type = inferEventType(
-    valueFor(record, ['Transaction Type', 'Type', 'Code']),
+    valueFor(record, ['Transaction Type', 'Type', 'Code']), record.section,
   )
   const contract = valueFor(record, ['Symbol', 'Contract'])?.trim() ?? ''
   if (!type) return false
@@ -5289,7 +5296,7 @@ function parseIndexedStatement(
   const conflictingCodeInAnyEventSection = optionMappingEventRecords.some(
     (record) =>
       isOptionEventRecordCandidate(record) &&
-      inferEventType(valueFor(record, ['Transaction Type', 'Type', 'Code'])) === 'conflict',
+      inferEventType(valueFor(record, ['Transaction Type', 'Type', 'Code']), record.section) === 'conflict',
   )
   accountingSectionConflict ||=
     lifecycleEventSection.conflict || tradeEventSection.conflict
