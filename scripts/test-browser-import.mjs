@@ -53,7 +53,7 @@ if (externalDistDirectory !== undefined) {
   assert(indexMetadata.isFile() && !indexMetadata.isSymbolicLink(), 'IBKR_BROWSER_IMPORT_DIST_DIR requires a regular index.html file.')
 }
 const measureWorkerHeap = process.argv.includes('--measure-worker-heap')
-assert(process.argv.slice(2).every((argument) => argument === '--measure-worker-heap'), 'Unknown browser test argument.')
+assert(process.argv.slice(2).every((argument) => ['--measure-worker-heap','--release-gate-evidence-only'].includes(argument)), 'Unknown browser test argument.')
 const heapQaDirectory = process.env.WORKER_HEAP_QA_DIR
 if (heapQaDirectory) {
   assert(measureWorkerHeap, 'WORKER_HEAP_QA_DIR requires --measure-worker-heap.')
@@ -722,7 +722,7 @@ async function releaseWorkerHold(ticket) {
   }
 }
 
-try {
+async function runBrowserChecks() {
   if (process.env.IBKR_BROWSER_IMPORT_SKIP_BUILD === '1') {
     assert(
       existsSync(join(productionDirectory, 'index.html')),
@@ -1177,6 +1177,21 @@ try {
     flatten: true,
     waitForDebuggerOnStart: true,
   })
+
+  async function collectEvidence() {
+    await runReleaseGateEvidence({
+      directory: process.env.RELEASE_GATE_QA_DIR, cdp, evaluate, waitForPageValue,
+      navigateAndWait, previewUrl, resolveFileInputNodeId, accessibleNodeForSelector,
+      armNextWorkerHeap, holdNextWorker, downloadStarts, downloadProgress, inspectPng,
+      full: resolve(projectRoot, 'tests/fixtures/full-season-medals-fictional.csv'),
+      capacity: capacityFixturePath, empty: emptyFixturePath,
+    })
+  }
+  if (process.argv.includes('--release-gate-evidence-only')) {
+    assert(process.env.RELEASE_GATE_QA_DIR)
+    await collectEvidence()
+    return
+  }
 
   console.log(`Opening ${previewUrl}`)
   await navigateAndWait(previewUrl)
@@ -3462,15 +3477,7 @@ try {
     'The production parser Worker chunk was not requested.',
   )
 
-  if (process.env.RELEASE_GATE_QA_DIR) {
-    await runReleaseGateEvidence({
-      directory: process.env.RELEASE_GATE_QA_DIR, cdp, evaluate, waitForPageValue,
-      navigateAndWait, previewUrl, resolveFileInputNodeId, accessibleNodeForSelector,
-      armNextWorkerHeap, holdNextWorker, downloadStarts, downloadProgress, inspectPng,
-      full: resolve(projectRoot, 'tests/fixtures/full-season-medals-fictional.csv'),
-      capacity: capacityFixturePath, empty: emptyFixturePath,
-    })
-  }
+  if (process.env.RELEASE_GATE_QA_DIR) await collectEvidence()
   console.log('Browser import, cancellation, capacity, and PNG download regression passed.')
   console.log({
     cancelledWorkerTerminated,
@@ -3509,6 +3516,10 @@ try {
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
     workerTargets: workerTargets.length,
   })
+}
+
+try {
+  await runBrowserChecks()
 } catch (error) {
   if (previewOutput) console.error(`Preview output:\n${tail(previewOutput)}`)
   if (chromeOutput) console.error(`Chrome output:\n${tail(chromeOutput)}`)

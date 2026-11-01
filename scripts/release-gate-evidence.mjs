@@ -53,9 +53,13 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
     return hit
   }
   async function tap(selector){
+    // Distinct gestures must not coalesce into a synthetic double tap.
+    await new Promise(r=>setTimeout(r,350))
     const {x,y}=await point(selector)
+    await evaluate(`(()=>{window.gateTapped=false;const el=[...document.querySelectorAll(${JSON.stringify(selector)})].find(e=>e.getClientRects().length);el.addEventListener('click',e=>window.gateTapped=e.isTrusted,{once:true,capture:true})})()`)
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]})
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+    await wait('window.gateTapped','trusted tap '+selector)
     await settle()
   }
   const action=k=>'[data-action="'+k+'"]'
@@ -136,7 +140,7 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
     await evaluate("(()=>{const el=document.querySelector('.sort-select');el.value='symbol';el.dispatchEvent(new Event('change',{bubbles:true}))})()");await settle()
     const sorted=await evaluate(rows)
     assert.equal(sorted.length,4);assert.deepEqual(sorted,[...sorted].sort())
-    await tap('.row-arrow');await wait("document.querySelector('.symbol-drawer')",'open detail');await tap('.symbol-drawer .close-button')
+    await tap('.row-arrow');await wait("document.querySelector('.symbol-drawer')",'open detail');await tap('.symbol-drawer .close-button');await wait("!document.querySelector('.symbol-drawer')",'drawer closed')
     return sorted
   })
   await check('D02 trophies PNG and clear',async()=>{
