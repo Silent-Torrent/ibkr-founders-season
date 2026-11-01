@@ -122,6 +122,8 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
       return measured
     }finally{await main.stop('cleanup');if(ticket.sampler)await ticket.sampler.stop('cleanup')}
   }
+  await navigateAndWait(previewUrl)
+  await wait("document.querySelector('meta[name=viewport]')",'production viewport')
   await phone()
   await check('D01 full fictional',()=>measure('full',full,4))
   await check('D01 maximum fictional 100000 rows 1000 events',()=>measure('maximum',capacity,500))
