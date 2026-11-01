@@ -3164,10 +3164,20 @@ try {
     })()`)
     assert(bar.account.includes('0000') && bar.text===bar.full && bar.fits && bar.single && bar.target,
       locale+' 393px synthetic topbar: '+JSON.stringify(bar))
+    if (locale === 'zh-TW') {
+      const loss = await evaluate(`(() => {
+        const row = [...document.querySelectorAll('tbody tr')].find(r => r.querySelector('strong')?.textContent === 'FICTLOSS')
+        const cell = row?.querySelector('.emphasis.negative')
+        return cell && {color:getComputedStyle(cell).color, width:cell.getBoundingClientRect().width, text:cell.textContent}
+      })()`)
+      assert(loss?.width > 0 && loss.text.includes('41') && loss.color === 'rgb(255, 126, 136)',
+        'Traditional Chinese fictional loss row: '+JSON.stringify(loss))
+    }
   }
   await cdp.send('Emulation.clearDeviceMetricsOverride')
   await clickPrimaryNavigation('Trophies')
   const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
+  assert.equal(await evaluate("document.querySelector('.medal.earned[data-tier=gold] summary strong')?.textContent"), 'Dividend Napper')
   assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')
   console.log('UI file picker import: '+exampleCount+'/18 fictional medals')
   await clickPrimaryNavigation('Import')

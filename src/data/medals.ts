@@ -90,33 +90,30 @@ export const medals = [
     'Founders 限定，2027 起绝版。|創始限定，2027 起絕版。|Class of 2026. One season only.',
     'Founders 限定，2027 起绝版。|創始限定，2027 起絕版。|Class of 2026. One season only.',
   ],
-  ...[
-    [
-      'Meme 股老兵|Meme 股老兵|Meme Stock Veteran',
-      '钻石手还是韭菜，2026 自有答案。|鑽石手還是韭菜，2026 自有答案。|The tape remembers your meme-stock era.',
-      '见证过传奇行情。|見證過傳奇行情。|You saw the story unfold.',
-    ],
-    [
-      '火星船票|火星船票|Mars Ticket',
-      '目的地火星，中转站在山顶。|目的地火星，中途在山頂轉車。|Destination Mars. Layover at the summit.',
-      '敢于追梦。|敢於追夢。|A little space-age history in your ledger.',
-    ],
-    [
-      '绊倒体幸存者|絆倒體倖存者|Semiconductor Survivor',
-      '绊倒体，狗都不碰——但你碰了。|絆倒體，連狗都繞路，你倒是來了。|Your chip trade came with a trip hazard.',
-      '站在科技主线上。|你參與過科技主線。|You traded through the chip cycle.',
-    ],
-    [
-      '老登认证|老登認證|Old-School Certified',
-      '买你的白酒去吧，老登。|老派收藏家，這枚歸你。|Your portfolio has a vintage section.',
-      '经典永不过时。|經典永不過時。|A classic entry in your trading history.',
-    ],
-  ].map(([name, roast, praise]) => [
-    name,
-    '本季交易过名单中的标的，仅记录经历|本季曾交易名單中的標的，僅記錄經歷|Records a trade in this season’s list.',
-    roast,
-    praise,
-  ]),
+  [
+    'Meme 股老兵|Meme 股老兵|Meme Stock Veteran',
+    '本季成交记录里出现过游戏驿站或 AMC 院线的股票或期权。|本季成交紀錄裡有過 GameStop 或 AMC 電影院的股票或選擇權。|A GameStop or AMC Entertainment share or option trade appears on your season statement.',
+    '别人存梗图，你存成交回单。|別人收藏迷因圖，你收藏成交單。|Everyone saved the meme. You kept the receipt.',
+    '这段网络往事，你有自己的票根。|這段網路往事，你留了一張票根。|Your ledger doubles as a little piece of internet history.',
+  ],
+  [
+    '火星船票|火星船票|Mars Ticket',
+    '本季有过SpaceX的股票或期权成交。|本季成交過SpaceX的股票或選擇權。|A share or option trade in SpaceX earns the stamp.',
+    '登机牌有了，登机口还在地球。|登機證拿到了，登機門還在地球。|Boarding pass issued. Gate still on Earth.',
+    '你的赛季手账多了一枚太空邮戳。|你的賽季手帳多了一枚太空郵戳。|A spaceport stamp for your season scrapbook.',
+  ],
+  [
+    '绊倒体幸存者|絆倒體倖存者|Semiconductor Survivor',
+    '本季成交过英伟达、超威、博通、台积电、美光或英特尔的股票或期权。|本季成交過輝達、超微、博通、台積電、美光或英特爾的股票或選擇權。|A share or option trade in Nvidia, Advanced Micro Devices, Broadcom, TSMC, Micron or Intel counts.',
+    '芯片越做越薄，你的成交单倒是厚了一页。|晶片越做越薄，你的對帳單倒是厚了一頁。|The chips got thinner. Your statement gained a page.',
+    '这一季的芯片故事，你留了一张底片。|這一季的晶片故事，你留了一張底片。|One frame of the chip story, preserved in your ledger.',
+  ],
+  [
+    '老登认证|老登認證|Old-School Certified',
+    '本季成交过可口可乐、伯克希尔 B 股、强生或宝洁的股票或对应期权。|本季成交過可口可樂、波克夏 B 股、嬌生或寶僑的股票或對應選擇權。|A share or option trade in Coca-Cola, Berkshire Class B, Johnson & Johnson or Procter & Gamble earns this stamp.',
+    '这张成交单，配黑胶唱片刚刚好。|這張成交單，配黑膠唱片剛剛好。|Your trade confirmation looks like it came with liner notes.',
+    '给你的赛季相册添了一张复古照。|替你的賽季相簿添了一張復古照。|A vintage print for your season album.',
+  ],
 ]
 export function local(s: string, l: Locale) {
   return s.split('|')[l === 'en' ? 2 : l === 'zh-TW' ? 1 : 0]

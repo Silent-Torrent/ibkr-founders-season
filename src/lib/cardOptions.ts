@@ -31,7 +31,7 @@ export function priceFor(p: Preferences, l: Locale, c: string) {
     (c === 'USD' ? (l === 'en' ? 12 : l === 'zh-TW' ? 3 : 2) : undefined)
   )
 }
-export function ramen(r: PortfolioReport, l: Locale, p: Preferences) {
+export function ramen(r: PortfolioReport, l: Locale, p: Preferences, includeQuip = true) {
   const fee = r.medalValues?.[7],
     price = priceFor(p, l, r.baseCurrency)
   if (!price)
@@ -61,12 +61,16 @@ export function ramen(r: PortfolioReport, l: Locale, p: Preferences) {
   const n =
     (a.units * 10n ** BigInt(Math.max(0, shift))) /
     (b.units * 10n ** BigInt(Math.max(0, -shift)))
-  return tr(
+  const belowOne = fee > 0 && n === 0n
+  const summary = tr(
     l,
-    `今年手续费够吃 ${n} 碗拉面，券商年终奖有你一份。`,
-    `今年手續費夠吃 ${n} 碗拉麵，券商年終獎金有你一份。`,
-    `Your fees this season = ${n} ${englishNoun(n, 'bowl')} of ramen. Your broker says thanks.`,
+    belowOne ? '今年手续费折合不到 1 碗拉面' : `今年手续费够吃 ${n} 碗拉面`,
+    belowOne ? '今年手續費換算不到 1 碗拉麵' : `今年手續費夠吃 ${n} 碗拉麵`,
+    'Your fees this season = ' + (belowOne ? 'less than 1 bowl' : `${n} ${englishNoun(n, 'bowl')}`) + ' of ramen',
   )
+  return summary + (includeQuip
+    ? tr(l, '，券商年终奖有你一份。', '，券商年終獎金有你一份。', '. Your broker says thanks.')
+    : tr(l, '。', '。', '.'))
 }
 export function cardTheme(
   r: PortfolioReport,
@@ -113,7 +117,7 @@ export function medalOutcome(
         detail = value + tr(locale, ' 个派息标的', ' 檔配息標的', ' ' + englishNoun(value,'payer'))
         break
       case 7:
-        detail = ramen(report, locale, prefs)
+        detail = ramen(report, locale, prefs, false)
         break
       case 11:
       case 12:

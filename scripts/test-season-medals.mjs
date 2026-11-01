@@ -75,7 +75,7 @@ try {
     if (i === 7)
       assert(
         ramen(report, 'en', defaults).includes(
-          String(Math.floor(n / 12)) + ' bowls',
+          n > 0 && n < 12 ? 'less than 1 bowl' : Math.floor(n / 12) + ' bowls',
         ),
       )
     counts.set(id, (counts.get(id) ?? 0) + 1)
@@ -143,6 +143,9 @@ try {
   assert.equal(imported.report.source,'synthetic')
   assert(isWorkerParseResultWithinLimits(imported,options.currentDate.getTime()))
   assert(imported.report.reconciliations.every(r=>r.status==='PASS_EXACT'))
+  const lossSymbol = imported.report.symbols.find(s => s.symbol === 'FICTLOSS')
+  assert(lossSymbol.totalYtdMtm < 0 && lossSymbol.totalRealizedYtd < 0)
+  assert.equal(medalOutcome(6, imported.report, 'zh-TW', defaults).tier, 2)
   const lit=imported.report.medalValues.filter(Boolean).length
   assert(lit>=12)
   assert(imported.report.events.length>=2)
@@ -176,6 +179,36 @@ try {
         assert(card[1].split('</summary>')[0].includes('<small>'+(ranked?tiers[tier]:earned)+'</small>'))
         if(ranked)assert(card[1].includes(' · '+tiers[tier]+'</p>'))
       }
+    }
+  }
+  const {Settings} = await vite.ssrLoadModule('/src/components/Preferences.tsx')
+  for (const [locale, fractional] of [['en','less than 1 bowl'], ['zh-CN','不到 1 碗'], ['zh-TW','不到 1 碗']]) {
+    for (const fee of [0, 0.01, 11.99, 12]) {
+      const report = {...imported.report, medalValues:[...imported.report.medalValues]}
+      report.medalValues[7] = fee
+      const prefs = {...defaults, prices:{USD:12}}
+      const badge = medalOutcome(7, report, locale, prefs)
+      assert.equal(badge.earned, fee > 0)
+      assert.equal(ramen(report, locale, prefs).includes(fractional), fee > 0 && fee < 12)
+      assert.equal(badge.detail.includes(fractional), fee > 0 && fee < 12)
+    }
+    for (const roast of [true, false]) {
+      const html = renderToStaticMarkup(createElement(Settings.Provider, {value:{prefs:{...defaults,roast}}},
+        createElement(MedalWall,{report:imported.report,locale})))
+      const cards = [...html.matchAll(/<details\b[^>]*>([\s\S]*?)<\/details>/g)]
+      assert.equal(cards.length, 18)
+      const hotRules = new Set(), hotQuips = new Set()
+      for (const [index,card] of cards.entries()) {
+        const paragraphs = [...card[1].matchAll(/<p(?: [^>]*)?>(.*?)<\/p>/g)].map(m=>m[1])
+        const clauses = paragraphs.flatMap(p=>p.split(/[，。！？,.!?]+/u)).map(s=>s.trim().toLowerCase()).filter(Boolean)
+        clauses.forEach((s,i)=>assert.notEqual(s,clauses[i-1],locale+' duplicate in medal '+index))
+        if (index >= 14) {
+          hotRules.add(paragraphs[0])
+          hotQuips.add(paragraphs.at(-1))
+        }
+      }
+      assert.equal(hotRules.size, 4)
+      assert.equal(hotQuips.size, 4)
     }
   }
   const {englishNoun,sourceRowCount}=await vite.ssrLoadModule('/src/lib/countLabel.ts')

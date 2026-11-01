@@ -32,7 +32,7 @@ Change in NAV,Header,Field Name,Field Value
 Change in NAV,Data,Ending Value,33750.368455
 Mark-to-Market Performance Summary,Header,Asset Category,Symbol,Prior Quantity,Current Quantity,Prior Price,Current Price,Mark-to-Market P/L Position,Mark-to-Market P/L Transaction,Mark-to-Market P/L Commissions,Mark-to-Market P/L Other,Mark-to-Market P/L Total,Code
 Mark-to-Market Performance Summary,Data,Stocks,GME,"1,234.000000","1,111.000000",12.345600,12.507800,180.123456,20.250000,(1.010101),9.500000,208.863355,
-Mark-to-Market Performance Summary,Data,Stocks,AMD,0.000000,50.000000,-,80.250000,(90.456789),50.125001,-0.909090,0.000000,-41.240878,
+Mark-to-Market Performance Summary,Data,Stocks,FICTLOSS,0.000000,50.000000,-,80.250000,(90.456789),50.125001,-0.909090,0.000000,-41.240878,
 Mark-to-Market Performance Summary,Data,Total,,,,,,89.666667,70.375001,-1.919191,9.500000,167.622477,
 Mark-to-Market Performance Summary,Header,Asset Category,Symbol,Prior Quantity,Current Quantity,Prior Price,Current Price,Mark-to-Market P/L Position,Mark-to-Market P/L Transaction,Mark-to-Market P/L Commissions,Mark-to-Market P/L Other,Mark-to-Market P/L Total,Code
 Mark-to-Market Performance Summary,Data,Equity and Index Options,GME 19JUN26 125 P,-1.000000,0.000000,4.500000,0.000000,300.111111,60.222222,-5.555555,0.000000,354.777778,A
@@ -46,7 +46,7 @@ Mark-to-Market Performance Summary,Data,Other Fees,,,,,,,,,,-2.220002,
 Total P/L for Statement Period,,,,,,,,,,,,750.243455,
 Realized & Unrealized Performance Summary,Header,Asset Class,Symbol,Cost Adj.,Realized S/T Profit,Realized S/T Loss,Realized L/T Profit,Realized L/T Loss,Total Realized P/L,Unrealized S/T Profit,Unrealized S/T Loss,Unrealized L/T Profit,Unrealized L/T Loss,Total Unrealized P/L,Total,Code
 Realized & Unrealized Performance Summary,Data,Stocks,GME,0.000000,150.111111,0.000000,0.000000,0.000000,150.111111,100.222222,0.000000,0.000000,0.000000,100.222222,250.333333,
-Realized & Unrealized Performance Summary,Data,Stocks,AMD,0.000000,0.000000,-50.333333,0.000000,0.000000,-50.333333,0.000000,-30.444444,0.000000,0.000000,-30.444444,-80.777777,
+Realized & Unrealized Performance Summary,Data,Stocks,FICTLOSS,0.000000,0.000000,-50.333333,0.000000,0.000000,-50.333333,0.000000,-30.444444,0.000000,0.000000,-30.444444,-80.777777,
 Realized & Unrealized Performance Summary,Header,Asset Class,Symbol,Cost Adj.,Realized S/T Profit,Realized S/T Loss,Realized L/T Profit,Realized L/T Loss,Total Realized P/L,Unrealized S/T Profit,Unrealized S/T Loss,Unrealized L/T Profit,Unrealized L/T Loss,Total Unrealized P/L,Total,Code
 Realized & Unrealized Performance Summary,SubTotal,Total Stocks,,0.000000,150.111111,-50.333333,0.000000,0.000000,99.777778,100.222222,-30.444444,0.000000,0.000000,69.777778,169.555556,
 Realized & Unrealized Performance Summary,Data,Equity and Index Options,GME 19JUN26 125 P,0.000000,220.555555,0.000000,0.000000,0.000000,220.555555,40.666666,0.000000,0.000000,0.000000,40.666666,261.222221,
@@ -58,21 +58,22 @@ Cash Report,Header,Currency Summary,Currency,Starting Cash,Ending Cash,Ending Se
 Cash Report,Data,Base Currency Summary,USD,15000.125000,17113.340479,17113.340479
 Open Positions,Header,Asset Class,Currency,Symbol,Quantity,Multiplier,Cost Price,Cost Basis,Close Price,Value,Unrealized P/L,Code
 Open Positions,Data,Stocks,USD,GME,"1,111.000000",1,11.909791,13231.777778,12.000000,13332.000000,100.222222,
-Open Positions,Data,Stocks,USD,AMD,50.000000,1,63.973889,3198.694444,63.365000,3168.250000,-30.444444,
+Open Positions,Data,Stocks,USD,FICTLOSS,50.000000,1,63.973889,3198.694444,63.365000,3168.250000,-30.444444,
 Open Positions,Header,Asset Class,Currency,Symbol,Underlying,Quantity,Multiplier,Cost Price,Cost Basis,Close Price,Value,Unrealized P/L,Code
 Open Positions,Data,Equity and Index Options,USD,KO 18DEC26 25 C,KO,1.000000,100,1.35666865,135.666865,1.35666865,135.666865,0.000000,O
 Forex Balances,Header,Currency,Quantity,Cost Price,Cost Basis in USD,Close Price,Value in USD,Unrealized P/L in USD
 Forex Balances,Data,XTS,"13,210.987600",1.000000,13210.987600,1.000000,13210.987600,0.000000
 Net Stock Position Summary,Header,Symbol,Beginning Quantity,Transactions,Ending Quantity
 Net Stock Position Summary,Data,GME,"1,234.000000",-123.000000,"1,111.000000"
-Net Stock Position Summary,Data,AMD,0.000000,50.000000,50.000000
+Net Stock Position Summary,Data,FICTLOSS,0.000000,50.000000,50.000000
 Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price,Comm/Fee,Realized P/L,Code
 Trades,Data,Order,Stocks,USD,GME,"2026-01-02, 13:00:00",50,14,-0.25,0,O
 Trades,Data,Order,Stocks,USD,GME,"2026-01-03, 13:00:00",50,13,-0.25,0,O
 Trades,Data,Order,Stocks,USD,GME,"2026-01-04, 13:00:00",50,12,-0.25,0,O
 Trades,Data,Order,Stocks,USD,GME,"2026-01-05, 13:00:00",50,11,-0.25,0,O
-Trades,Data,Order,Stocks,USD,AMD,"2026-02-10, 11:00:00",100,80,-1,0,O
-Trades,Data,Order,Stocks,USD,AMD,"2026-03-11, 11:16:00",-50,79,-1,-50.333333,C
+Trades,Data,Order,Stocks,USD,FICTLOSS,"2026-02-10, 11:00:00",100,80,-1,0,O
+Trades,Data,Order,Stocks,USD,FICTLOSS,"2026-03-11, 11:16:00",-20,79,-0.4,-20.133333,C
+Trades,Data,Order,Stocks,USD,FICTLOSS,"2026-03-12, 11:16:00",-30,79,-0.6,-30.200000,C
 Trades,Data,Order,Equity and Index Options,USD,GME 19JUN26 125 P,"2026-06-18, 13:01:00",-1,3,-2,0,O
 Trades,Data,Order,Equity and Index Options,USD,GME 19JUN26 125 P,"2026-06-19, 16:00:00",1,0,-3,220.555555,C;A
 Trades,Data,Order,Equity and Index Options,USD,AMD 17JUL26 80 C,"2026-07-16, 13:00:00",-2,2,-3,0,O
@@ -85,7 +86,16 @@ Fees,Header,Subtitle,Currency,Date,Description,Amount
 Fees,Data,Other Fees,USD,2026-05-01,Synthetic account service fee,-2.220002
 Fees,Total,Total,USD,,,-2.220002
 Dividends,Header,Currency,Date,Description,Amount
-Dividends,Data,USD,2026-04-15,GME(US0000000000) Cash Dividend,15.500000
+Dividends,Data,USD,2026-04-15,GME(US0000000000) Cash Dividend,6.500000
+Dividends,Data,USD,2026-04-15,FICTDIVA(SYNTHA) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVB(SYNTHB) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVC(SYNTHC) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVD(SYNTHD) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVE(SYNTHE) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVF(SYNTHF) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVG(SYNTHG) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVH(SYNTHH) Cash Dividend,1.000000
+Dividends,Data,USD,2026-04-15,FICTDIVI(SYNTHI) Cash Dividend,1.000000
 Dividends,Total,Total,,,15.500000
 Withholding Tax,Header,Currency,Date,Description,Amount,Code
 Withholding Tax,Data,USD,2026-04-15,Tax on synthetic dividend,-3.100000,WH
@@ -116,7 +126,7 @@ Fee Earned Details,Header,Currency,Date,Symbol,Description,Amount
 Fee Earned Details,Data,USD,2026-08-15,GME,Synthetic lending fee,0.000000
 Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Security ID,Listing Exch,Multiplier,Type,Code
 Financial Instrument Information,Data,Stocks,GME,Synthetic Alpha Systems,SYNTH-CONID-STK-A,SYNTH-SECURITY-ID-A,TESTEX,1,COMMON,
-Financial Instrument Information,Data,Stocks,AMD,Synthetic Beta Dynamics,SYNTH-CONID-STK-B,SYNTH-SECURITY-ID-B,TESTEX,1,COMMON,
+Financial Instrument Information,Data,Stocks,FICTLOSS,Synthetic Beta Dynamics,SYNTH-CONID-STK-B,SYNTH-SECURITY-ID-B,TESTEX,1,COMMON,
 Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code
 Financial Instrument Information,Header,Asset Class,Symbol,Description,Conid,Underlying,Multiplier,Expiry,Type,Strike,Code
 Financial Instrument Information,Data,Equity and Index Options,GME,GME 19JUN26 125 P,SYNTH-CONID-OPT-A,GME,100,2026-06-19,P,125.000000,

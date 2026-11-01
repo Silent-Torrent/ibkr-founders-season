@@ -273,3 +273,5 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [ ] Real annual leaderboards.
 - [ ] Posts and comments before real-time chat.
 - [ ] Moderation, reporting, blocking, and anti-scam controls.
+
+Batch 1.4 on draft PR #2 covers fractional ramen, medal-specific hot-list copy and an importable fictional red-loss/gold-tier example.
