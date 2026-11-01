@@ -6,6 +6,9 @@ const localeMap: Record<Locale, string> = {
   'zh-TW': 'zh-TW',
 }
 
+// A ledger can render thousands of amounts in one currency and locale.
+const currencyFormats = new Map<string, Intl.NumberFormat>()
+
 export function formatCurrency(
   value: number | undefined,
   currency: string,
@@ -18,13 +21,20 @@ export function formatCurrency(
     return formatReconciliationDifference(value, currency, locale)
   }
   try {
-    return new Intl.NumberFormat(localeMap[locale], {
-      style: 'currency',
-      currency,
-      notation: compact ? 'compact' : 'standard',
-      maximumFractionDigits: compact ? 1 : 0,
-      signDisplay: 'exceptZero',
-    }).format(value)
+    const key = `${locale}:${currency}:${compact}`
+    let formatter = currencyFormats.get(key)
+    if (!formatter) {
+      formatter = new Intl.NumberFormat(localeMap[locale], {
+        style: 'currency',
+        currency,
+        notation: compact ? 'compact' : 'standard',
+        maximumFractionDigits: compact ? 1 : 0,
+        signDisplay: 'exceptZero',
+      })
+      if (currencyFormats.size >= 24) currencyFormats.clear()
+      currencyFormats.set(key, formatter)
+    }
+    return formatter.format(value)
   } catch {
     return '—'
   }
