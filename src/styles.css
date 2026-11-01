@@ -1385,7 +1385,7 @@ h2 {
   font-size:max(var(--reading-floor, 0px), 10px);
   font-weight: 700;
   text-decoration: none;
-  transition: 150ms ease;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
 .primary-button {
