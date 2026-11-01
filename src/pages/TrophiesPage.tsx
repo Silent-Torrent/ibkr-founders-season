@@ -1,4 +1,4 @@
-import { tr } from '../data/medals'
+import { tr,medals } from '../data/medals'
 import { MedalWall } from '../components/MedalWall'
 import type { Locale, PortfolioReport, TrophyDefinition } from '../types'
 import type { MessageKey } from '../i18n'
@@ -84,18 +84,19 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
     trophy,
   }))
   const unlocked = presentations.filter(({ status }) => status === 'unlocked').length
+  const seasonCount = isSynthetic ? 0 : report.medalValues?.filter(v=>v!=null && v!==0).length ?? 0
   const counterLabel = t(locale, isSynthetic ? 'achievementPreview' : 'trophyCounterLabel')
 
   return (
     <>
       <section className="trophy-hero">
         <div>
-          <span className="eyebrow">{unlocked}/{trophies.length} {counterLabel}</span>
+          <span className="eyebrow">{seasonCount}/{medals.length} {counterLabel}</span>
           <h1>{t(locale, 'trophiesTitle')}</h1>
           <p>{t(locale, 'trophiesSubtitle')}</p>
         </div>
         <div className="trophy-counter">
-          <strong>{unlocked}</strong>
+          <strong>{seasonCount}</strong>
           <span>{counterLabel}</span>
         </div>
       </section>
@@ -110,6 +111,7 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
 
       <MedalWall locale={locale} report={report} />
       <details><summary>{tr(locale,'旧版成就档案','舊版成就檔案','Legacy achievement archive')}</summary>
+      <div className="trophy-counter"><strong>{unlocked}</strong><span>{tr(locale,'旧版成就','舊版成就','Legacy achievements')}</span></div>
       <section aria-label={t(locale, 'trophiesTitle')} className="trophy-grid" role="list">
         {presentations.map(({ status, trophy }) => {
           return (

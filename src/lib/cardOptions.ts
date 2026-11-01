@@ -1,5 +1,7 @@
+import { hotTickers } from './medalRules'
+import { formatCurrency } from './format'
 import type { Locale, PortfolioReport } from '../types'
-import { lines, local, tr, insufficient } from '../data/medals'
+import { medals, lines, local, tr, insufficient } from '../data/medals'
 export interface Preferences {
   roast: boolean
   amount: boolean
@@ -84,21 +86,71 @@ export function cardTheme(
     line: local(variants[Number(r.endDate.slice(-2)) % variants.length], l),
   }
 }
-import { medals } from '../data/medals'
-import { hotTickers } from './medalRules'
-export function cardBadges(r: PortfolioReport, l: Locale, p: Preferences) {
-  if (r.source !== 'local') return []
+export function medalOutcome(
+  index: number,
+  report: PortfolioReport,
+  locale: Locale,
+  prefs: Preferences,
+) {
+  const value = report.medalValues?.[index] ?? null
+  const earned = report.source === 'local' && value !== null && value !== 0
+  let tier: number | null = null,
+    detail = ''
+  if (earned && value !== null) {
+    switch (index) {
+      case 0:
+        tier = value >= 270 ? 2 : value >= 180 ? 1 : 0
+        detail = value + tr(locale, ' 天', ' 天', ' days')
+        break
+      case 1:
+        if (prefs.amount)
+          detail = formatCurrency(value, report.baseCurrency, locale)
+        break
+      case 6:
+        tier = value >= 10 ? 2 : value >= 5 ? 1 : 0
+        detail = value + tr(locale, ' 个派息标的', ' 檔配息標的', ' payers')
+        break
+      case 7:
+        detail = ramen(report, locale, prefs)
+        break
+      case 11:
+      case 12:
+        detail = String(value).replace(/^(\d{4})(\d\d)(\d\d)$/, '$1-$2-$3')
+        break
+      case 13:
+        detail = prefs.firstMonth ?? ''
+        break
+      default:
+        if (index >= 14 && !prefs.hideTickers)
+          detail =
+            hotTickers[report.seasonYear]?.[index - 14]
+              ?.filter((_, j) => value & (1 << j))
+              .join(', ') ?? ''
+    }
+  }
+  return { value, earned, tier, detail }
+}
+export function cardMedals(
+  report: PortfolioReport,
+  locale: Locale,
+  prefs: Preferences,
+) {
   return medals
     .flatMap((m, i) => {
-      const n = r.medalValues?.[i]
-      if (!n) return []
-      const codes =
-        !p.hideTickers && i >= 14
-          ? hotTickers[r.seasonYear]?.[i - 14]
-              ?.filter((_, j) => n & (1 << j))
-              .join(', ')
-          : ''
-      return [local(m[0], l) + (codes ? ' · ' + codes : '')]
+      const badge = medalOutcome(i, report, locale, prefs)
+      if (!badge.earned) return []
+      return [
+        {
+          id: i,
+          label:
+            local(m[0], locale) +
+            (i >= 14 && badge.detail ? ' · ' + badge.detail : ''),
+        },
+      ]
     })
     .slice(0, 3)
+}
+
+export function cardBadges(r: PortfolioReport, l: Locale, p: Preferences) {
+  return cardMedals(r, l, p).map((b) => b.label)
 }

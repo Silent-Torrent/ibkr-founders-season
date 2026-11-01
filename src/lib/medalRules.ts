@@ -110,11 +110,26 @@ export function evaluateMedals(
   const numeric = (rs: Row[] | undefined, key: string) =>
     rs && rs.every((r) => parseNumber(r[key]) != null)
   const inBase = (r: Row) => !r.Currency || r.Currency === currency
+  const timed = (r: Row) =>
+    /^\d{4}-\d\d-\d\d[, T]+(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(
+      r['Date/Time'],
+    ) && Number.isFinite(dateMs(r['Date/Time'].slice(0, 10)))
+  trades = trades?.filter(
+    (r) =>
+      !timed(r) ||
+      (r['Date/Time'].startsWith(year + '-') &&
+        r['Date/Time'].slice(0, 10) <= end),
+  )
+  const seasonDate = (date: string) =>
+    date.startsWith(year + '-') && date <= end
+  if (dividends?.some((r) => !Number.isFinite(dateMs(r.Date))))
+    dividends = undefined
+  dividends = dividends?.filter((r) => seasonDate(r.Date))
   if (dividends && numeric(dividends, 'Amount') && dividends.every(inBase)) {
     const total = sumExactNumbers(dividends.map((r) => parseNumber(r.Amount)!))
-    const tickers = dividends.filter(r=>parseNumber(r.Amount)!>0).map(
-      (r) => r.Description?.match(/^([A-Z][A-Z0-9.-]*)(?=\s|\()/)?.[1],
-    )
+    const tickers = dividends
+      .filter((r) => parseNumber(r.Amount)! > 0)
+      .map((r) => r.Description?.match(/^([A-Z][A-Z0-9.-]*)(?=\s|\()/)?.[1])
     result[6] =
       total == null
         ? null
@@ -141,19 +156,16 @@ export function evaluateMedals(
     r.Code?.split(';')
       .map((c) => c.trim())
       .includes(k)
-  const timed = (r: Row) =>
-    /^\d{4}-\d\d-\d\d[, T]+(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(
-      r['Date/Time'],
-    ) && Number.isFinite(dateMs(r['Date/Time'].slice(0, 10)))
-  trades=trades.filter(r=>!timed(r) || (r['Date/Time'].startsWith(year+'-') && r['Date/Time'].slice(0,10)<=end))
-  const stamp=(r:Row)=> (r['Date/Time']??'').replace(/[, T]+/,'T')
-  const ordered = [...trades].sort((a,b)=>stamp(a).localeCompare(stamp(b)))
+  const stamp = (r: Row) => (r['Date/Time'] ?? '').replace(/[, T]+/, 'T')
+  const ordered = [...trades].sort((a, b) => stamp(a).localeCompare(stamp(b)))
   const closes = trades.filter((r) => code(r, 'C'))
   if (complete(trades, 'Code')) {
     result[5] = +trades.some((r) => code(r, 'A'))
-    if (numeric(closes, 'Realized P/L') && closes.every(inBase)) {
+    if (numeric(closes, 'Realized P/L')) {
       const values = closes.map((r) => parseNumber(r['Realized P/L'])!)
-      result[1] = values.reduce((min, n) => Math.min(min, n), 0)
+      result[1] = closes.every(inBase)
+        ? values.reduce((min, n) => Math.min(min, n), 0)
+        : null
       const outcomes = values.filter((n) => n !== 0)
       const wins = outcomes.filter((n) => n > 0).length
       result[8] = +(
@@ -211,37 +223,46 @@ export function evaluateMedals(
       result[2] = +[...dips.values()].some((n) => n >= 3)
     }
   }
-  if (complete(trades, 'Symbol','Code','Asset Category') && trades.every(timed)) {
-      const sold = new Set<string>()
-      let theta = false,
-        near = false,
-        unknown = false
-      for (const r of ordered.filter((r) =>
-        /option/i.test(r['Asset Category']),
-      )) {
-        if (code(r, 'Ep') && sold.has(r.Symbol)) theta = true
-        if (!code(r, 'O')) continue
-        if (parseNumber(r.Quantity)! < 0) sold.add(r.Symbol)
-        const m = r.Symbol.match(option)
-        const expires = m
-          ? dateMs(
-              '20' +
-                m[4] +
-                '-' +
-                String(months.indexOf(m[3].toUpperCase()) + 1).padStart(
-                  2,
-                  '0',
-                ) +
-                '-' +
-                m[2],
-            )
-          : NaN
-        const days = (expires - dateMs(r['Date/Time'].slice(0, 10))) / dayMs
-        if (!Number.isFinite(days)) unknown = true
-        if (days >= 0 && days <= 1) near = true
-      }
-      result[3] = theta ? 1 : numeric(ordered.filter(r => code(r,'O') && /option/i.test(r['Asset Category'])),'Quantity') ? 0 : null
-      result[4] = near ? 1 : unknown ? null : 0
+  if (
+    complete(trades, 'Symbol', 'Code', 'Asset Category') &&
+    trades.every(timed)
+  ) {
+    const sold = new Set<string>()
+    let theta = false,
+      near = false,
+      unknown = false
+    for (const r of ordered.filter((r) =>
+      /option/i.test(r['Asset Category']),
+    )) {
+      if (code(r, 'Ep') && sold.has(r.Symbol)) theta = true
+      if (!code(r, 'O')) continue
+      if (parseNumber(r.Quantity)! < 0) sold.add(r.Symbol)
+      const m = r.Symbol.match(option)
+      const expires = m
+        ? dateMs(
+            '20' +
+              m[4] +
+              '-' +
+              String(months.indexOf(m[3].toUpperCase()) + 1).padStart(2, '0') +
+              '-' +
+              m[2],
+          )
+        : NaN
+      const days = (expires - dateMs(r['Date/Time'].slice(0, 10))) / dayMs
+      if (!Number.isFinite(days)) unknown = true
+      if (days >= 0 && days <= 1) near = true
+    }
+    result[3] = theta
+      ? 1
+      : numeric(
+            ordered.filter(
+              (r) => code(r, 'O') && /option/i.test(r['Asset Category']),
+            ),
+            'Quantity',
+          )
+        ? 0
+        : null
+    result[4] = near ? 1 : unknown ? null : 0
   }
   if (trades.every(timed)) {
     const offsets = new Map<string, number>()

@@ -1,4 +1,5 @@
-import {cardBadges,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
+import {ribbon,seal,sealLines} from './medalArt'
+import {cardMedals,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
 import {advice} from '../data/medals'
 import type { Locale, PortfolioReport } from '../types'
 import { formatCurrency, formatDate, formatPercent } from './format'
@@ -155,7 +156,7 @@ export async function downloadSeasonCard(
   const sourceLabel = getShareSourceLabel(report, locale)
   const qualityLabel = getShareQualityLabel(report, locale)
 
-  if (document.fonts) await document.fonts.load('30px ArenaSeason')
+  if (document.fonts && !document.fonts.check('30px ArenaSeason')) await document.fonts.load('30px ArenaSeason')
   if (signal?.aborted) return { filename, kind: 'cancelled' }
   const theme=cardTheme(report,locale,prefs,template)
   const background=context.createLinearGradient(0,0,width,height)
@@ -176,13 +177,30 @@ export async function downloadSeasonCard(
   line(division,.15,40)
   line(sourceLabel,.19,31)
   line(theme.title,.32,72)
-  line(formatShareSeasonReturn(report.seasonReturn,locale),.46,126)
+  const redGains=prefs.colors==='red'||(prefs.colors==='auto'&&locale==='zh-CN')
+  const returnColor=report.seasonReturn==null||report.seasonReturn===0?'#f5efe6':(report.seasonReturn>0)===redGains?'#ff989c':'#85efb7'
+  line(formatShareSeasonReturn(report.seasonReturn,locale),.46,126,returnColor)
   line(theme.line,.52,32)
   if(prefs.amount)line(formatCurrency(report.seasonPnl,currency,locale),.58,48)
   line(t(locale,'trustCalculationCheck'),.63,24)
   line(qualityLabel,.66,26)
   line(t(locale,'dataThrough')+' · '+formatDate(report.endDate,locale),.70,26)
-  cardBadges(report,locale,prefs).forEach((badge,i)=>line(badge,.735+i*.023,24))
+  cardMedals(report,locale,prefs).forEach(({id,label},i)=>{
+    const y=height*(.735+i*.023)
+    context.save()
+    context.translate(100,y-23)
+    context.scale(.35,.35)
+    context.fillStyle='#e6b869'
+    context.fill(new Path2D(ribbon))
+    context.fill(new Path2D(seal))
+    context.strokeStyle='#182023'
+    context.lineWidth=3
+    context.stroke(new Path2D(sealLines(id)))
+    context.restore()
+    context.font='650 24px ArenaSeason, sans-serif'
+    context.fillStyle='#f5efe6'
+    context.fillText(label,136,y,width-236)
+  })
   line(ramen(report,locale,prefs),.82,30)
   line(t(locale,'shareNoHoldings'),.85,24)
   line(advice(locale),.89,28)
@@ -234,9 +252,15 @@ export async function downloadSeasonCard(
   return { filename, kind: 'downloadStarted' }
 }
 
-export function buildSeasonSummary(report: PortfolioReport, locale: Locale, prefs=defaults): string {
+export function buildSeasonSummary(report: PortfolioReport, locale: Locale, prefs=defaults, template:Template='auto'): string {
+  const theme=cardTheme(report,locale,prefs,template)
+  const division=getDivision(report.netLiquidationValue,report.baseCurrency)
   return [
     `${report.seasonYear} ${t(locale, 'seasonLabel')}`,
+    theme.title, theme.line,
+    t(locale,'division')+' · '+t(locale,division??'divisionUnavailable'),
+    ...cardMedals(report,locale,prefs).map(b=>b.label),
+    ramen(report,locale,prefs),
     prefs.amount && `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`,
     prefs.amount && `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,

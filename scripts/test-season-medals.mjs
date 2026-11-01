@@ -10,6 +10,9 @@ try {
     '/src/lib/medalRules.ts',
   )
   const { parseCsvRows } = await vite.ssrLoadModule('/src/lib/csv.ts')
+  const { medalOutcome, defaults, ramen } = await vite.ssrLoadModule(
+    '/src/lib/cardOptions.ts',
+  )
   const rows = parseCsvRows(
     readFileSync(
       new URL('../tests/fixtures/season-medals-fictional.csv', import.meta.url),
@@ -30,6 +33,51 @@ try {
       Number(expected),
       id + ' / ' + scenario,
     )
+    const i = Number(id) - 1,
+      n = Number(expected)
+    const report = {
+      source: 'local',
+      baseCurrency: 'USD',
+      seasonYear: Number(end.slice(0, 4)),
+      medalValues: result,
+    }
+    const badge = medalOutcome(i, report, 'en', defaults)
+    assert.equal(badge.earned, n !== 0)
+    assert.equal(
+      badge.tier,
+      n === 0
+        ? null
+        : i === 0
+          ? n >= 270
+            ? 2
+            : n >= 180
+              ? 1
+              : 0
+          : i === 6
+            ? n >= 10
+              ? 2
+              : n >= 5
+                ? 1
+                : 0
+            : null,
+    )
+    if (i === 1 || i >= 14) assert.equal(badge.detail, '')
+    if (i === 1 && n < 0)
+      assert.match(
+        medalOutcome(i, report, 'en', { ...defaults, amount: true }).detail,
+        /\$/,
+      )
+    if (i >= 14 && n)
+      assert(
+        medalOutcome(i, report, 'en', { ...defaults, hideTickers: false })
+          .detail,
+      )
+    if (i === 7)
+      assert(
+        ramen(report, 'en', defaults).includes(
+          String(Math.floor(n / 12)) + ' bowls',
+        ),
+      )
     counts.set(id, (counts.get(id) ?? 0) + 1)
     count++
   }

@@ -397,7 +397,7 @@ try {
   )
   assert.ok(smallValueLedger.includes('-$0.40'), 'The Ledger hid a small loss.')
   assert.ok(smallValueLedger.includes('+0.04%'), 'The Ledger hid a small positive return.')
-  const smallValueSummary = buildSeasonSummary(smallValueReport, 'en', {amount:true})
+  const smallValueSummary = buildSeasonSummary(smallValueReport, 'en', {roast:true,amount:true,hideTickers:true,colors:'auto',prices:{}})
   assert.ok(smallValueSummary.includes('-$0.40'), 'The share summary hid a small loss.')
   assert.ok(smallValueSummary.includes('+$0.40'), 'The share summary hid a small gain.')
   assert.ok(smallValueSummary.includes('+0.04%'), 'The share summary hid a small return.')

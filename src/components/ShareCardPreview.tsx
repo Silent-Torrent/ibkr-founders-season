@@ -223,7 +223,7 @@ function CardPreview({ report, locale,size,template }: ShareCardPreviewProps & {
     setCopyStatus('copying')
     let nextStatus: 'copied' | 'failed'
     try {
-      await navigator.clipboard.writeText(buildSeasonSummary(report, locale,prefs))
+      await navigator.clipboard.writeText(buildSeasonSummary(report, locale,prefs,template))
       nextStatus = 'copied'
     } catch {
       nextStatus = 'failed'
@@ -339,7 +339,7 @@ function CardPreview({ report, locale,size,template }: ShareCardPreviewProps & {
             readOnly
             ref={manualTextRef}
             spellCheck={false}
-            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale,prefs)}
+            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale,prefs,template)}
           />
           <button
             className="secondary-button"
