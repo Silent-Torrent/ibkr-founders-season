@@ -8,7 +8,7 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
   const browser=(await cdp.send('Browser.getVersion')).product
   const report={browser,commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,mode:'Linux Chrome touch emulation, loopback HTTP, fictional statements',checks:[]}
   const settle=()=>evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
-  const wait=(expr,label)=>waitForPageValue(expr,Boolean,label)
+  const wait=(expr,label)=>waitForPageValue('Boolean('+expr+')',Boolean,label)
   const shot=async name=>{
     const {data}=await cdp.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})
     writeFileSync(join(directory,name+'.png'),Buffer.from(data,'base64'))
@@ -36,6 +36,8 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
   const phone=()=>viewport(393,852)
   async function fresh(){
     await navigateAndWait(previewUrl)
+    await wait("document.querySelector('.source-pill.demo,[data-action=welcome-primary]')",'loaded demo or welcome')
+    if(await evaluate("Boolean(document.querySelector('[data-action=welcome-primary]'))"))await tap('[data-action=welcome-primary]')
     await wait("document.querySelector('.source-pill.demo')",'fresh demo')
   }
   async function point(selector){
