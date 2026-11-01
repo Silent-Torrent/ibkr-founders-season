@@ -2,11 +2,13 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## 跨设备云端开发
+## GPT 内跨设备云端开发：尚未完成
 
-当前主工作区为 **IBKR Cloud Development v2**。先 [启动工作区](https://github.com/codespaces/ibkr-cloud-development-v2-96jq957j797v39x64?editor=jupyter)，再 [打开项目编辑器](https://ibkr-cloud-development-v2-96jq957j797v39x64-8888.app.github.dev/lab)。这条独立网页路径已在实际重建和闲置恢复后通过打开、修改保存、终端构建与 GitHub 推送验收；官方启动页的嵌入窗口仍不稳定。换设备时登录自己的同一 GitHub 账号，继续使用这个工作区；第二台实体设备尚未实测。停止后需重新运行 `npm run dev:cloud` 或构建预览命令。Node 22、项目依赖和 JupyterLab 均由开发容器安装，所有预览端口保持 **Private**。
+用户已明确：目标是在 **ChatGPT/OpenAI 内整体进行云端开发**。现有 IBKR ChatGPT 项目中的纯云端 Work 对话已完成仓库读取、Node 22 安装、依赖安装、文件编辑保存、构建及 GitHub 分支/提交/草稿 PR 回写；[公开验收草稿 PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1) 已独立回读。依赖审计、类型检查与全部 11 项非浏览器检查通过；下一回合也确认原目录、Node、依赖及验收文档保留。Chrome 156 已安装，但完整检查在浏览器就绪前失败；另有短检查确认运行权限限制，也观察到跨调用的大文件截断，不能将长检查失败只归于单一原因。未降低浏览器安全设置绕过。用户可视的私有预览及第二台设备仍未验收。重要修改须保存到 GitHub，不能把一次跨回合保留视为云虚拟机永久保留的保证。
 
-[中文操作说明](docs/CLOUD_DEVELOPMENT.md) · [迁移验收记录](docs/CLOUD_MIGRATION_2026-10-29.md)。云端开发于 2026-10-29 获准；个人预览不代表公共应用发布，真实报表不会随代码同步。
+独立的 Codex Cloud 环境创建路径仍未成功：初始化及重试均在建立设置对话前失败，相关请求返回 HTTP 403；根因尚未确认。这与上述 Work 路径的实测结果分别记录。
+
+后续从 [GPT 云端交接说明](docs/GPT_CLOUD_HANDOFF.md) 继续。此前 [Codespaces 操作说明](docs/CLOUD_DEVELOPMENT.md) 和 [验收记录](docs/CLOUD_MIGRATION_2026-10-29.md) 保留为可选备用；其中的编辑、构建和推送成功不等于 GPT 迁移完成。代码仍由 GitHub 保存，真实报表与凭据不随迁移上传，公开应用发布仍需单独决定。
 
 ## Open source
 
