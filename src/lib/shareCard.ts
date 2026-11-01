@@ -227,11 +227,17 @@ export async function downloadSeasonCard(
   context.font = '500 25px -apple-system, BlinkMacSystemFont, sans-serif'
   context.fillText(t(locale, 'shareNoHoldings'), 120, 1285)
 
-  drawArenaMark(context, 842, 1329, 2.25)
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
   context.font = '700 30px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText('P&L ARENA', 1080, 1367)
+  const brand = 'P&L ARENA'
+  const labelRight = 1080
+  const metrics = context.measureText(brand)
+  const labelLeft = labelRight - Math.max(metrics.width, metrics.actualBoundingBoxLeft)
+  const markScale = 2.25
+  // Place the entire 24-unit mark before the label, including room for its stroke.
+  drawArenaMark(context, labelLeft - 24 - 24 * markScale, 1329, markScale)
+  context.fillText(brand, labelRight, 1367)
   context.textAlign = 'left'
 
   const dataUrl = canvas.toDataURL('image/png')

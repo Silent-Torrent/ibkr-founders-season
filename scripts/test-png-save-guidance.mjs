@@ -99,6 +99,11 @@ export async function testPngSaveGuidance({
     for (const { locale, label, files, share, noRepeat, sync, reopen, single, notSaved, cannotConfirm, noDelete } of locales) {
       await setLocale(locale)
       const localeReport = await evaluate(`document.querySelector('.data-table tbody')?.textContent ?? ''`)
+      await evaluate(`(() => {
+        const capture = globalThis.__pnlArenaCanvasCapture;
+        capture.arcs.length = 0;
+        capture.fillTextCalls.length = 0;
+      })()`)
       const downloadCountBeforePreview = starts.length
       assert.equal(await evaluate(`(() => {
         const button = document.querySelector('[data-action="download-card"]');
@@ -148,6 +153,15 @@ export async function testPngSaveGuidance({
           report: document.querySelector('.data-table tbody')?.textContent ?? '',
         };
       })()`, (value) => value?.ready, `${locale} real Blob PNG preview`)
+      const brandGap = await evaluate(`(() => {
+        const capture = globalThis.__pnlArenaCanvasCapture;
+        const label = capture.fillTextCalls.find(call => call.text === 'P&L ARENA');
+        const ring = capture.arcs.at(-1);
+        if (!label || !ring) throw new Error('Missing PNG brand geometry');
+        return label.x - label.width - (ring.x + ring.radius);
+      })()`)
+      assert(brandGap >= 16, `${locale} PNG brand gap: ${brandGap} px (minimum 16)`)
+      console.log(`PNG brand gap (${locale}): ${brandGap} px`)
       assert(view.named, 'PNG preview is missing the explicit named-download link.')
       assert(view.open, 'PNG preview lost the Safari-open fallback.')
       assert.equal(view.full, filename)
