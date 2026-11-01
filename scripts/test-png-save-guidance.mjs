@@ -306,7 +306,7 @@ export async function testPngSaveGuidance({
           const layout=await evaluate(`(() => {
             const rect=document.querySelector('.share-card-preview').getBoundingClientRect()
             const controls=[...document.querySelectorAll('.card-options button,.card-options .card-switch')]
-            return {ratio:rect.width/rect.height,targets:controls.map(el=>el.getBoundingClientRect().height)}
+            return {ratio:rect.width/rect.height,targets:controls.map(el=>{const b=el.getBoundingClientRect();return Math.min(b.width,b.height)})}
           })()`)
           assert(Math.abs(layout.ratio-width/height)<0.005,`${size} preview ratio ${layout.ratio}`)
           assert.equal(layout.targets.length,8)

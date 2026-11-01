@@ -58,8 +58,8 @@ export function ShareCardPreview({report,locale}:ShareCardPreviewProps){
     <fieldset><legend>{tr(locale,'模板','範本','Template')}</legend>
       {(['auto','feast','noodles'] as const).map((v,i)=><button type="button" key={v} data-card-template={v} aria-pressed={template===v} onClick={()=>setTemplate(v)}>{[tr(locale,'自动','自動','Automatic'),tr(locale,'吃肉','吃肉','Gain Day Feast'),tr(locale,'关灯吃面','關燈吃麵','Noodles in the Dark')][i]}</button>)}
     </fieldset>
-    <label className="card-switch"><input type="checkbox" data-card-amount checked={prefs.amount} onChange={e=>update({...prefs,amount:e.target.checked})}/>{tr(locale,'显示金额','顯示金額','Show amounts')}</label>
-    <label className="card-switch"><input type="checkbox" checked={prefs.hideTickers} onChange={e=>update({...prefs,hideTickers:e.target.checked})}/>{tr(locale,'隐藏股票代码','隱藏股票代碼','Hide tickers')}</label>
+    <label className="card-switch"><input type="checkbox" role="switch" data-card-amount checked={prefs.amount} onChange={e=>update({...prefs,amount:e.target.checked})}/>{tr(locale,'显示金额','顯示金額','Show amounts')}</label>
+    <label className="card-switch"><input type="checkbox" role="switch" checked={prefs.hideTickers} onChange={e=>update({...prefs,hideTickers:e.target.checked})}/>{tr(locale,'隐藏股票代码','隱藏股票代碼','Hide tickers')}</label>
   </div><CardPreview key={JSON.stringify([size,template,prefs])} report={report} locale={locale} size={size} template={template}/></>
 }
 

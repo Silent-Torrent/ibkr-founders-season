@@ -118,7 +118,7 @@ export function medalOutcome(
         detail = String(value).replace(/^(\d{4})(\d\d)(\d\d)$/, '$1-$2-$3')
         break
       case 13:
-        detail = prefs.firstMonth ?? ''
+        detail = report.source === 'local' ? prefs.firstMonth ?? '' : ''
         break
       default:
         if (index >= 14 && !prefs.hideTickers)

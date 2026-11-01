@@ -1237,15 +1237,25 @@ try {
   assert(welcomeScroll > 0, 'The first-use transition test could not establish a scrolled starting point.')
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
   await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
-  const choseImport = await evaluate(`(() => {
-    const button = document.querySelector('[data-action="welcome-import"]');
-    if (!(button instanceof HTMLButtonElement)) return false;
-    const start=performance.now()
-    button.click();
-    return Boolean(document.querySelector('input[type=file]')) && performance.now()-start<250;
+  const workersBeforeWelcomeImport = workerTargets.length
+  const tap = await evaluate(`(() => {
+    const button = document.querySelector('[data-action="welcome-import"]')
+    button.scrollIntoView({block:'center',behavior:'instant'})
+    const rect=button.getBoundingClientRect()
+    button.addEventListener('pointerdown',()=>{globalThis.__welcomeTapAt=performance.now()},{once:true})
+    button.addEventListener('click',()=>requestAnimationFrame(()=>{
+      globalThis.__welcomeTapResult={visible:!!document.querySelector('input[type=file]'),
+        ms:performance.now()-globalThis.__welcomeTapAt}
+    }),{once:true})
+    return {x:rect.left+rect.width/2,y:rect.top+rect.height/2}
   })()`)
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[tap]})
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+  const feedback=await waitForPageValue('globalThis.__welcomeTapResult',Boolean,'welcome import touch feedback')
+  assert(feedback.visible && feedback.ms<250, 'Import must be visible by the first frame after tapping: '+JSON.stringify(feedback))
+  assert.equal(workerTargets.length,workersBeforeWelcomeImport,'Opening Import started a parser Worker before file selection.')
+  console.log('393x852 welcome touch to import frame: '+feedback.ms.toFixed(1)+' ms')
   await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false})
-  assert.equal(choseImport, true, 'Could not choose the first-use import path.')
   await resolveFileInputNodeId()
   assert.equal(
     await evaluate('document.activeElement?.id ?? ""'),
@@ -3136,6 +3146,23 @@ try {
   const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
   assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')
   console.log('UI file picker import: '+exampleCount+'/18 fictional medals')
+  await clickPrimaryNavigation('Import')
+  await evaluate(`(() => {
+    const confirm=window.confirm
+    try { window.confirm=()=>true; document.querySelector('[data-action="use-demo"]').click() }
+    finally {window.confirm=confirm}
+  })()`)
+  await waitForPageValue("document.querySelector('.ramen-summary')?.textContent",v=>v?.includes('12 bowls'),'built-in demo ramen summary')
+  await clickPrimaryNavigation('Trophies')
+  const demoWall=await evaluate(`(() => {
+    const gold=document.querySelector('.medal.earned[data-tier="gold"]')
+    gold?.querySelector('summary').click()
+    return {count:document.querySelectorAll('.medal.earned').length,
+      detail:gold?.innerText,open:gold?.open,silver:!!document.querySelector('.medal.earned[data-tier="silver"]')}
+  })()`)
+  assert.equal(demoWall.count,7)
+  assert(demoWall.open && demoWall.silver && demoWall.detail.includes('Tier · Gold') && demoWall.detail.includes('Fictional sample'))
+  console.log('Use demo data: 7/18, silver and gold, fictional detail, 12 ramen bowls.')
   const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid]
   assert.equal(new Set(expectedDownloadGuids).size, 2, 'The two explicit PNG downloads must have distinct GUIDs.')
   assert.equal(downloadStarts.length, 2, 'An unrequested browser download was observed.')
