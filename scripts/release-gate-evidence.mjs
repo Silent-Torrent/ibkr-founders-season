@@ -190,6 +190,33 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
     })
   }
   await language('en');await nav('ledger')
+  for (const page of ['ledger','arena','trophies','import']) {
+    await check('D07 page keyboard order '+page,async()=>{
+      await nav(page)
+      const controls = await names()
+      const expected = await evaluate(`(() => {
+        const main = document.querySelector('main')
+        main.focus()
+        const nodes = [...document.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')]
+          .filter(el => main.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)
+          .filter(el => !el.disabled && (el.tabIndex >= 0 || el.matches('summary:not([tabindex])'))
+            && el.checkVisibility() && !el.closest('[inert]'))
+        return nodes.map((el,i) => {
+          el.dataset.gateTab = String(i)
+          return el.getAttribute('aria-label') || el.textContent.trim().slice(0,70) || el.tagName
+        })
+      })()`)
+      assert(expected.length >= 4)
+      for(let i=0;i<expected.length;i++){
+        await key('Tab')
+        const actual = await evaluate("({index: document.activeElement.dataset.gateTab, label:document.activeElement.outerHTML.slice(0,180)})")
+        assert.equal(actual.index,String(i),page+' Tab '+i+' expected '+expected[i]+' reached '+actual.label)
+      }
+      await evaluate("document.querySelectorAll('[data-gate-tab]').forEach(el=>delete el.dataset.gateTab)")
+      return {order:expected,accessibleControlCount:controls.length}
+    })
+  }
+  await nav('ledger')
   const sizes=[[390,844],[844,390],[667,375],[390,844]]
   async function rotate(panel,selector,targetSelector,modal){
     const cases=[]
@@ -207,7 +234,7 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
       for(const sel of selectors)await point(sel)
       await evaluate("document.querySelectorAll('[data-qa-hit]').forEach(el=>delete el.dataset.qaHit)")
       if(modal)assert(await evaluate("document.querySelector('.app-shell').inert"))
-      await point(selectors.length?targetSelector:selector);await shot(panel+'-'+w+'x'+h)
+      await point(targetSelector);await shot(panel+'-'+w+'x'+h)
       cases.push({w,h,targets:count,...geometry})
     }
     return cases
