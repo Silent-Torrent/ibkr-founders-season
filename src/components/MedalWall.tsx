@@ -3,7 +3,7 @@ import { useContext } from 'react'
 import type { PortfolioReport, Locale } from '../types'
 import { medals, local, tr, insufficient, advice } from '../data/medals'
 import { Settings } from './Preferences'
-import { medalOutcome } from '../lib/cardOptions'
+import { medalOutcome, tierName } from '../lib/cardOptions'
 export function MedalWall({
   report: r,
   locale: l,
@@ -42,10 +42,10 @@ export function MedalWall({
                 <strong>{local(m[0], l)}</strong>
                 <small>
                   {n == null ? insufficient(l) : !earned ? tr(l,'未获得','未獲得','Locked') :
-                    tier == null ? tr(l,'已获得','已獲得','Earned') : local(['铜|銅|Bronze','银|銀|Silver','金|金|Gold'][tier],l)}
+                    tier == null ? tr(l,'已获得','已獲得','Earned') : tierName(tier,l)}
                 </small>
               </summary>
-              {tier!=null && <p className="medal-tier">{tr(l,'等级','等級','Tier')} · {local(['铜|銅|Bronze','银|銀|Silver','金|金|Gold'][tier],l)}</p>}
+              {tier!=null && <p className="medal-tier">{tr(l,'等级','等級','Tier')} · {tierName(tier,l)}</p>}
               {r.source!=='local' && <small>{tr(l,'虚构示例','虛構範例','Fictional sample')}</small>}
               <p>{local(m[1], l)}</p>
               {detail && <p>{detail}</p>}

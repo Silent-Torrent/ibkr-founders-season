@@ -161,6 +161,23 @@ try {
     assert(ramen(report, 'zh-CN', defaults).includes(`${n * 6} 碗拉面`))
     assert(ramen(report, 'zh-TW', defaults).includes(`${n * 4} 碗拉麵`))
   }
+  const {createElement}=await import('react')
+  const {renderToStaticMarkup}=await import('react-dom/server')
+  const {MedalWall}=await vite.ssrLoadModule('/src/components/MedalWall.tsx')
+  for(const [locale,tiers,earned] of [['en',['Bronze','Silver','Gold'],'Earned'],['zh-CN',['铜','银','金'],'已获得'],['zh-TW',['銅','銀','金'],'已獲得']]){
+    for(let tier=0;tier<3;tier++){
+      const values=Array(18).fill(1)
+      values[0]=[120,180,270][tier]; values[6]=[1,5,10][tier]
+      const html=renderToStaticMarkup(createElement(MedalWall,{report:{...demoReport,medalValues:values},locale}))
+      const cards=[...html.matchAll(/<details\b[^>]*>([\s\S]*?)<\/details>/g)]
+      assert.equal(cards.length,18)
+      for(const [i,card] of cards.entries()){
+        const ranked=i===0||i===6
+        assert(card[1].split('</summary>')[0].includes('<small>'+(ranked?tiers[tier]:earned)+'</small>'))
+        if(ranked)assert(card[1].includes(' · '+tiers[tier]+'</p>'))
+      }
+    }
+  }
   console.log(count + ' fictional medal cases passed across all 18 rules.')
 } finally {
   await vite.close()

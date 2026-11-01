@@ -3163,9 +3163,78 @@ try {
   assert.equal(demoWall.count,7)
   assert(demoWall.open && demoWall.silver && demoWall.detail.includes('Tier · Gold') && demoWall.detail.includes('Fictional sample'))
   console.log('Use demo data: 7/18, silver and gold, fictional detail, 12 ramen bowls.')
-  const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid]
-  assert.equal(new Set(expectedDownloadGuids).size, 2, 'The two explicit PNG downloads must have distinct GUIDs.')
-  assert.equal(downloadStarts.length, 2, 'An unrequested browser download was observed.')
+  // Real UI downloads of the built-in fictional demo. Keep original PNG bytes for inspection.
+  await clickPrimaryNavigation('Ledger')
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  for(const page of ['Ledger','Arena','Trophies','Import']){
+    await clickPrimaryNavigation(page)
+    await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+    const issues=await evaluate(`(()=>{
+      const failures=[]
+      const visible=el=>{
+        const box=el.getBoundingClientRect()
+        return box.width>1&&box.height>1&&getComputedStyle(el).visibility!=='hidden'&&
+          !el.closest('[aria-hidden="true"],.sr-only,svg,.share-card-face')&&
+          (!el.closest('details:not([open])')||el.closest('summary'))
+      }
+      const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT)
+      while(walker.nextNode()){const n=walker.currentNode,el=n.parentElement
+        if(!n.textContent.trim()||!visible(el)||el.matches('option,script,style'))continue
+        if(parseFloat(getComputedStyle(el).fontSize)<14) failures.push([el.className,n.textContent.trim().slice(0,35),'font'])
+      }
+      for(const el of document.querySelectorAll('button,a[href],select,input,summary,textarea')){
+        if(!visible(el))continue
+        const target=el.matches('input[type=checkbox]')?el.closest('label')??el:el
+        const box=target.getBoundingClientRect()
+        if(Math.min(box.width,box.height)<43.99) failures.push([el.className,target.textContent.trim().slice(0,35),box.width,box.height])
+      }
+      return failures
+    })()`)
+    assert.deepEqual(issues,[],page+' mobile type or target size: '+JSON.stringify(issues))
+  }
+  await clickPrimaryNavigation('Ledger')
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
+  const layoutDirectory=join(downloadDirectory,'layouts')
+  mkdirSync(layoutDirectory)
+  const exportGuids=[]
+  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:layoutDirectory,eventsEnabled:true})
+  for(const [size,width,height] of [['portrait',1200,1500],['story',1080,1920],['3x4',1080,1440]]){
+    await evaluate(`document.querySelector('[data-card-size="${size}"]').click()`)
+    await waitForPageValue("document.querySelector('.share-card-preview')?.dataset.size",v=>v===size,'demo export size')
+    const before=downloadStarts.length
+    await evaluate(`document.querySelector('[data-action="download-card"]').click()`)
+    await waitForCondition(()=>downloadStarts.length===before+1,'explicit demo download')
+    const {guid,suggestedFilename}=downloadStarts[before]
+    exportGuids.push(guid)
+    assert.equal(suggestedFilename,'pnl-arena-2026-season'+(size==='portrait'?'':'-'+size)+'.png')
+    const path=join(layoutDirectory,suggestedFilename)
+    await waitForCondition(()=>downloadProgress.some(e=>e.guid===guid&&e.state==='completed')&&existsSync(path),'demo PNG bytes')
+    const bytes=readFileSync(path)
+    assert.deepEqual(inspectPng(bytes),{width,height})
+    const blank=await evaluate(`(async()=>{
+      const bytes=Uint8Array.from(atob(${JSON.stringify(bytes.toString('base64'))}),c=>c.charCodeAt(0))
+      const img=await createImageBitmap(new Blob([bytes],{type:'image/png'}))
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height
+      const ctx=c.getContext('2d');ctx.drawImage(img,0,0);img.close()
+      const data=ctx.getImageData(0,0,c.width,c.height).data
+      let gap=0,max=0
+      for(let y=55;y<c.height-55;y++){
+        let ink=0
+        for(let x=82;x<c.width-82;x+=2){const i=(y*c.width+x)*4;if(data[i]>115&&data[i+1]>110)ink++}
+        gap=ink>=4?0:gap+1;max=Math.max(max,gap)
+      }
+      return max
+    })()`)
+    assert(blank<height*.16,'Large empty horizontal band in '+size+': '+blank+'px')
+    console.log('Demo layout PNG:',size,width,height,'largest empty band',blank,'px')
+    if(process.env.CARD_LAYOUT_QA_DIR){
+      mkdirSync(process.env.CARD_LAYOUT_QA_DIR,{recursive:true})
+      writeFileSync(join(process.env.CARD_LAYOUT_QA_DIR,suggestedFilename),bytes)
+    }
+  }
+  const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid,...exportGuids]
+  assert.equal(new Set(expectedDownloadGuids).size, 5, 'The five explicit PNG downloads must have distinct GUIDs.')
+  assert.equal(downloadStarts.length, 5, 'An unrequested browser download was observed.')
   assert.deepEqual(downloadStarts.map(({ guid }) => guid), expectedDownloadGuids)
   assert(
     downloadProgress.every(({ guid }) => expectedDownloadGuids.includes(guid)),

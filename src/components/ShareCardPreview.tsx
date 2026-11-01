@@ -445,11 +445,12 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
             <span>P&amp;L ARENA</span>
           </span>
         </div>
-        <p>{theme.title}</p>
+        <p className="face-title">{theme.title}</p>
         <div className={`share-pnl ${pnlClass(report.seasonPnl)}`}>
           {formatShareSeasonReturn(report.seasonReturn,locale)}
         </div>
-        <p>{theme.line}</p>
+        <p className="face-caption">{theme.line}</p>
+        {size==='story' && <p className="face-extra">{theme.secondLine}</p>}
         {prefs.amount&&<strong>{formatCurrency(report.seasonPnl,report.baseCurrency,locale)}</strong>}
         <div className="share-grid">
           <div>
@@ -471,7 +472,10 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
             <strong>{qualityLabel}</strong>
           </div>
         </div>
-        <p>{cardBadges(report,locale,prefs).join(' · ')}</p><p>{ramen(report,locale,prefs)}</p>
+        <div className="face-lower"><div className="face-medals">
+          {size!=='portrait' && <strong>{t(locale,'trophiesTitle')}</strong>}
+          {cardBadges(report,locale,prefs).map(label=><span key={label}>{label}</span>)}
+        </div><p>{ramen(report,locale,prefs)}</p></div>
         <div className="share-card-bottom"><span>{advice(locale)}</span>
           <span>{t(locale, 'dataThrough')} {formatDate(report.endDate, locale)}</span>
           <span>{t(locale, 'shareNoHoldings')}</span>

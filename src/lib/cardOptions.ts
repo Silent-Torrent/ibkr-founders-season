@@ -84,6 +84,7 @@ export function cardTheme(
       ? tr(l, '吃肉', '吃肉', 'Gain Day Feast')
       : tr(l, '关灯吃面', '關燈吃麵', 'Noodles in the Dark'),
     line: local(variants[Number(r.endDate.slice(-2)) % variants.length], l),
+    secondLine: local(variants[(Number(r.endDate.slice(-2)) + 1) % variants.length], l),
   }
 }
 export function medalOutcome(
@@ -130,6 +131,10 @@ export function medalOutcome(
   }
   return { value, earned, tier, detail }
 }
+export function tierName(tier: number | null, locale: Locale) {
+  return tier == null ? '' : local(['铜|銅|Bronze', '银|銀|Silver', '金|金|Gold'][tier], locale)
+}
+
 export function cardMedals(
   report: PortfolioReport,
   locale: Locale,
@@ -144,6 +149,7 @@ export function cardMedals(
           id: i,
           label:
             local(m[0], locale) +
+            (badge.tier == null ? '' : ' · ' + tierName(badge.tier, locale)) +
             (i >= 14 && badge.detail ? ' · ' + badge.detail : ''),
         },
       ]

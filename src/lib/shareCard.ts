@@ -1,6 +1,6 @@
 import {ribbon,seal,sealLines} from './medalArt'
 import {cardMedals,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
-import {advice} from '../data/medals'
+import {advice,tr} from '../data/medals'
 import type { Locale, PortfolioReport } from '../types'
 import { formatCurrency, formatDate, formatPercent } from './format'
 import { getDivision } from './season'
@@ -168,42 +168,109 @@ export async function downloadSeasonCard(
   context.lineWidth=3
   roundedRect(context,50,50,width-100,height-100,36)
   context.stroke()
-  function line(text:string,y:number,px:number,color='#f5efe6') {
+  const ink = '#f5efe6'
+  const accent = theme.feast ? '#f4c780' : '#b5c9ef'
+  const season = `${report.seasonYear} ${t(locale,'seasonLabel').toUpperCase()}`
+  const date = t(locale,'dataThrough')+' · '+formatDate(report.endDate,locale)
+  const redGains = prefs.colors==='red'||(prefs.colors==='auto'&&locale==='zh-CN')
+  const returnColor = report.seasonReturn==null||report.seasonReturn===0 ? ink :
+    (report.seasonReturn>0)===redGains ? '#ff989c' : '#85efb7'
+  const value = formatShareSeasonReturn(report.seasonReturn,locale)
+  const amount = formatCurrency(report.seasonPnl,currency,locale)
+  const badges = cardMedals(report,locale,prefs)
+  const cost = ramen(report,locale,prefs)
+  function textAt(text:string,x:number,y:number,px:number,span=width-x-90,color=ink) {
     context!.font=`650 ${px}px ArenaSeason, sans-serif`
     context!.fillStyle=color
-    context!.fillText(text,100,height*y,width-200)
+    context!.fillText(text,x,y,span)
   }
-  line(`${report.seasonYear} ${t(locale,'seasonLabel').toUpperCase()}`,.10,32)
-  line(division,.15,40)
-  line(sourceLabel,.19,31)
-  line(theme.title,.32,72)
-  const redGains=prefs.colors==='red'||(prefs.colors==='auto'&&locale==='zh-CN')
-  const returnColor=report.seasonReturn==null||report.seasonReturn===0?'#f5efe6':(report.seasonReturn>0)===redGains?'#ff989c':'#85efb7'
-  line(formatShareSeasonReturn(report.seasonReturn,locale),.46,126,returnColor)
-  line(theme.line,.52,32)
-  if(prefs.amount)line(formatCurrency(report.seasonPnl,currency,locale),.58,48)
-  line(t(locale,'trustCalculationCheck'),.63,24)
-  line(qualityLabel,.66,26)
-  line(t(locale,'dataThrough')+' · '+formatDate(report.endDate,locale),.70,26)
-  cardMedals(report,locale,prefs).forEach(({id,label},i)=>{
-    const y=height*(.735+i*.023)
-    context.save()
-    context.translate(100,y-23)
-    context.scale(.35,.35)
-    context.fillStyle='#e6b869'
-    context.fill(new Path2D(ribbon))
-    context.fill(new Path2D(seal))
-    context.strokeStyle='#182023'
-    context.lineWidth=3
-    context.stroke(new Path2D(sealLines(id)))
-    context.restore()
-    context.font='650 24px ArenaSeason, sans-serif'
-    context.fillStyle='#f5efe6'
-    context.fillText(label,136,y,width-236)
-  })
-  line(ramen(report,locale,prefs),.82,30)
-  line(t(locale,'shareNoHoldings'),.85,24)
-  line(advice(locale),.89,28)
+  function panel(x:number,y:number,w:number,h:number) {
+    roundedRect(context!,x,y,w,h,26)
+    context!.fillStyle=theme.feast?'#503625':'#2a3041'
+    context!.fill()
+  }
+  function medalAt(badge:(typeof badges)[number],x:number,y:number,span:number,px=32) {
+    context!.save()
+    context!.translate(x,y-px)
+    context!.scale(px/56,px/56)
+    context!.fillStyle=accent
+    context!.fill(new Path2D(ribbon))
+    context!.fill(new Path2D(seal))
+    context!.strokeStyle='#182023'
+    context!.lineWidth=3
+    context!.stroke(new Path2D(sealLines(badge.id)))
+    context!.restore()
+    textAt(badge.label,x+px+12,y,px,span-px-12)
+  }
+  if(size==='portrait') {
+    // A wide masthead and a single-column performance poster.
+    textAt(season,100,144,40)
+    textAt(division,100,220,46)
+    textAt(sourceLabel,100,280,31)
+    textAt(theme.title,100,440,80)
+    textAt(value,100,620,144,width-200,returnColor)
+    textAt(theme.line,100,713,38)
+    if(prefs.amount) textAt(amount,100,787,46)
+    panel(80,818,width-160,172)
+    textAt(t(locale,'trustCalculationCheck'),110,867,28)
+    textAt(qualityLabel,110,937,42,465)
+    textAt(date,600,937,29,465)
+    badges.forEach((badge,i)=>medalAt(badge,100,1055+i*48,width-200))
+    textAt(cost,100,1216,34)
+    textAt(t(locale,'shareNoHoldings'),100,1290,25)
+    textAt(advice(locale),100,1352,29)
+  } else if(size==='story') {
+    // A vertical reading sequence with a second caption and stacked medal rows.
+    textAt(season,86,150,38)
+    textAt(division,86,228,42,425,accent)
+    textAt(sourceLabel,540,228,30,452)
+    textAt(theme.title,86,447,85)
+    textAt(value,86,663,156,908,returnColor)
+    if(prefs.amount) textAt(amount,86,746,47)
+    textAt(theme.line,86,834,43)
+    textAt(theme.secondLine,86,911,36,908,accent)
+    panel(65,1000,950,180)
+    textAt(t(locale,'trustCalculationCheck'),98,1064,30)
+    textAt(qualityLabel,98,1140,44,440)
+    textAt(date,555,1136,28,410)
+    textAt(t(locale,'trophiesTitle'),86,1280,40,908,accent)
+    badges.forEach((badge,i)=>medalAt(badge,89,1364+i*62,904,38))
+    textAt(cost,86,badges.length>1?1590:1500,36)
+    textAt(t(locale,'shareNoHoldings'),86,1678,26)
+    textAt(advice(locale),86,1750,30)
+  } else {
+    // A compact two-column scorecard; the medal and cost panels anchor its lower half.
+    textAt(season,82,139,37)
+    textAt(division,82,223,41,435,accent)
+    textAt(sourceLabel,550,223,30,443)
+    textAt(theme.title,82,394,70,480)
+    textAt(value,595,395,104,403,returnColor)
+    textAt(theme.line,82,505,39)
+    if(prefs.amount) textAt(amount,82,580,44)
+    panel(65,632,950,191)
+    textAt(t(locale,'trustCalculationCheck'),98,697,29)
+    textAt(qualityLabel,98,778,43,430)
+    textAt(date,550,776,30,425)
+    panel(65,865,500,323)
+    panel(585,865,430,323)
+    textAt(t(locale,'trophiesTitle'),95,938,35,439,accent)
+    badges.forEach((badge,i)=>medalAt(badge,95,1018+i*61,438,29))
+    if(!badges.length) textAt(t(locale,'trophyStatusNotMet'),95,1034,31,438)
+    textAt(tr(locale,'手续费换算','手續費換算','Fees in ramen'),618,938,35,366,accent)
+    const words=locale==='en'?cost.split(' '):Array.from(cost)
+    context.font='650 33px ArenaSeason, sans-serif'
+    const target=Math.min(366,Math.ceil(context.measureText(cost).width / Math.max(1,Math.ceil(context.measureText(cost).width/366)))+12)
+    let row='', baseline=1018
+    for(const word of words) {
+      const next=row+(row&&locale==='en'?' ':'')+word
+      if(row && context.measureText(next).width>target && !/^[。，！？、]/.test(word)) {
+        textAt(row,618,baseline,33,366); baseline+=49;row=word
+      } else row=next
+    }
+    textAt(row,618,baseline,33,366)
+    textAt(t(locale,'shareNoHoldings'),82,1251,25)
+    textAt(advice(locale),82,1315,28)
+  }
 
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
