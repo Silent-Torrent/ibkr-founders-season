@@ -158,7 +158,7 @@
 - 2026-09-25 再核：IBKR 另行申请的 Reporting Integration Activity 馈送虽有 `EXE` 行权代码并可用 `.csv` 扩展名，但不是此 MVP 的 Client Portal Activity Statement CSV，不能移植其记录布局。公开 Activity 样例仍是 HTML；详见 [独立馈送边界](OPTION_EXERCISE_EVIDENCE_2026-08-30.md#2026-09-25-separate-feed-boundary)。F01 继续 `OPEN`。
 - 真正关闭条件：获得可独立核验的准确节名、表头、记录类型及行形状，验证事件类型、日期、合约、底层映射、来源引用，且不重复增加盈亏；私有数据不入库，再以完全虚构内容覆盖已证形状。把 `Ep` 改成 `Ex` 或自行编造行不能关闭此项；此检查也不是报表真实性认证。
 
-## 三、部署：3 项（当前全部受 L 冻结）
+## 三、部署：3 项（已选 Vercel，待审批）
 
 ### R01 — 部署后的网络、存储与安全边界
 
@@ -176,9 +176,9 @@
 
 ### R03 — 用户重开部署并批准具体路线
 
-- 状态：`OPEN`。映射：P0“Revisit hosting only after the user explicitly reopens deployment…”（基线第 164 行）。
+- 状态：`OPEN`。用户已决定解冻、选定 Vercel，待审批 [DEPLOYMENT_PLAN](DEPLOYMENT_PLAN.md)。本轮只准备，R01、R02 待获准部署后实测。映射：P0“Revisit hosting only after the user explicitly reopens deployment…”（基线第 164 行）。
 - 依赖谁：用户作出明确决定；开发方提供届时可核验的具体方案和服务方发布门槛。
-- 已有证据：用户已选择 L，只做本地开发与私有 GitHub 备份；之前的私测方案比较不是授权。见 [冻结决策](../PROJECT_DECISIONS.md)。
+- 历史记录：此前用户选择 L，随后授权开源和云端开发；本轮解冻及平台选择见上。见 [冻结决策](../PROJECT_DECISIONS.md)。
 - 真正关闭条件：用户明确重开部署讨论并批准具体经过复核的路线及权限范围，记录决定与适用门槛。只有此项关闭仍不等于 R01/R02 通过或自动获准公开 Production；不得提前创建替代账户、授权、上传或购买计划。
 
 ## 每次 session 结束的固定通报
