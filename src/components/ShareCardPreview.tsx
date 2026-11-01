@@ -323,6 +323,17 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
         <div
           aria-labelledby={`${manualCopyId}-title`}
           className="manual-copy-panel"
+          onFocusCapture={event => {
+            const control=event.target
+            if (!(control instanceof HTMLButtonElement)) return
+            const bottomNav=document.querySelector('.bottom-nav')
+            if (!bottomNav || getComputedStyle(bottomNav).display==='none') return
+            const top=(document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0)+8
+            const bottom=bottomNav.getBoundingClientRect().top-8
+            const rect=control.getBoundingClientRect()
+            if(rect.top<top || rect.bottom>bottom)
+              window.scrollBy({top:rect.top<top?rect.top-top:rect.bottom-bottom,behavior:'instant'})
+          }}
           id={`${manualCopyId}-panel`}
           ref={manualPanelRef}
           role="region"
