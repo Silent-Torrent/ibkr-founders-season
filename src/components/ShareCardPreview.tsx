@@ -51,19 +51,25 @@ export function ShareCardPreview({report,locale}:ShareCardPreviewProps){
   const {prefs,update}=useContext(Settings)
   const [size,setSize]=useState<CardSize>('portrait')
   const [template,setTemplate]=useState<Template>('auto')
+  const preview = useRef<HTMLDivElement>(null)
+  function revealStory() {
+    if (window.matchMedia('(max-width: 768px)').matches)
+      preview.current?.scrollIntoView({block:'center', behavior:'instant'})
+  }
+  useLayoutEffect(() => { if (size === 'story') revealStory() }, [size])
   return <><div className="card-options">
     <fieldset><legend>{tr(locale,'图片尺寸','圖片尺寸','Image size')}</legend>
-      {(['portrait','story','3x4'] as const).map((v,i)=><button type="button" key={v} data-card-size={v} aria-pressed={size===v} onClick={()=>setSize(v)}>{['1200×1500','1080×1920','1080×1440'][i]}</button>)}
+      {(['portrait','story','3x4'] as const).map((v,i)=><button type="button" key={v} data-card-size={v} aria-pressed={size===v} onClick={()=>{if(v==='story' && size===v) revealStory(); else setSize(v)}}>{['1200×1500','1080×1920','1080×1440'][i]}</button>)}
     </fieldset>
     <fieldset><legend>{tr(locale,'模板','範本','Template')}</legend>
       {(['auto','feast','noodles'] as const).map((v,i)=><button type="button" key={v} data-card-template={v} aria-pressed={template===v} onClick={()=>setTemplate(v)}>{[tr(locale,'自动','自動','Automatic'),tr(locale,'吃肉','吃肉','Gain Day Feast'),tr(locale,'关灯吃面','關燈吃麵','Noodles in the Dark')][i]}</button>)}
     </fieldset>
     <label className="card-switch"><input type="checkbox" role="switch" data-card-amount checked={prefs.amount} onChange={e=>update({...prefs,amount:e.target.checked})}/>{tr(locale,'显示金额','顯示金額','Show amounts')}</label>
     <label className="card-switch"><input type="checkbox" role="switch" checked={prefs.hideTickers} onChange={e=>update({...prefs,hideTickers:e.target.checked})}/>{tr(locale,'隐藏股票代码','隱藏股票代碼','Hide tickers')}</label>
-  </div><CardPreview key={JSON.stringify([size,template,prefs])} report={report} locale={locale} size={size} template={template}/></>
+  </div><CardPreview key={JSON.stringify([size,template,prefs])} previewRef={preview} report={report} locale={locale} size={size} template={template}/></>
 }
 
-function CardPreview({ report, locale,size,template }: ShareCardPreviewProps & {size:CardSize;template:Template}) {
+function CardPreview({ report, locale,size,template,previewRef }: ShareCardPreviewProps & {size:CardSize;template:Template;previewRef:React.RefObject<HTMLDivElement|null>}) {
   const {prefs}=useContext(Settings)
   const theme=cardTheme(report,locale,prefs,template)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
@@ -427,7 +433,7 @@ function CardPreview({ report, locale,size,template }: ShareCardPreviewProps & {
         </div>
       ) : null}
 
-      <div data-size={size} className={'share-card-preview '+(theme.feast?'feast':'noodles')}>
+      <div ref={previewRef} data-size={size} className={'share-card-preview '+(theme.feast?'feast':'noodles')}>
         <div className="share-card-face">
         <div className="share-card-top">
           <div>

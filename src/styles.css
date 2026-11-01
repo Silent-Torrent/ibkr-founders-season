@@ -3399,3 +3399,10 @@ h2 {
 .card-switch input:checked::before{transform:translateX(15px);background:#192117}
 .card-options :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .welcome-choice-card button {touch-action:manipulation}
+
+.ramen-price-hint { display:block; margin:0 8px 8px; color:var(--muted); font-size:.85rem; }
+@media (max-width:768px) {
+  /* Leave 200px for sticky navigation, safe areas and breathing room. */
+  .share-card-preview[data-size=story] { max-width:min(540px, calc((100dvh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .5625)); }
+  .png-fallback-panel img { width:auto; height:auto; max-width:min(100%,360px); max-height:min(420px,calc(100dvh - 200px)); }
+}

@@ -153,6 +153,14 @@ try {
   assert(demoReport.medalValues[4]&&demoReport.medalValues[16])
   assert.match(ramen(demoReport,'en',defaults),/12 bowls/)
   console.log('Fictional Activity Statement: '+lit+'/18 medals. Built-in demo: 7/18.')
+  for (const n of [0, 1, 2]) {
+    const report = {...demoReport, medalValues: [...demoReport.medalValues]}
+    report.medalValues[7] = n * 12
+    assert.equal(ramen(report, 'en', defaults),
+      `Your fees this season = ${n} ${n === 1 ? 'bowl' : 'bowls'} of ramen. Your broker says thanks.`)
+    assert(ramen(report, 'zh-CN', defaults).includes(`${n * 6} 碗拉面`))
+    assert(ramen(report, 'zh-TW', defaults).includes(`${n * 4} 碗拉麵`))
+  }
   console.log(count + ' fictional medal cases passed across all 18 rules.')
 } finally {
   await vite.close()

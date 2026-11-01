@@ -283,6 +283,20 @@ export async function testPngSaveGuidance({
     await setLocale('en')
     await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
     await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
+    await evaluate(`document.querySelector('[data-card-size="story"]').click()`)
+    const story=await waitForPageValue(`(() => {
+      const card=document.querySelector('.share-card-preview[data-size="story"]')
+      if (!card) return null
+      const box=card.getBoundingClientRect()
+      const vv=window.visualViewport
+      return {top:box.top,bottom:box.bottom,left:box.left,right:box.right,height:box.height,
+        availableTop:Math.max(vv.offsetTop,document.querySelector('.topbar').getBoundingClientRect().bottom),
+        availableBottom:Math.min(vv.offsetTop+vv.height,document.querySelector('.bottom-nav').getBoundingClientRect().top),
+        availableWidth:vv.width}
+    })()`,Boolean,'story layout after selecting 1080x1920')
+    assert(story.height>0 && story.top>=story.availableTop-1 && story.bottom<=story.availableBottom+1 &&
+      story.left>=-1 && story.right<=story.availableWidth+1,'Story preview clipped: '+JSON.stringify(story))
+    console.log('393x852 story preview fits between navigation bars:',story)
     for (const [size,width,height] of [['portrait',1200,1500],['story',1080,1920],['3x4',1080,1440]]) {
       for (const template of ['feast','noodles']) {
         for (const amount of [false,true]) {

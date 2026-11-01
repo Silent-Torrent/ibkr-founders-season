@@ -64,7 +64,7 @@ export function ramen(r: PortfolioReport, l: Locale, p: Preferences) {
     l,
     `今年手续费够吃 ${n} 碗拉面，券商年终奖有你一份。`,
     `今年手續費夠吃 ${n} 碗拉麵，券商年終獎金有你一份。`,
-    `Your fees this season = ${n} bowls of ramen. Your broker says thanks.`,
+    `Your fees this season = ${n} ${n === 1n ? 'bowl' : 'bowls'} of ramen. Your broker says thanks.`,
   )
 }
 export function cardTheme(

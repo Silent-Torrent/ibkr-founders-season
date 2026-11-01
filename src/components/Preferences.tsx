@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useId } from 'react'
 import type { Locale } from '../types'
 import { defaults, priceFor, type Preferences } from '../lib/cardOptions'
 import { tr } from '../data/medals'
@@ -13,6 +13,7 @@ export function SettingsPanel({
   locale: Locale
   currency: string
 }) {
+  const priceHint = useId()
   const { prefs: p, update } = useContext(Settings)
   return (
     <details className="batch-settings">
@@ -68,6 +69,7 @@ export function SettingsPanel({
       <label>
         {tr(l, '每碗拉面价格', '每碗拉麵價格', 'Price per ramen bowl')} ({c}){' '}
         <input
+          aria-describedby={priceHint}
           type="number"
           min="0.01"
           step="any"
@@ -83,6 +85,7 @@ export function SettingsPanel({
           }}
         />
       </label>
+      <small id={priceHint} className="ramen-price-hint">{tr(l,'默认按地区估算，可自行修改。','預設按地區估算，可自行修改。','The default is a regional estimate. You can change it.')}</small>
     </details>
   )
 }
