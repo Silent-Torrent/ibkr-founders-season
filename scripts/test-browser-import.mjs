@@ -2435,13 +2435,17 @@ try {
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
       text: document.body.innerText,
+      sampleCount: document.querySelector('.trophy-counter strong')?.textContent,
+      sampleLabel: document.querySelector('.trophy-counter span')?.textContent,
       unlocked: document.querySelectorAll('.trophy-card.unlocked').length,
     }))()`,
     (value) => value?.heading === 'Trophy case',
     'Trophies navigation',
   )
   assert.equal(trophyState.unlocked, 0, 'Synthetic fixture unlocked a local achievement.')
-  assert(trophyState.text.includes('Fictional sample medals'), 'Synthetic trophy state was not labelled as a preview.')
+  assert.match(trophyState.sampleCount, /^\d+$/)
+  assert.equal(trophyState.sampleLabel, trophyState.sampleCount === '1' ? 'Fictional sample medal' : 'Fictional sample medals',
+    'Synthetic trophy counter must label the fictional sample and agree with its count.')
   assert(!trophyState.text.includes('Local achievement'), 'Synthetic fixture displayed a local achievement label.')
   const lockedTrophyStyle = await evaluate(`(() => {
     const card = document.querySelector('.trophy-card.locked');
