@@ -1,5 +1,7 @@
 # MVP backlog
 
+2026-11-01 batch 1：18 条勋章规则和本地分享设置开发于独立草稿分支。D01、D02、D07、D08、R02 改为负责人执行云端 Linux Chrome 移动模拟验收，接受 Safari 特有风险。五项仍 OPEN，固定 9 OPEN / 3 CLOSED。具体验收条件见 [门禁追踪](docs/RELEASE_GATE_TRACKER.md)。
+
 ## 2026-10-29 GPT cloud development — corrected target
 
 - [x] Record the user's clarification: develop inside ChatGPT/OpenAI's cloud; Codespaces is only an optional fallback.
@@ -288,3 +290,5 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [ ] Real annual leaderboards.
 - [ ] Posts and comments before real-time chat.
 - [ ] Moderation, reporting, blocking, and anti-scam controls.
+
+Batch 1.4 on draft PR #2 covers fractional ramen, medal-specific hot-list copy and an importable fictional red-loss/gold-tier example.

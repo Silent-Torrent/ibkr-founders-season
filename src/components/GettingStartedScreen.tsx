@@ -1,3 +1,4 @@
+import { advice } from '../data/medals'
 import { useEffect, useRef } from 'react'
 import type { Locale } from '../types'
 import { t } from '../i18n'
@@ -125,7 +126,7 @@ export function GettingStartedScreen({
       </main>
 
       <footer className="welcome-footer">
-        <span>{t(locale, 'footerDisclaimer')}</span>
+        <span>{t(locale, 'footerDisclaimer')} · {advice(locale)}</span>
       </footer>
     </div>
   )

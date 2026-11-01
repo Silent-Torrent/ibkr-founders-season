@@ -54,7 +54,7 @@ const en = {
     'The CSV data read by this app and the complete parsed report remain in current-tab memory only. The app does not write them to localStorage, sessionStorage, IndexedDB, or Cache Storage.',
   privacyPreferenceTitle: 'What may be saved',
   privacyPreferenceBody:
-    'Only non-financial interface preferences, such as language and whether the introductory guide has been seen, may be saved in localStorage. No account identifier, holding, amount, symbol, or selected filename is saved there.',
+    'This browser may remember language, onboarding, tone, colors, ramen price, sharing choices and the first Founders import month. No account identifier, holding, amount, symbol, or selected filename is saved there.',
   privacyTrustTitle: 'What the checks do not prove',
   privacyTrustBody:
     'Format and reconciliation checks can find inconsistencies; they cannot prove that a CSV is authentic or unedited. Ordinary imported files are Self-Reported, never broker-verified. The two repository-owned fictional CSVs are labelled Fully Synthetic Test only when their normalized SHA-256 digests match exactly; that testing exception is not authenticity verification.',
@@ -194,7 +194,7 @@ const en = {
   trophyCounterLabel: 'Local achievements',
   achievementPreview: 'Achievement preview',
   trophyDemoNotice:
-    'Demo and fully synthetic test data are preview-only and do not earn achievements.',
+    'These medals illustrate a fictional season. They belong to the sample, not to a personal record.',
   trophyLocalNotice:
     'Local achievements are calculated from a user-supplied, self-reported statement in this tab. They are not broker-verified or official awards.',
   shareableEyebrow: 'SHAREABLE',
@@ -395,7 +395,7 @@ const zhCN: typeof en = {
     '本应用读取的 CSV 数据和完整解析结果只保留在当前标签页的内存中。本应用不会将它们写入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
   privacyPreferenceTitle: '哪些设置可能保存',
   privacyPreferenceBody:
-    '只有界面语言、是否看过新手指南等非财务偏好可以保存在 localStorage。账户标识、持仓、金额、标的代码和所选文件名都不会保存在其中。',
+    '此浏览器可记住语言、指南、文案、配色、拉面单价、分享选项和首次创始赛季导入月份。账户标识、持仓、金额、标的代码和所选文件名都不会保存在其中。',
   privacyTrustTitle: '本地检查不能证明什么',
   privacyTrustBody:
     '格式和对账检查可以发现不一致，但不能证明 CSV 真实、未被修改。普通导入结果只能标记为“用户自报”，绝不是“券商已验证”。仓库自带的两份虚构 CSV 只有在标准化 SHA-256 摘要完全匹配时才标记为“全虚构测试”；这个测试例外也不代表真实性验证。',
@@ -523,7 +523,7 @@ const zhCN: typeof en = {
   trophiesSubtitle: '盈亏必须严肃，华尔街可以荒诞。',
   trophyCounterLabel: '本机成就',
   achievementPreview: '成就预览',
-  trophyDemoNotice: '演示数据和全虚构测试数据都只用于预览，不会获得成就。',
+  trophyDemoNotice: '点亮的勋章属于这份虚构示例，不计入个人记录。',
   trophyLocalNotice: '本机成就根据用户在当前标签页提供的自报报表计算，不是券商验证或官方授予。',
   shareableEyebrow: '可分享战绩',
   pngLocalEyebrow: 'PNG · 本机生成',
@@ -714,7 +714,7 @@ const zhTW: typeof en = {
     '本應用讀取的 CSV 資料和完整解析結果只保留在目前分頁的記憶體中。本應用不會將它們寫入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
   privacyPreferenceTitle: '哪些設定可能儲存',
   privacyPreferenceBody:
-    '只有介面語言、是否看過新手指南等非財務偏好可以儲存在 localStorage。帳戶識別、持倉、金額、標的代碼和所選檔名都不會儲存在其中。',
+    '此瀏覽器可記住語言、指南、文案、配色、拉麵單價、分享選項及首次創始賽季匯入月份。帳戶識別、持倉、金額、標的代碼和所選檔名都不會儲存在其中。',
   privacyTrustTitle: '本機檢查不能證明什麼',
   privacyTrustBody:
     '格式和核對檢查可以發現不一致，但不能證明 CSV 真實、未被修改。一般匯入結果只能標記為「使用者自報」，絕不是「券商已驗證」。儲存庫自帶的兩份虛構 CSV 只有在標準化 SHA-256 摘要完全符合時才標記為「全虛構測試」；這個測試例外也不代表真實性驗證。',
@@ -842,7 +842,7 @@ const zhTW: typeof en = {
   trophiesSubtitle: '損益必須嚴肅，華爾街可以荒誕。',
   trophyCounterLabel: '本機成就',
   achievementPreview: '成就預覽',
-  trophyDemoNotice: '示範資料和全虛構測試資料都只用於預覽，不會獲得成就。',
+  trophyDemoNotice: '點亮的勳章屬於這份虛構範例，不計入個人紀錄。',
   trophyLocalNotice: '本機成就根據使用者在目前分頁提供的自報報表計算，不是券商驗證或官方授予。',
   shareableEyebrow: '可分享戰績',
   pngLocalEyebrow: 'PNG · 本機產生',

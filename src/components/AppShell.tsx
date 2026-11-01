@@ -1,3 +1,5 @@
+import { SettingsPanel } from './Preferences'
+import { advice } from '../data/medals'
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { Locale, PageId, PortfolioReport } from '../types'
 import { t } from '../i18n'
@@ -143,7 +145,7 @@ export function AppShell({
             <strong>{report.accountIdMasked}</strong>
           </div>
           <div className="topbar-actions">
-            <span className={`source-pill ${report.source} mobile-source`}>
+            <span className={`source-pill ${report.source} mobile-source`} title={t(locale, reportSourceStatusKey(report.source))}>
               {t(locale, reportSourceStatusKey(report.source))}
             </span>
             <select
@@ -160,9 +162,10 @@ export function AppShell({
           </div>
         </header>
 
-        <div className="page-content">{children}</div>
+        <div className="page-content" data-page={page}>{children}</div>
+        <SettingsPanel locale={locale} currency={report.baseCurrency} />
         <footer className="site-footer">
-          <span>{t(locale, 'footerDisclaimer')}</span>
+          <span>{t(locale, 'footerDisclaimer')} · {advice(locale)}</span>
           <button
             className="footer-privacy-button"
             data-action="open-guide"

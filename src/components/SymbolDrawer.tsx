@@ -1,3 +1,4 @@
+import { sourceRowCount, englishNoun } from '../lib/countLabel'
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { Locale, PortfolioReport, SourceRef, SymbolPnl } from '../types'
@@ -53,7 +54,7 @@ function SourceDetails({ isDemo, label, locale, refs }: SourceDetailsProps) {
         <small>
           {isDemo
             ? t(locale, 'synthetic')
-            : t(locale, 'sourceRowCount').replace('{count}', String(refs.length))}
+            : sourceRowCount(locale,refs.length)}
         </small>
       </summary>
       <SourceRows isDemo={isDemo} locale={locale} refs={refs} />
@@ -252,9 +253,9 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
         </div>
 
         <div className="event-summary">
-          <div><strong>{symbol.assignmentCount}</strong><span>{t(locale, 'assignments')}</span></div>
-          <div><strong>{symbol.exerciseCount}</strong><span>{t(locale, 'exercises')}</span></div>
-          <div><strong>{symbol.expirationCount}</strong><span>{t(locale, 'expirations')}</span></div>
+          <div><strong>{symbol.assignmentCount}</strong><span>{locale==='en'?englishNoun(symbol.assignmentCount,'Assignment'):t(locale, 'assignments')}</span></div>
+          <div><strong>{symbol.exerciseCount}</strong><span>{locale==='en'?englishNoun(symbol.exerciseCount,'Exercise'):t(locale, 'exercises')}</span></div>
+          <div><strong>{symbol.expirationCount}</strong><span>{locale==='en'?englishNoun(symbol.expirationCount,'Expiration'):t(locale, 'expirations')}</span></div>
         </div>
 
         <section className="drawer-section">

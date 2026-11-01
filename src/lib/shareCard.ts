@@ -1,3 +1,6 @@
+import {ribbon,seal,sealLines} from './medalArt'
+import {cardMedals,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
+import {advice} from '../data/medals'
 import type { Locale, PortfolioReport } from '../types'
 import { formatCurrency, formatDate, formatPercent } from './format'
 import { getDivision } from './season'
@@ -136,13 +139,14 @@ function drawArenaMark(
 export async function downloadSeasonCard(
   report: PortfolioReport,
   locale: Locale,
-  { signal }: { signal?: AbortSignal } = {},
+  { signal,prefs=defaults,size='portrait',template='auto' }: { signal?: AbortSignal; prefs?:Preferences; size?:CardSize; template?:Template } = {},
 ): Promise<SeasonCardDelivery | null> {
-  const filename = `pnl-arena-${report.seasonYear}-season.png`
+  const filename = `pnl-arena-${report.seasonYear}-season${size==='portrait'?'':'-'+size}.png`
   if (signal?.aborted) return { filename, kind: 'cancelled' }
   const canvas = document.createElement('canvas')
-  canvas.width = 1200
-  canvas.height = 1500
+  const [width,height]=dimensions[size]
+  canvas.width = width
+  canvas.height = height
   const context = canvas.getContext('2d')
   if (!context) return null
 
@@ -152,92 +156,127 @@ export async function downloadSeasonCard(
   const sourceLabel = getShareSourceLabel(report, locale)
   const qualityLabel = getShareQualityLabel(report, locale)
 
-  const background = context.createLinearGradient(0, 0, 1200, 1500)
-  background.addColorStop(0, '#070a0f')
-  background.addColorStop(0.55, '#101722')
-  background.addColorStop(1, '#07110f')
-  context.fillStyle = background
-  context.fillRect(0, 0, canvas.width, canvas.height)
-
-  context.strokeStyle = 'rgba(255,255,255,0.08)'
-  context.lineWidth = 2
-  roundedRect(context, 72, 72, 1056, 1356, 44)
+  if (document.fonts && !document.fonts.check('30px ArenaSeason')) await document.fonts.load('30px ArenaSeason')
+  if (signal?.aborted) return { filename, kind: 'cancelled' }
+  const theme=cardTheme(report,locale,prefs,template)
+  const background=context.createLinearGradient(0,0,width,height)
+  background.addColorStop(0,theme.feast?'#4a2c1c':'#222637')
+  background.addColorStop(1,theme.feast?'#201710':'#0c101a')
+  context.fillStyle=background
+  context.fillRect(0,0,width,height)
+  context.strokeStyle=theme.feast?'#e6b869':'#677593'
+  context.lineWidth=3
+  roundedRect(context,50,50,width-100,height-100,36)
   context.stroke()
-
-  context.fillStyle = '#8aa0b5'
-  context.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(`${report.seasonYear} ${t(locale, 'seasonLabel').toUpperCase()}`, 120, 150)
-
-  context.fillStyle = '#f3f7fb'
-  context.font = '700 72px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(t(locale, 'seasonPnl'), 120, 270)
-
-  context.fillStyle = report.seasonPnl >= 0 ? '#62e6ac' : '#ff7d86'
-  context.font = '800 126px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(formatCurrency(report.seasonPnl, currency, locale), 120, 410)
-
-  context.fillStyle = '#a8b6c5'
-  context.font = '600 38px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(`${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`, 120, 485)
-  context.fillText(`${t(locale, 'division')}: ${division}`, 120, 545)
-
-  const cards = [
-    {
-      label: t(locale, 'stocks'),
-      value: formatCurrency(report.stockPnl, currency, locale),
-      pnl: report.stockPnl,
-    },
-    {
-      label: t(locale, 'options'),
-      value: formatCurrency(report.optionPnl, currency, locale),
-      pnl: report.optionPnl,
-    },
-  ]
-
-  cards.forEach((card, index) => {
-    const x = 120 + index * 500
-    roundedRect(context, x, 630, 460, 190, 28)
-    context.fillStyle = 'rgba(255,255,255,0.045)'
-    context.fill()
-    context.fillStyle = '#91a2b3'
-    context.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(card.label, x + 36, 690)
-    context.fillStyle = card.pnl >= 0 ? '#62e6ac' : '#ff7d86'
-    context.font = '750 58px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(card.value, x + 36, 775)
-  })
-
-  const rows = [
-    { label: t(locale, 'dataThrough'), value: formatDate(report.endDate, locale) },
-    { label: t(locale, 'sourceType'), value: sourceLabel },
-    { label: t(locale, 'trustCalculationCheck'), value: qualityLabel },
-  ]
-
-  rows.forEach((row, index) => {
-    const y = 885 + index * 120
-    context.fillStyle = '#718397'
-    context.font = '650 25px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(row.label, 120, y)
-    context.fillStyle = '#f3f7fb'
-    context.font = '750 48px -apple-system, BlinkMacSystemFont, sans-serif'
-    context.fillText(row.value, 120, y + 52)
-  })
-
-  context.fillStyle = '#6f8193'
-  context.font = '500 25px -apple-system, BlinkMacSystemFont, sans-serif'
-  context.fillText(t(locale, 'shareNoHoldings'), 120, 1285)
+  const ink = '#f5efe6'
+  const accent = theme.feast ? '#f4c780' : '#b5c9ef'
+  const season = `${report.seasonYear} ${t(locale,'seasonLabel').toUpperCase()}`
+  const date = t(locale,'dataThrough')+' · '+formatDate(report.endDate,locale)
+  const redGains = prefs.colors==='red'||(prefs.colors==='auto'&&locale==='zh-CN')
+  const returnColor = report.seasonReturn==null||report.seasonReturn===0 ? ink :
+    (report.seasonReturn>0)===redGains ? '#ff989c' : '#85efb7'
+  const value = formatShareSeasonReturn(report.seasonReturn,locale)
+  const amount = formatCurrency(report.seasonPnl,currency,locale)
+  const badges = cardMedals(report,locale,prefs)
+  const cost = ramen(report,locale,prefs)
+  function textAt(text:string,x:number,y:number,px:number,span=width-x-90,color=ink) {
+    context!.font=`650 ${px}px ArenaSeason, sans-serif`
+    context!.fillStyle=color
+    context!.fillText(text,x,y,span)
+  }
+  function panel(x:number,y:number,w:number,h:number) {
+    roundedRect(context!,x,y,w,h,26)
+    context!.fillStyle=theme.feast?'#503625':'#2a3041'
+    context!.fill()
+  }
+  function medalAt(badge:(typeof badges)[number],x:number,y:number,span:number,px=32) {
+    context!.save()
+    context!.translate(x,y-px)
+    context!.scale(px/56,px/56)
+    context!.fillStyle=accent
+    context!.fill(new Path2D(ribbon))
+    context!.fill(new Path2D(seal))
+    context!.strokeStyle='#182023'
+    context!.lineWidth=3
+    context!.stroke(new Path2D(sealLines(badge.id)))
+    context!.restore()
+    textAt(badge.label,x+px+12,y,px,span-px-12)
+  }
+  if(size==='portrait') {
+    // A wide masthead and a single-column performance poster.
+    textAt(season,100,144,40)
+    textAt(division,100,220,46)
+    textAt(sourceLabel,100,280,31)
+    textAt(theme.title,100,440,80)
+    textAt(value,100,620,144,width-200,returnColor)
+    textAt(theme.line,100,713,38)
+    if(prefs.amount) textAt(amount,100,787,46)
+    panel(80,818,width-160,172)
+    textAt(t(locale,'trustCalculationCheck'),110,867,28)
+    textAt(qualityLabel,110,937,42,465)
+    textAt(date,600,937,29,465)
+    badges.forEach((badge,i)=>medalAt(badge,100,1055+i*48,width-200))
+    textAt(cost,100,1216,34)
+    textAt(t(locale,'shareNoHoldings'),100,1290,25)
+    textAt(advice(locale),100,1352,29)
+  } else if(size==='story') {
+    // A vertical reading sequence with a second caption and stacked medal rows.
+    textAt(season,86,150,38)
+    textAt(division,86,228,42,425,accent)
+    textAt(sourceLabel,540,228,30,452)
+    textAt(theme.title,86,447,85)
+    textAt(value,86,663,156,908,returnColor)
+    if(prefs.amount) textAt(amount,86,746,47)
+    textAt(theme.line,86,834,43)
+    textAt(theme.secondLine,86,911,36,908,accent)
+    panel(65,1000,950,180)
+    textAt(t(locale,'trustCalculationCheck'),98,1064,30)
+    textAt(qualityLabel,98,1140,44,440)
+    textAt(date,555,1136,28,410)
+    textAt(t(locale,'trophiesTitle'),86,1280,40,908,accent)
+    badges.forEach((badge,i)=>medalAt(badge,89,1364+i*62,904,38))
+    textAt(cost,86,badges.length>1?1620:1524,36)
+    textAt(t(locale,'shareNoHoldings'),86,1678,26)
+    textAt(advice(locale),86,1750,30)
+  } else {
+    // A compact two-column scorecard; the medal and cost panels anchor its lower half.
+    textAt(season,82,139,37)
+    textAt(division,82,223,41,435,accent)
+    textAt(sourceLabel,550,223,30,443)
+    textAt(theme.title,82,394,70,480)
+    textAt(value,595,395,104,403,returnColor)
+    textAt(theme.line,82,505,39)
+    if(prefs.amount) textAt(amount,82,580,44)
+    panel(65,632,950,191)
+    textAt(t(locale,'trustCalculationCheck'),98,697,29)
+    textAt(qualityLabel,98,778,43,430)
+    textAt(date,550,776,30,425)
+    panel(65,850,950,224)
+    textAt(t(locale,'trophiesTitle'),95,908,35,890,accent)
+    badges.forEach((badge,i)=>medalAt(badge,95,959+i*47,890,29))
+    if(!badges.length) textAt(t(locale,'trophyStatusNotMet'),95,999,31,890)
+    panel(65,1090,950,116)
+    context.font='650 33px ArenaSeason, sans-serif'
+    // Keep the conversion and its quip intact when they need separate lines.
+    const pause = locale === 'en' ? cost.indexOf('. ') : cost.indexOf('，')
+    const costLines = context.measureText(cost).width > 890 && pause >= 0
+      ? [cost.slice(0,pause+1), cost.slice(pause+1).trimStart()] : [cost]
+    costLines.forEach((line,i)=>textAt(line,95,costLines.length===1?1160:1139+i*42,33,890))
+    textAt(t(locale,'shareNoHoldings'),82,1251,25)
+    textAt(advice(locale),82,1315,28)
+  }
 
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
   context.font = '700 30px -apple-system, BlinkMacSystemFont, sans-serif'
   const brand = 'P&L ARENA'
-  const labelRight = 1080
+  const labelRight = width-100
   const metrics = context.measureText(brand)
   const labelLeft = labelRight - Math.max(metrics.width, metrics.actualBoundingBoxLeft)
   const markScale = 2.25
   // Place the entire 24-unit mark before the label, including room for its stroke.
-  drawArenaMark(context, labelLeft - 24 - 24 * markScale, 1329, markScale)
-  context.fillText(brand, labelRight, 1367)
+  drawArenaMark(context, labelLeft - 24 - 24 * markScale, height*.94-27, markScale)
+  context.fillText(brand, labelRight, height*.94+11)
   context.textAlign = 'left'
 
   const dataUrl = canvas.toDataURL('image/png')
@@ -274,16 +313,23 @@ export async function downloadSeasonCard(
   return { filename, kind: 'downloadStarted' }
 }
 
-export function buildSeasonSummary(report: PortfolioReport, locale: Locale): string {
+export function buildSeasonSummary(report: PortfolioReport, locale: Locale, prefs=defaults, template:Template='auto'): string {
+  const theme=cardTheme(report,locale,prefs,template)
+  const division=getDivision(report.netLiquidationValue,report.baseCurrency)
   return [
     `${report.seasonYear} ${t(locale, 'seasonLabel')}`,
-    `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
+    theme.title, theme.line,
+    t(locale,'division')+' · '+t(locale,division??'divisionUnavailable'),
+    ...cardMedals(report,locale,prefs).map(b=>b.label),
+    ramen(report,locale,prefs),
+    prefs.amount && `${t(locale, 'seasonPnl')}: ${formatCurrency(report.seasonPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'seasonReturn')}: ${formatShareSeasonReturn(report.seasonReturn, locale)}`,
-    `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
+    prefs.amount && `${t(locale, 'optionsPnl')}: ${formatCurrency(report.optionPnl, report.baseCurrency, locale)}`,
     `${t(locale, 'dataThrough')}: ${report.endDate}`,
     `${t(locale, 'sourceType')}: ${getShareSourceLabel(report, locale)}`,
     `${t(locale, 'trustCalculationCheck')}: ${getShareQualityLabel(report, locale)}`,
     t(locale, 'shareNoHoldings'),
+    advice(locale),
   ]
     .filter(Boolean)
     .join('\n')

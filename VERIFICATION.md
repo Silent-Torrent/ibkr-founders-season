@@ -1,5 +1,7 @@
 # Verification record — checkpoint 0.42 local maintenance
 
+2026-11-01 batch 1：18 条勋章规则和本地分享设置开发于独立草稿分支。D01、D02、D07、D08、R02 改为负责人执行云端 Linux Chrome 移动模拟验收，接受 Safari 特有风险。五项仍 OPEN，固定 9 OPEN / 3 CLOSED。具体验收条件见 [门禁追踪](docs/RELEASE_GATE_TRACKER.md)。
+
 Last updated: 2026-10-29
 
 ## 2026-10-29 GPT cloud Work — first round and observed continuation
@@ -559,3 +561,7 @@ The 2026-09-06 checkpoint 0.19 (`8cf0496`) follow-up closes bounded same-tab rec
 - The iOS 27.0 Safari passes do not establish the supported iOS/Safari 16.4 floor. Device rotation, measured Safari/Worker peak memory and secure-context HTTPS native sharing/exact naming remain unverified. Historical HTTP double-extension failures remain recorded, while the later `7b61ab5` two-path naming pass is separately bounded. Protected-host headers, automatic clipboard behavior on that host and complete deployed Network/Storage inspection remain deferred under L.
 - Blob streaming and incremental hashing are implemented, but the intentional two-pass design still reads the immutable Blob twice and retains the selective statement index, global FII alias states and final report. Browser-engine internal Blob caching, browser-Worker peak allocation and real-device peak-memory headroom remain unmeasured. This is not a single-pass parser or an iPhone/Safari memory guarantee.
 - VoiceOver was enabled for one visible cancellation path, but device audio was not captured and the complete navigation/dialog focus and spoken-reading order remains unverified. The desktop keyboard/focus pass, the 320 px simulated-width pass, and the visible VoiceOver cancellation result do not establish full real-device screen-reader accessibility.
+
+Batch 1.4 regression coverage: `npm run test:medals` checks fees below one bowl, medal copy in both tones across three locales, and exact reconciliation of the complete fictional fixture. The browser import check uses that same CSV at 393px to inspect the Traditional Chinese loss color for FICTLOSS and the earned gold Dividend Napper badge.
+
+Batch 1.5 checks the trophy heading and archive spacing at 393px, measures the 3:4 preview ramen line count in all three locales after a fictional import, and checks sentence endings in every medal description.

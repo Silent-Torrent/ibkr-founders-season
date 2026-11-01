@@ -1,3 +1,7 @@
+import { englishNoun, sourceRowCount } from '../lib/countLabel'
+import {useContext} from 'react'
+import {Settings} from '../components/Preferences'
+import {ramen} from '../lib/cardOptions'
 import { useEffect, useMemo, useState } from 'react'
 import type {
   Locale,
@@ -85,6 +89,7 @@ function useRenderedSymbols(symbols: SymbolPnl[]) {
 }
 
 export function LedgerPage({ report, locale }: LedgerPageProps) {
+  const {prefs}=useContext(Settings)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterMode>('all')
   const [sort, setSort] = useState<SortMode>('pnl')
@@ -172,6 +177,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
         />
       </section>
 
+      <p className="ramen-summary">{ramen(report,locale,prefs)}</p>
       <section className="ledger-layout">
         <div className="panel table-panel">
           <div className="section-heading">
@@ -314,7 +320,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                   )}
                 </dd>
               </div>
-              <div><dt>{t(locale, 'sections')}</dt><dd>{report.sections.length}</dd></div>
+              <div><dt>{locale==='en'?englishNoun(report.sections.length,'CSV section'):t(locale, 'sections')}</dt><dd>{report.sections.length}</dd></div>
             </dl>
 
             {report.source === 'demo' && (
@@ -336,7 +342,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                       <small>
                         {report.source === 'demo'
                           ? t(locale, 'synthetic')
-                          : t(locale, 'sourceRowCount').replace('{count}', String(refs.length))}
+                          : sourceRowCount(locale,refs.length)}
                       </small>
                     </summary>
                     <SourceRows isDemo={report.source === 'demo'} locale={locale} refs={refs} />

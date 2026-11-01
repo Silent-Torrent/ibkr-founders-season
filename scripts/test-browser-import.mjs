@@ -1235,13 +1235,27 @@ try {
     return window.scrollY;
   })()`)
   assert(welcomeScroll > 0, 'The first-use transition test could not establish a scrolled starting point.')
-  const choseImport = await evaluate(`(() => {
-    const button = document.querySelector('[data-action="welcome-import"]');
-    if (!(button instanceof HTMLButtonElement)) return false;
-    button.click();
-    return true;
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
+  const workersBeforeWelcomeImport = workerTargets.length
+  const tap = await evaluate(`(() => {
+    const button = document.querySelector('[data-action="welcome-import"]')
+    button.scrollIntoView({block:'center',behavior:'instant'})
+    const rect=button.getBoundingClientRect()
+    button.addEventListener('pointerdown',()=>{globalThis.__welcomeTapAt=performance.now()},{once:true})
+    button.addEventListener('click',()=>requestAnimationFrame(()=>{
+      globalThis.__welcomeTapResult={visible:!!document.querySelector('input[type=file]'),
+        ms:performance.now()-globalThis.__welcomeTapAt}
+    }),{once:true})
+    return {x:rect.left+rect.width/2,y:rect.top+rect.height/2}
   })()`)
-  assert.equal(choseImport, true, 'Could not choose the first-use import path.')
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[tap]})
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+  const feedback=await waitForPageValue('globalThis.__welcomeTapResult',Boolean,'welcome import touch feedback')
+  assert(feedback.visible && feedback.ms<250, 'Import must be visible by the first frame after tapping: '+JSON.stringify(feedback))
+  assert.equal(workerTargets.length,workersBeforeWelcomeImport,'Opening Import started a parser Worker before file selection.')
+  console.log('393x852 welcome touch to import frame: '+feedback.ms.toFixed(1)+' ms')
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false})
   await resolveFileInputNodeId()
   assert.equal(
     await evaluate('document.activeElement?.id ?? ""'),
@@ -2068,23 +2082,12 @@ try {
   )
   const capturedCanvasText = canvasCapture.fillText
   const expectedCanvasText = [
-    '2026 FOUNDERS SEASON',
-    'Season P&L',
-    '+$740',
-    'Season return: +7.7%',
-    'Division: Retail League',
-    'Stocks',
-    '+$168',
-    'Options',
-    '+$450',
-    'Data through',
-    'Aug 15, 2026',
-    'Source',
-    'Fully synthetic test',
-    'Internal calculation check',
-    'Internal checks passed',
+    '2026 FOUNDERS SEASON', 'Retail League', 'Fully synthetic test', 'Gain Day Feast',
+    '+7.7%', 'The market has a cure for swagger.', 'Internal calculation check',
+    'Internal checks passed', 'Data through · Aug 15, 2026',
+    'Founders Season 2026', 'Fees in ramen · Insufficient data',
     'Excludes holdings, account identifiers, and exact net liquidation value.',
-    'P&L ARENA',
+    'Not investment advice', 'P&L ARENA',
   ]
   assert.deepEqual(
     capturedCanvasText,
@@ -2432,13 +2435,17 @@ try {
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
       text: document.body.innerText,
+      sampleCount: document.querySelector('.trophy-counter strong')?.textContent,
+      sampleLabel: document.querySelector('.trophy-counter span')?.textContent,
       unlocked: document.querySelectorAll('.trophy-card.unlocked').length,
     }))()`,
     (value) => value?.heading === 'Trophy case',
     'Trophies navigation',
   )
   assert.equal(trophyState.unlocked, 0, 'Synthetic fixture unlocked a local achievement.')
-  assert(trophyState.text.includes('Achievement preview'), 'Synthetic trophy state was not labelled as a preview.')
+  assert.match(trophyState.sampleCount, /^\d+$/)
+  assert.equal(trophyState.sampleLabel, trophyState.sampleCount === '1' ? 'Fictional sample medal' : 'Fictional sample medals',
+    'Synthetic trophy counter must label the fictional sample and agree with its count.')
   assert(!trophyState.text.includes('Local achievement'), 'Synthetic fixture displayed a local achievement label.')
   const lockedTrophyStyle = await evaluate(`(() => {
     const card = document.querySelector('.trophy-card.locked');
@@ -2480,9 +2487,12 @@ try {
   assert.equal(refreshState.seenGuide, 'seen', 'The explicit first-use choice was not remembered after refresh.')
   assert.deepEqual(
     refreshState.storageKeys,
-    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1'],
+    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1', 'pnl-arena.settings.v1'],
     'The browser persisted data beyond the two approved non-financial preferences.',
   )
+  const savedPrefs = await evaluate("JSON.parse(localStorage.getItem('pnl-arena.settings.v1'))")
+  assert.deepEqual(savedPrefs, {roast:true,amount:false,hideTickers:true,colors:'auto',prices:{},
+    ...(savedPrefs.firstMonth ? {firstMonth:'2026-08'} : {})})
   assert.deepEqual(refreshState.sessionStorageKeys, [], 'The browser wrote sessionStorage data.')
   assert.deepEqual(refreshState.indexedDbNames, [], 'The browser created an IndexedDB database.')
   assert.deepEqual(refreshState.cacheKeys, [], 'The browser created a Cache Storage entry.')
@@ -3131,9 +3141,154 @@ try {
 
   await delay(250)
 
-  const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid]
-  assert.equal(new Set(expectedDownloadGuids).size, 2, 'The two explicit PNG downloads must have distinct GUIDs.')
-  assert.equal(downloadStarts.length, 2, 'An unrequested browser download was observed.')
+  await clickPrimaryNavigation('Import')
+  await cdp.send('DOM.setFileInputFiles',{
+    files:[resolve(projectRoot,'tests/fixtures/full-season-medals-fictional.csv')],nodeId:await resolveFileInputNodeId(),
+  })
+  await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','UI import of complete fictional medal statement')
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  for(const locale of ['zh-CN','zh-TW','en']){
+    await evaluate(`(() => {
+      const el=document.querySelector('select.language-select')
+      el.value=${JSON.stringify(locale)};el.dispatchEvent(new Event('change',{bubbles:true}))
+    })()`)
+    await waitForPageValue('document.documentElement.lang',v=>v===locale,'topbar locale')
+    const bar=await evaluate(`(() => {
+      const el=document.querySelector('.topbar .mobile-source'), style=getComputedStyle(el)
+      const account=document.querySelector('.topbar strong'), lang=document.querySelector('.topbar select')
+      const a=account.getBoundingClientRect(), b=el.getBoundingClientRect(), c=lang.getBoundingClientRect()
+      return {account:account.textContent,text:el.textContent.trim(),full:el.title,
+        fits:a.left>=0&&a.right<=b.left&&b.right<=c.left&&c.right<=innerWidth&&b.width>30,
+        single:style.whiteSpace==='nowrap'&&style.textOverflow==='ellipsis'&&style.overflowX==='hidden',
+        target:c.width>=44&&c.height>=44}
+    })()`)
+    assert(bar.account.includes('0000') && bar.text===bar.full && bar.fits && bar.single && bar.target,
+      locale+' 393px synthetic topbar: '+JSON.stringify(bar))
+    await evaluate(`document.querySelector('[data-card-size="3x4"]').click()`)
+    const lines = await evaluate(`(() => {
+      const range = document.createRange()
+      range.selectNodeContents(document.querySelector('.share-card-preview[data-size="3x4"] .face-lower p'))
+      return new Set([...range.getClientRects()].map(rect => rect.top)).size
+    })()`)
+    assert(lines >= 1 && lines <= 2, locale+' 3x4 ramen line count: '+lines)
+    if (locale === 'zh-TW') {
+      const loss = await evaluate(`(() => {
+        const row = [...document.querySelectorAll('tbody tr')].find(r => r.querySelector('strong')?.textContent === 'FICTLOSS')
+        const cell = row?.querySelector('.emphasis.negative')
+        return cell && {color:getComputedStyle(cell).color, width:cell.getBoundingClientRect().width, text:cell.textContent}
+      })()`)
+      assert(loss?.width > 0 && loss.text.includes('41') && loss.color === 'rgb(255, 126, 136)',
+        'Traditional Chinese fictional loss row: '+JSON.stringify(loss))
+    }
+  }
+  await clickPrimaryNavigation('Trophies')
+  const gaps = await evaluate(`(() => {
+    const rect = sel => document.querySelector(sel).getBoundingClientRect()
+    return [rect('.trophy-hero h1').top - rect('.trophy-hero .eyebrow').bottom,
+      rect('.batch-settings').top - rect('.page-content > details').bottom]
+  })()`)
+  assert(gaps[0] >= 12 && gaps[1] >= 0 && gaps[1] <= 24, '393px trophy gaps: '+gaps)
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
+  const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
+  assert.equal(await evaluate("document.querySelector('.medal.earned[data-tier=gold] summary strong')?.textContent"), 'Dividend Napper')
+  assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')
+  console.log('UI file picker import: '+exampleCount+'/18 fictional medals')
+  await clickPrimaryNavigation('Import')
+  await evaluate(`(() => {
+    const confirm=window.confirm
+    try { window.confirm=()=>true; document.querySelector('[data-action="use-demo"]').click() }
+    finally {window.confirm=confirm}
+  })()`)
+  await waitForPageValue("document.querySelector('.ramen-summary')?.textContent",v=>v?.includes('12 bowls'),'built-in demo ramen summary')
+  await clickPrimaryNavigation('Trophies')
+  const demoWall=await evaluate(`(() => {
+    const gold=document.querySelector('.medal.earned[data-tier="gold"]')
+    gold?.querySelector('summary').click()
+    return {count:document.querySelectorAll('.medal.earned').length,
+      detail:gold?.innerText,open:gold?.open,silver:!!document.querySelector('.medal.earned[data-tier="silver"]')}
+  })()`)
+  assert.equal(demoWall.count,7)
+  assert(demoWall.open && demoWall.silver && demoWall.detail.includes('Tier · Gold') && demoWall.detail.includes('Fictional sample'))
+  console.log('Use demo data: 7/18, silver and gold, fictional detail, 12 ramen bowls.')
+  // Real UI downloads of the built-in fictional demo. Keep original PNG bytes for inspection.
+  await clickPrimaryNavigation('Ledger')
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await evaluate(`document.querySelector('.batch-settings > summary').click()`)
+  const hintSize = await evaluate(`(() => {
+    const hint = document.querySelector('.batch-settings[open] .ramen-price-hint')
+    return hint?.getBoundingClientRect().height > 0 ? parseFloat(getComputedStyle(hint).fontSize) : 0
+  })()`)
+  assert(hintSize >= 14, 'Expanded ramen price hint is hidden or below 14px: '+hintSize)
+  console.log('393x852 expanded ramen price hint:', hintSize, 'px')
+  for(const page of ['Ledger','Arena','Trophies','Import']){
+    await clickPrimaryNavigation(page)
+    await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+    const issues=await evaluate(`(()=>{
+      const failures=[]
+      const visible=el=>{
+        const box=el.getBoundingClientRect()
+        return box.width>1&&box.height>1&&getComputedStyle(el).visibility!=='hidden'&&
+          !el.closest('[aria-hidden="true"],.sr-only,svg,.share-card-face')&&
+          (!el.closest('details:not([open])')||el.closest('summary'))
+      }
+      const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT)
+      while(walker.nextNode()){const n=walker.currentNode,el=n.parentElement
+        if(!n.textContent.trim()||!visible(el)||el.matches('option,script,style'))continue
+        if(parseFloat(getComputedStyle(el).fontSize)<14) failures.push([el.className,n.textContent.trim().slice(0,35),'font'])
+      }
+      for(const el of document.querySelectorAll('button,a[href],select,input,summary,textarea')){
+        if(!visible(el))continue
+        const target=el.matches('input[type=checkbox]')?el.closest('label')??el:el
+        const box=target.getBoundingClientRect()
+        if(Math.min(box.width,box.height)<43.99) failures.push([el.className,target.textContent.trim().slice(0,35),box.width,box.height])
+      }
+      return failures
+    })()`)
+    assert.deepEqual(issues,[],page+' mobile type or target size: '+JSON.stringify(issues))
+  }
+  await clickPrimaryNavigation('Ledger')
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
+  const layoutDirectory=join(downloadDirectory,'layouts')
+  mkdirSync(layoutDirectory)
+  const exportGuids=[]
+  await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:layoutDirectory,eventsEnabled:true})
+  for(const [size,width,height] of [['portrait',1200,1500],['story',1080,1920],['3x4',1080,1440]]){
+    await evaluate(`document.querySelector('[data-card-size="${size}"]').click()`)
+    await waitForPageValue("document.querySelector('.share-card-preview')?.dataset.size",v=>v===size,'demo export size')
+    const before=downloadStarts.length
+    await evaluate(`document.querySelector('[data-action="download-card"]').click()`)
+    await waitForCondition(()=>downloadStarts.length===before+1,'explicit demo download')
+    const {guid,suggestedFilename}=downloadStarts[before]
+    exportGuids.push(guid)
+    assert.equal(suggestedFilename,'pnl-arena-2026-season'+(size==='portrait'?'':'-'+size)+'.png')
+    const path=join(layoutDirectory,suggestedFilename)
+    await waitForCondition(()=>downloadProgress.some(e=>e.guid===guid&&e.state==='completed')&&existsSync(path),'demo PNG bytes')
+    const bytes=readFileSync(path)
+    assert.deepEqual(inspectPng(bytes),{width,height})
+    const blank=await evaluate(`(async()=>{
+      const bytes=Uint8Array.from(atob(${JSON.stringify(bytes.toString('base64'))}),c=>c.charCodeAt(0))
+      const img=await createImageBitmap(new Blob([bytes],{type:'image/png'}))
+      const c=document.createElement('canvas');c.width=img.width;c.height=img.height
+      const ctx=c.getContext('2d');ctx.drawImage(img,0,0);img.close()
+      const data=ctx.getImageData(0,0,c.width,c.height).data
+      let gap=0,max=0
+      for(let y=55;y<c.height-55;y++){
+        let ink=0
+        for(let x=82;x<c.width-82;x+=2){const i=(y*c.width+x)*4;if(data[i]>115&&data[i+1]>110)ink++}
+        gap=ink>=4?0:gap+1;max=Math.max(max,gap)
+      }
+      return max
+    })()`)
+    assert(blank<height*.16,'Large empty horizontal band in '+size+': '+blank+'px')
+    console.log('Demo layout PNG:',size,width,height,'largest empty band',blank,'px')
+    if(process.env.CARD_LAYOUT_QA_DIR){
+      mkdirSync(process.env.CARD_LAYOUT_QA_DIR,{recursive:true})
+      writeFileSync(join(process.env.CARD_LAYOUT_QA_DIR,suggestedFilename),bytes)
+    }
+  }
+  const expectedDownloadGuids = [expectedDownloadGuid, pngSaveGuidance.namedDownload.guid,...exportGuids]
+  assert.equal(new Set(expectedDownloadGuids).size, 5, 'The five explicit PNG downloads must have distinct GUIDs.')
+  assert.equal(downloadStarts.length, 5, 'An unrequested browser download was observed.')
   assert.deepEqual(downloadStarts.map(({ guid }) => guid), expectedDownloadGuids)
   assert(
     downloadProgress.every(({ guid }) => expectedDownloadGuids.includes(guid)),
@@ -3154,6 +3309,7 @@ try {
   })
   const nonGetRequests = requests.filter(({ method }) => method?.toUpperCase() !== 'GET')
   const allowedLocalPathPatterns = [
+    /^\/assets\/season-ui-[A-Za-z0-9_-]+\.woff$/,
     /^\/$/,
     /^\/index\.html$/,
     /^\/favicon\.svg$/,

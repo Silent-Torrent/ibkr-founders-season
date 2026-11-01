@@ -279,6 +279,71 @@ export async function testPngSaveGuidance({
     assert.equal(starts.length, 1, 'PNG guidance started an extra unrequested download.')
     assert(progress.every(({ guid }) => guid === namedDownload.guid))
     await setLocale('en')
+    // Render all output combinations via the same UI and real browser encoder.
+    await setLocale('en')
+    await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+    await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
+    await evaluate(`document.querySelector('[data-card-size="story"]').click()`)
+    const story=await waitForPageValue(`(() => {
+      const card=document.querySelector('.share-card-preview[data-size="story"]')
+      if (!card) return null
+      const box=card.getBoundingClientRect()
+      const vv=window.visualViewport
+      return {top:box.top,bottom:box.bottom,left:box.left,right:box.right,height:box.height,
+        availableTop:Math.max(vv.offsetTop,document.querySelector('.topbar').getBoundingClientRect().bottom),
+        availableBottom:Math.min(vv.offsetTop+vv.height,document.querySelector('.bottom-nav').getBoundingClientRect().top),
+        availableWidth:vv.width}
+    })()`,Boolean,'story layout after selecting 1080x1920')
+    assert(story.height>0 && story.top>=story.availableTop-1 && story.bottom<=story.availableBottom+1 &&
+      story.left>=-1 && story.right<=story.availableWidth+1,'Story preview clipped: '+JSON.stringify(story))
+    console.log('393x852 story preview fits between navigation bars:',story)
+    for (const [size,width,height] of [['portrait',1200,1500],['story',1080,1920],['3x4',1080,1440]]) {
+      for (const template of ['feast','noodles']) {
+        for (const amount of [false,true]) {
+          await evaluate(`(() => {
+            for (const [selector,value] of [['[data-card-size]',${JSON.stringify(size)}],['[data-card-template]',${JSON.stringify(template)}]]) {
+              document.querySelector(selector.slice(0,-1)+'="'+value+'"]').click();
+            }
+            const box=document.querySelector('[data-card-amount]'); if(box.checked!==${amount}) box.click();
+          })()`)
+          await evaluate(`(() => {
+            globalThis.__pnlArenaCanvasCapture.fillText.length=0;
+            document.querySelector('[data-action="download-card"]').click();
+          })()`)
+          const card=await waitForPageValue(`(() => {
+            const img=document.querySelector('.png-fallback-panel img');
+            return {width:img?.naturalWidth,height:img?.naturalHeight,
+              name:document.querySelector('[data-png-filename="full"]')?.textContent,
+              texts:[...globalThis.__pnlArenaCanvasCapture.fillText]};
+          })()`,v=>v?.width>0,'batch medal PNG')
+          assert.deepEqual([card.width,card.height],[width,height])
+          const layout=await evaluate(`(() => {
+            const rect=document.querySelector('.share-card-preview').getBoundingClientRect()
+            const controls=[...document.querySelectorAll('.card-options button,.card-options .card-switch')]
+            return {ratio:rect.width/rect.height,targets:controls.map(el=>{const b=el.getBoundingClientRect();return Math.min(b.width,b.height)})}
+          })()`)
+          assert(Math.abs(layout.ratio-width/height)<0.005,`${size} preview ratio ${layout.ratio}`)
+          assert.equal(layout.targets.length,8)
+          assert(layout.targets.every(h=>h>=44))
+
+          assert.equal(card.name,'pnl-arena-2026-season'+(size==='portrait'?'':'-'+size)+'.png')
+          assert(card.texts.includes(template==='feast'?'Gain Day Feast':'Noodles in the Dark'))
+          assert(card.texts.includes('Not investment advice'))
+          assert.equal(card.texts.includes('+$740'),amount)
+          assert(!card.texts.some(s=>s.includes('ZZFICT')||s.includes('33,750')))
+          if(!amount)assert(!card.texts.some(s=>s.includes('$')))
+          await evaluate(`document.querySelector('.png-fallback-panel button').click()`)
+        }
+      }
+    }
+    await evaluate(`(() => {
+      for(const [selector,value] of [['[data-card-size]','portrait'],['[data-card-template]','auto']]){
+        document.querySelector(selector.slice(0,-1)+'="'+value+'"]').click();
+      }
+      const box=document.querySelector('[data-card-amount]');if(box.checked)box.click();
+    })()`)
+    await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false})
+    console.log('All 12 PNG size/template/amount combinations passed.')
     assert.equal(await evaluate(`document.querySelector('.data-table tbody')?.textContent ?? ''`), initialReport)
     return { locales: checkedLocales, width: 320, realLocalPreviews: blobs.length, namedDownload }
   } finally {

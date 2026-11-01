@@ -1,3 +1,4 @@
+import { validMedalValues } from './medalRules'
 import type {
   OptionEvent,
   ParseResult,
@@ -69,6 +70,7 @@ function reconciliationDifferenceMatches(
 }
 
 const REPORT_KEYS = [
+  'medalValues',
   'source',
   'fingerprint',
   'accountComparisonKey',
@@ -656,6 +658,7 @@ function validateReport(
   referenceTimeMs: number,
 ): value is PortfolioReport {
   if (!hasExactKeys(value, REPORT_KEYS, REQUIRED_REPORT_KEYS)) return false
+  if (value.medalValues !== undefined && (!isDenseArray(value.medalValues,18,budget) || !validMedalValues(value.medalValues))) return false
 
   if (
     (value.source !== 'local' && value.source !== 'synthetic') ||

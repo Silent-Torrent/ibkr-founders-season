@@ -1,7 +1,9 @@
+import { demoMedalValues } from './demoMedals'
 import type { PortfolioReport } from '../types'
 
 export const demoReport: PortfolioReport = {
   source: 'demo',
+  medalValues: demoMedalValues,
   accountComparisonKey: 'demo-only',
   accountIdMasked: '••••2026',
   baseCurrency: 'USD',

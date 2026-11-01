@@ -1,3 +1,7 @@
+import {useContext} from 'react'
+import {Settings} from './Preferences'
+import {cardBadges,cardTheme,ramen,type Template,type CardSize} from '../lib/cardOptions'
+import {advice,tr} from '../data/medals'
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
@@ -43,7 +47,31 @@ const cardDeliveryStatusKeys = {
   preview: 'shareCardPreviewReady',
 } as const
 
-export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
+export function ShareCardPreview({report,locale}:ShareCardPreviewProps){
+  const {prefs,update}=useContext(Settings)
+  const [size,setSize]=useState<CardSize>('portrait')
+  const [template,setTemplate]=useState<Template>('auto')
+  const preview = useRef<HTMLDivElement>(null)
+  function revealStory() {
+    if (window.matchMedia('(max-width: 768px)').matches)
+      preview.current?.scrollIntoView({block:'center', behavior:'instant'})
+  }
+  useLayoutEffect(() => { if (size === 'story') revealStory() }, [size])
+  return <><div className="card-options">
+    <fieldset><legend>{tr(locale,'图片尺寸','圖片尺寸','Image size')}</legend>
+      {(['portrait','story','3x4'] as const).map((v,i)=><button type="button" key={v} data-card-size={v} aria-pressed={size===v} onClick={()=>{if(v==='story' && size===v) revealStory(); else setSize(v)}}>{['1200×1500','1080×1920','1080×1440'][i]}</button>)}
+    </fieldset>
+    <fieldset><legend>{tr(locale,'模板','範本','Template')}</legend>
+      {(['auto','feast','noodles'] as const).map((v,i)=><button type="button" key={v} data-card-template={v} aria-pressed={template===v} onClick={()=>setTemplate(v)}>{[tr(locale,'自动','自動','Automatic'),tr(locale,'吃肉','吃肉','Gain Day Feast'),tr(locale,'关灯吃面','關燈吃麵','Noodles in the Dark')][i]}</button>)}
+    </fieldset>
+    <label className="card-switch"><input type="checkbox" role="switch" data-card-amount checked={prefs.amount} onChange={e=>update({...prefs,amount:e.target.checked})}/>{tr(locale,'显示金额','顯示金額','Show amounts')}</label>
+    <label className="card-switch"><input type="checkbox" role="switch" checked={prefs.hideTickers} onChange={e=>update({...prefs,hideTickers:e.target.checked})}/>{tr(locale,'隐藏股票代码','隱藏股票代碼','Hide tickers')}</label>
+  </div><CardPreview key={JSON.stringify([size,template,prefs])} previewRef={preview} report={report} locale={locale} size={size} template={template}/></>
+}
+
+function CardPreview({ report, locale,size,template,previewRef }: ShareCardPreviewProps & {size:CardSize;template:Template;previewRef:React.RefObject<HTMLDivElement|null>}) {
+  const {prefs}=useContext(Settings)
+  const theme=cardTheme(report,locale,prefs,template)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle')
   const [cardStatus, setCardStatus] = useState<CardDeliveryStatus>('idle')
   const [pngPreview, setPngPreview] = useState<PngPreviewState | null>(null)
@@ -169,7 +197,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
       activeRequestRef.current === requestedContext && downloadRequestRef.current === controller
     setCardStatus('preparing')
     try {
-      const result = await downloadSeasonCard(report, locale, { signal: controller.signal })
+      const result = await downloadSeasonCard(report, locale, { signal: controller.signal, prefs, size, template })
 
       if (!isCurrent()) {
         if (result?.kind === 'preview') URL.revokeObjectURL(result.previewUrl)
@@ -205,7 +233,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
     setCopyStatus('copying')
     let nextStatus: 'copied' | 'failed'
     try {
-      await navigator.clipboard.writeText(buildSeasonSummary(report, locale))
+      await navigator.clipboard.writeText(buildSeasonSummary(report, locale,prefs,template))
       nextStatus = 'copied'
     } catch {
       nextStatus = 'failed'
@@ -295,6 +323,17 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         <div
           aria-labelledby={`${manualCopyId}-title`}
           className="manual-copy-panel"
+          onFocusCapture={event => {
+            const control=event.target
+            if (!(control instanceof HTMLButtonElement)) return
+            const bottomNav=document.querySelector('.bottom-nav')
+            if (!bottomNav || getComputedStyle(bottomNav).display==='none') return
+            const top=(document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0)+8
+            const bottom=bottomNav.getBoundingClientRect().top-8
+            const rect=control.getBoundingClientRect()
+            if(rect.top<top || rect.bottom>bottom)
+              window.scrollBy({top:rect.top<top?rect.top-top:rect.bottom-bottom,behavior:'instant'})
+          }}
           id={`${manualCopyId}-panel`}
           ref={manualPanelRef}
           role="region"
@@ -321,7 +360,7 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             readOnly
             ref={manualTextRef}
             spellCheck={false}
-            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale)}
+            value={buildSeasonSummary(visibleManualCopy.report, visibleManualCopy.locale,prefs,template)}
           />
           <button
             className="secondary-button"
@@ -405,7 +444,8 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
         </div>
       ) : null}
 
-      <div className="share-card-preview">
+      <div ref={previewRef} data-size={size} className={'share-card-preview '+(theme.feast?'feast':'noodles')}>
+        <div className="share-card-face">
         <div className="share-card-top">
           <div>
             <span>{report.seasonYear}</span>
@@ -416,10 +456,13 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             <span>P&amp;L ARENA</span>
           </span>
         </div>
-        <p>{t(locale, 'seasonPnl')}</p>
+        <p className="face-title">{theme.title}</p>
         <div className={`share-pnl ${pnlClass(report.seasonPnl)}`}>
-          {formatCurrency(report.seasonPnl, report.baseCurrency, locale)}
+          {formatShareSeasonReturn(report.seasonReturn,locale)}
         </div>
+        <p className="face-caption">{theme.line}</p>
+        {size==='story' && <p className="face-extra">{theme.secondLine}</p>}
+        {prefs.amount&&<strong>{formatCurrency(report.seasonPnl,report.baseCurrency,locale)}</strong>}
         <div className="share-grid">
           <div>
             <span>{t(locale, 'seasonReturn')}</span>
@@ -440,11 +483,15 @@ export function ShareCardPreview({ report, locale }: ShareCardPreviewProps) {
             <strong>{qualityLabel}</strong>
           </div>
         </div>
-        <div className="share-card-bottom">
+        <div className="face-lower"><div className="face-medals">
+          {size!=='portrait' && <strong>{t(locale,'trophiesTitle')}</strong>}
+          {cardBadges(report,locale,prefs).map(label=><span key={label}>{label}</span>)}
+        </div><p>{ramen(report,locale,prefs)}</p></div>
+        <div className="share-card-bottom"><span>{advice(locale)}</span>
           <span>{t(locale, 'dataThrough')} {formatDate(report.endDate, locale)}</span>
           <span>{t(locale, 'shareNoHoldings')}</span>
         </div>
-      </div>
+      </div></div>
     </section>
   )
 }

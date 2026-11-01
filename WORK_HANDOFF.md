@@ -1,5 +1,7 @@
 # Work handoff — P&L Arena / IBKR Founders Season
 
+2026-11-01 batch 1：18 条勋章规则和本地分享设置开发于独立草稿分支。D01、D02、D07、D08、R02 改为负责人执行云端 Linux Chrome 移动模拟验收，接受 Safari 特有风险。五项仍 OPEN，固定 9 OPEN / 3 CLOSED。具体验收条件见 [门禁追踪](docs/RELEASE_GATE_TRACKER.md)。
+
 ## Current status
 
 2026-10-29 GPT cloud Work acceptance: the user's target is development inside ChatGPT/OpenAI. The authorized cloud-only Work chat cloned `main` at `576997f` (167 tracked files) in Linux, then pulled `ca1c76e` (168 files) and read the corrected handoff. Official Node 22.23.4/npm 10.9.9 became usable after re-extraction; locked dependency installation, zero-vulnerability audit, production build and all non-browser checks passed in that cloud runtime, without Mac execution as a substitute. The first complete check failed because Google Chrome was not found. File creation/readback and platform GitHub branch/commit/draft-PR writeback passed. After the second-round evidence update, independent remote readback confirmed [PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1) at `7e0002c0fc4fafc6fd45e115be33563f96941785`: one added 49-line file, `docs/GPT_CLOUD_WORK_VERIFICATION_2026-10-29.md`; the PR remains a draft and is not merged.
