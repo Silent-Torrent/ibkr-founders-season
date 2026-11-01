@@ -129,7 +129,7 @@ export function evaluateMedals(
     const total = sumExactNumbers(dividends.map((r) => parseNumber(r.Amount)!))
     const tickers = dividends
       .filter((r) => parseNumber(r.Amount)! > 0)
-      .map((r) => r.Description?.match(/^([A-Z][A-Z0-9.-]*)(?=\s|\()/)?.[1])
+      .map((r) => r.Description?.match(/^([A-Z][A-Z0-9.-]*)(?=\s*\(|\s+(?:cash\s+)?dividend\b|$)/i)?.[1])
     result[6] =
       total == null
         ? null

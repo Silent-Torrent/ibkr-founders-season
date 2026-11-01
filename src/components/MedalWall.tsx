@@ -1,7 +1,7 @@
 import { ribbon, seal, sealLines } from '../lib/medalArt'
 import { useContext } from 'react'
 import type { PortfolioReport, Locale } from '../types'
-import { medals, local, tr, insufficient } from '../data/medals'
+import { medals, local, tr, insufficient, advice } from '../data/medals'
 import { Settings } from './Preferences'
 import { medalOutcome } from '../lib/cardOptions'
 export function MedalWall({
@@ -25,6 +25,7 @@ export function MedalWall({
                 (earned ? 'earned ' : '') +
                 (i === 13 ? 'founder' : '')
               }
+              data-tier={tier==null ? undefined : ['bronze','silver','gold'][tier]}
               key={i}
             >
               <summary>
@@ -58,7 +59,7 @@ export function MedalWall({
               </summary>
               <p>{local(m[1], l)}</p>
               {detail && <p>{detail}</p>}
-              <p>{local(m[p.roast ? 2 : 3], l)}</p>
+              <p>{local(m[p.roast ? 2 : 3], l)}</p><small>{advice(l)}</small>
             </details>
           )
         })}

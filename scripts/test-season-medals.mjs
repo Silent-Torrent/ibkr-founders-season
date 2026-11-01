@@ -92,6 +92,51 @@ try {
   assert.equal(counts.size, 18)
   assert([...counts.values()].every((n) => n >= 3))
   assert.equal(medalIndex().finish('2026-10-01', 'USD')[7], null)
+  // Feed a fictional order block through both production parser entry points and
+  // the Worker schema. Adding a medal must not change the YTD accounting result.
+  const {parseIbkrActivityStatement,parseIbkrActivityStatementBlob}=await vite.ssrLoadModule('/src/lib/ibkr.ts')
+  const {isWorkerParseResultWithinLimits}=await vite.ssrLoadModule('/src/lib/workerOutputLimits.ts')
+  const baseline=readFileSync(new URL('../tests/fixtures/ibkr-current-schema-synthetic.csv',import.meta.url),'utf8')
+  const start=rows.findIndex(row=>row[0]==='Scenario' && row[2]==='16' && row[5]==='2026-12-31')
+  assert(start>=0)
+  const block=rows.slice(start+1)
+  const stop=block.findIndex(row=>row[0]==='Scenario')
+  const extra=block.slice(0,stop).filter(row=>row[1]!=='Total').map(row=>row.map(cell=>'"'+cell.replaceAll('"','""')+'"').join(',')).join('\n')
+  const text=baseline.split('\n').filter(line=>!['Trades,','Open Positions,','Dividends,','Fees,'].some(s=>line.startsWith(s))).join('\n')+'\n'+extra
+  const options={currentDate:new Date('2026-08-30T12:00:00Z')}
+  const sync=parseIbkrActivityStatement(text,options)
+  assert.deepEqual(sync.errors,[])
+  const streamed=await parseIbkrActivityStatementBlob(new Blob([text]),options)
+  assert.deepEqual(streamed,sync)
+  assert(isWorkerParseResultWithinLimits(streamed,options.currentDate.getTime()))
+  assert.equal(sync.report.medalValues[15],1)
+  assert.equal(sync.report.seasonPnl,parseIbkrActivityStatement(baseline,options).report.seasonPnl)
+  const {cardTheme,priceFor}=await vite.ssrLoadModule('/src/lib/cardOptions.ts')
+  const losing={...sync.report,seasonReturn:-0.1,medalValues:[...sync.report.medalValues]}
+  assert.equal(cardTheme(losing,'en',defaults,'auto').feast,false)
+  losing.medalValues[7]=0.3
+  assert.match(ramen(losing,'en',{...defaults,prices:{USD:0.1}}),/3 bowls/)
+  assert.equal(priceFor(defaults,'zh-CN','USD'),2)
+  assert.equal(priceFor(defaults,'zh-TW','USD'),3)
+  assert.equal(priceFor(defaults,'en','EUR'),undefined)
+  const missing=medalIndex()
+  // Remove real columns from the same fictional block. Rule-specific absence
+  // must not discard an independently provable ticker match.
+  for(const row of block.slice(0,stop)) {
+    if(row[0]==='Trades' && row[1]==='Header') missing.visit(row.map(k=>['T. Price','Comm/Fee','Date/Time'].includes(k)?'Missing '+k:k))
+    else missing.visit(row)
+  }
+  const partial=missing.finish('2026-08-15','USD')
+  assert.equal(partial[2],null)
+  assert.equal(partial[7],null)
+  assert.equal(partial[10],null)
+  assert.equal(partial[15],1)
+  const {buildSeasonSummary}=await vite.ssrLoadModule('/src/lib/shareCard.ts')
+  for(const locale of ['en','zh-CN','zh-TW']){
+    const text=buildSeasonSummary({...losing,seasonPnl:-9753},locale,defaults)
+    assert(!text.includes('9,753')&&!text.includes('9753'))
+    assert(text.includes(locale==='en'?'Not investment advice':locale==='zh-CN'?'非投资建议':'非投資建議'))
+  }
   console.log(count + ' fictional medal cases passed across all 18 rules.')
 } finally {
   await vite.close()
