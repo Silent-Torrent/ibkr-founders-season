@@ -349,7 +349,7 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
               {t(locale, 'close')}
             </button>
           </div>
-          <p id={`${manualCopyId}-hint`}>{t(locale, 'manualSummaryHint')}</p>
+          <p role="status" aria-atomic="true" id={`${manualCopyId}-hint`}>{t(locale, 'manualSummaryHint')}</p>
           <label className="sr-only" htmlFor={`${manualCopyId}-text`}>{t(locale, 'manualSummaryTitle')}</label>
           <textarea
             aria-describedby={`${manualCopyId}-hint`}

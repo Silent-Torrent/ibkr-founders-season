@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
+import { runReleaseGateEvidence } from './release-gate-evidence.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
 import { testShortLandscape } from './test-short-landscape.mjs'
 import { testMobilePrivacyModal } from './test-mobile-privacy-modal.mjs'
@@ -691,7 +692,7 @@ let nextWorkerHold = null
 let nextWorkerHeap = null
 
 function armNextWorkerHeap(label) {
-  assert(measureWorkerHeap, 'Worker heap sampling requires the explicit diagnostic flag.')
+  assert(measureWorkerHeap || process.env.RELEASE_GATE_QA_DIR, 'Worker heap sampling requires the explicit diagnostic flag.')
   assert.equal(nextWorkerHeap, null, 'A heap diagnostic is already armed.')
   assert.equal(nextWorkerHold, null, 'Do not combine heap sampling with a stalled-Worker timeout test.')
   const ticket = { label, ready: false, error: null, sampler: null, targetId: null, sessionId: null, isolateId: null }
@@ -3461,6 +3462,15 @@ try {
     'The production parser Worker chunk was not requested.',
   )
 
+  if (process.env.RELEASE_GATE_QA_DIR) {
+    await runReleaseGateEvidence({
+      directory: process.env.RELEASE_GATE_QA_DIR, cdp, evaluate, waitForPageValue,
+      navigateAndWait, previewUrl, resolveFileInputNodeId, accessibleNodeForSelector,
+      armNextWorkerHeap, holdNextWorker, downloadStarts, downloadProgress, inspectPng,
+      full: resolve(projectRoot, 'tests/fixtures/full-season-medals-fictional.csv'),
+      capacity: capacityFixturePath, empty: emptyFixturePath,
+    })
+  }
   console.log('Browser import, cancellation, capacity, and PNG download regression passed.')
   console.log({
     cancelledWorkerTerminated,

@@ -3447,3 +3447,10 @@ h2 {
   .topbar .language-select { flex:0 0 auto; }
 }
 .share-card-preview[data-size=story] .face-lower {row-gap:3.5cqw}
+
+.clear-current-report { display:block; margin:8px 16px 0 auto; min-height:44px; min-width:44px; }
+@media (pointer:coarse) and (max-width:900px) {
+  :is(.side-nav,.privacy-modal,.symbol-drawer,.png-fallback-panel) :is(a[href],button,summary) {
+    min-width:44px; min-height:44px;
+  }
+}

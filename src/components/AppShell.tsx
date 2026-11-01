@@ -123,16 +123,6 @@ export function AppShell({
             </span>
             <span aria-hidden="true" className={`quality-dot ${report.dataQuality}`} />
           </div>
-          {isImportedSource(report.source) && (
-            <button
-              className="text-button danger"
-              data-action="clear-report"
-              onClick={onClearLocal}
-              type="button"
-            >
-              {t(locale, 'clearLocal')}
-            </button>
-          )}
         </div>
       </aside>
 
@@ -161,6 +151,16 @@ export function AppShell({
             </select>
           </div>
         </header>
+        {isImportedSource(report.source) && (
+          <button
+            className="text-button danger clear-current-report"
+            data-action="clear-report"
+            onClick={onClearLocal}
+            type="button"
+          >
+            {t(locale, 'clearLocal')}
+          </button>
+        )}
 
         <div className="page-content" data-page={page}>{children}</div>
         <SettingsPanel locale={locale} currency={report.baseCurrency} />

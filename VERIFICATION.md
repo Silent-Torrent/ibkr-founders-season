@@ -565,3 +565,5 @@ The 2026-09-06 checkpoint 0.19 (`8cf0496`) follow-up closes bounded same-tab rec
 Batch 1.4 regression coverage: `npm run test:medals` checks fees below one bowl, medal copy in both tones across three locales, and exact reconciliation of the complete fictional fixture. The browser import check uses that same CSV at 393px to inspect the Traditional Chinese loss color for FICTLOSS and the earned gold Dividend Napper badge.
 
 Batch 1.5 checks the trophy heading and archive spacing at 393px, measures the 3:4 preview ramen line count in all three locales after a fictional import, and checks sentence endings in every medal description.
+
+Release gate evidence can be reproduced by setting RELEASE_GATE_QA_DIR to an empty output directory when running npm run check with the existing non-root Chrome configuration. See docs/RELEASE_GATE_TRACKER.md for owner-provided HTTPS evidence and the distinction between sampled metrics and acceptance.

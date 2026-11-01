@@ -29,10 +29,19 @@ jobs:
       - run: npm ci
       - run: npm run check
         env:
+          RELEASE_GATE_QA_DIR: ${{ runner.temp }}/release-gate-evidence
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
       - uses: actions/upload-artifact@v4
         with:
           name: fictional-share-card-layouts
           path: ${{ runner.temp }}/fictional-layouts/*.png
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-gate-evidence
+          path: ${{ runner.temp }}/release-gate-evidence/
           if-no-files-found: error
           retention-days: 14
