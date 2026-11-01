@@ -1,0 +1,30 @@
+name: Product checks
+on:
+  pull_request:
+  push:
+    branches: [main, docs/gpt-cloud-work-verification-2026-10-29]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify non-root runner and browser
+        run: |
+          test "$(id -u)" -ne 0
+          chrome_path="$(command -v google-chrome)"
+          "$chrome_path" --version
+          echo "CHROME_PATH=$chrome_path" >> "$GITHUB_ENV"
+          if [ ! -x /bin/zsh ]; then
+            sudo apt-get update
+            sudo apt-get install -y zsh
+          fi
+      - run: npm ci
+      - run: npm run check

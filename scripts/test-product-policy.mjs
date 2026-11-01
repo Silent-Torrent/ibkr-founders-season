@@ -752,6 +752,10 @@ try {
     fill() {},
     fillRect() {},
     fillText(value) { drawnText.push(String(value)) },
+    measureText(text) {
+      const width = String(text).length * 18
+      return { width, actualBoundingBoxLeft: width }
+    },
     lineTo() {},
     moveTo() {},
     restore() {},
