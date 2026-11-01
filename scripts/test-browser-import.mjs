@@ -3166,6 +3166,13 @@ try {
   // Real UI downloads of the built-in fictional demo. Keep original PNG bytes for inspection.
   await clickPrimaryNavigation('Ledger')
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await evaluate(`document.querySelector('.batch-settings > summary').click()`)
+  const hintSize = await evaluate(`(() => {
+    const hint = document.querySelector('.batch-settings[open] .ramen-price-hint')
+    return hint?.getBoundingClientRect().height > 0 ? parseFloat(getComputedStyle(hint).fontSize) : 0
+  })()`)
+  assert(hintSize >= 14, 'Expanded ramen price hint is hidden or below 14px: '+hintSize)
+  console.log('393x852 expanded ramen price hint:', hintSize, 'px')
   for(const page of ['Ledger','Arena','Trophies','Import']){
     await clickPrimaryNavigation(page)
     await evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')

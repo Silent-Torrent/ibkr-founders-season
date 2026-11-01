@@ -3400,7 +3400,7 @@ h2 {
 .card-options :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .welcome-choice-card button {touch-action:manipulation}
 
-.ramen-price-hint { display:block; margin:0 8px 8px; color:var(--muted); font-size:max(var(--reading-floor, 0px), .85rem); }
+.ramen-price-hint { display:block; margin:0 8px 8px; color:var(--muted); font-size:max(14px, .875rem); }
 @media (max-width:768px) {
   /* Leave 200px for sticky navigation, safe areas and breathing room. */
   .share-card-preview[data-size=story] { max-width:min(540px, calc((100dvh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * .5625)); }
