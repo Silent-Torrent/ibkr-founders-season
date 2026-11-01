@@ -1,3 +1,4 @@
+import { englishNoun, sourceRowCount } from '../lib/countLabel'
 import {useContext} from 'react'
 import {Settings} from '../components/Preferences'
 import {ramen} from '../lib/cardOptions'
@@ -319,7 +320,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                   )}
                 </dd>
               </div>
-              <div><dt>{t(locale, 'sections')}</dt><dd>{report.sections.length}</dd></div>
+              <div><dt>{locale==='en'?englishNoun(report.sections.length,'CSV section'):t(locale, 'sections')}</dt><dd>{report.sections.length}</dd></div>
             </dl>
 
             {report.source === 'demo' && (
@@ -341,7 +342,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                       <small>
                         {report.source === 'demo'
                           ? t(locale, 'synthetic')
-                          : t(locale, 'sourceRowCount').replace('{count}', String(refs.length))}
+                          : sourceRowCount(locale,refs.length)}
                       </small>
                     </summary>
                     <SourceRows isDemo={report.source === 'demo'} locale={locale} refs={refs} />

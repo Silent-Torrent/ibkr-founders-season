@@ -3142,6 +3142,26 @@ try {
     files:[resolve(projectRoot,'tests/fixtures/full-season-medals-fictional.csv')],nodeId:await resolveFileInputNodeId(),
   })
   await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','UI import of complete fictional medal statement')
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  for(const locale of ['zh-CN','zh-TW','en']){
+    await evaluate(`(() => {
+      const el=document.querySelector('select.language-select')
+      el.value=${JSON.stringify(locale)};el.dispatchEvent(new Event('change',{bubbles:true}))
+    })()`)
+    await waitForPageValue('document.documentElement.lang',v=>v===locale,'topbar locale')
+    const bar=await evaluate(`(() => {
+      const el=document.querySelector('.topbar .mobile-source'), style=getComputedStyle(el)
+      const account=document.querySelector('.topbar strong'), lang=document.querySelector('.topbar select')
+      const a=account.getBoundingClientRect(), b=el.getBoundingClientRect(), c=lang.getBoundingClientRect()
+      return {account:account.textContent,text:el.textContent.trim(),full:el.title,
+        fits:a.left>=0&&a.right<=b.left&&b.right<=c.left&&c.right<=innerWidth&&b.width>30,
+        single:style.whiteSpace==='nowrap'&&style.textOverflow==='ellipsis'&&style.overflowX==='hidden',
+        target:c.width>=44&&c.height>=44}
+    })()`)
+    assert(bar.account.includes('0000') && bar.text===bar.full && bar.fits && bar.single && bar.target,
+      locale+' 393px synthetic topbar: '+JSON.stringify(bar))
+  }
+  await cdp.send('Emulation.clearDeviceMetricsOverride')
   await clickPrimaryNavigation('Trophies')
   const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
   assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')

@@ -1,3 +1,4 @@
+import { englishNoun } from './countLabel'
 import { hotTickers } from './medalRules'
 import { formatCurrency } from './format'
 import type { Locale, PortfolioReport } from '../types'
@@ -64,7 +65,7 @@ export function ramen(r: PortfolioReport, l: Locale, p: Preferences) {
     l,
     `今年手续费够吃 ${n} 碗拉面，券商年终奖有你一份。`,
     `今年手續費夠吃 ${n} 碗拉麵，券商年終獎金有你一份。`,
-    `Your fees this season = ${n} ${n === 1n ? 'bowl' : 'bowls'} of ramen. Your broker says thanks.`,
+    `Your fees this season = ${n} ${englishNoun(n, 'bowl')} of ramen. Your broker says thanks.`,
   )
 }
 export function cardTheme(
@@ -101,7 +102,7 @@ export function medalOutcome(
     switch (index) {
       case 0:
         tier = value >= 270 ? 2 : value >= 180 ? 1 : 0
-        detail = value + tr(locale, ' 天', ' 天', ' days')
+        detail = value + tr(locale, ' 天', ' 天', ' ' + englishNoun(value,'day'))
         break
       case 1:
         if (prefs.amount)
@@ -109,7 +110,7 @@ export function medalOutcome(
         break
       case 6:
         tier = value >= 10 ? 2 : value >= 5 ? 1 : 0
-        detail = value + tr(locale, ' 个派息标的', ' 檔配息標的', ' payers')
+        detail = value + tr(locale, ' 个派息标的', ' 檔配息標的', ' ' + englishNoun(value,'payer'))
         break
       case 7:
         detail = ramen(report, locale, prefs)

@@ -235,7 +235,7 @@ export async function downloadSeasonCard(
     textAt(date,555,1136,28,410)
     textAt(t(locale,'trophiesTitle'),86,1280,40,908,accent)
     badges.forEach((badge,i)=>medalAt(badge,89,1364+i*62,904,38))
-    textAt(cost,86,badges.length>1?1590:1500,36)
+    textAt(cost,86,badges.length>1?1620:1524,36)
     textAt(t(locale,'shareNoHoldings'),86,1678,26)
     textAt(advice(locale),86,1750,30)
   } else {

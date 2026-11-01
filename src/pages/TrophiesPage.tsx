@@ -1,3 +1,4 @@
+import { englishNoun } from '../lib/countLabel'
 import { tr,medals } from '../data/medals'
 import { MedalWall } from '../components/MedalWall'
 import type { Locale, PortfolioReport, TrophyDefinition } from '../types'
@@ -97,7 +98,7 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
         </div>
         <div className="trophy-counter">
           <strong>{seasonCount}</strong>
-          <span>{counterLabel}</span>
+          <span>{locale==='en'?englishNoun(seasonCount,isSynthetic?'Fictional sample medal':'Local achievement'):counterLabel}</span>
         </div>
       </section>
 
@@ -111,7 +112,7 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
 
       <MedalWall locale={locale} report={report} />
       <details><summary>{tr(locale,'旧版成就档案','舊版成就檔案','Legacy achievement archive')}</summary>
-      <div className="trophy-counter"><strong>{unlocked}</strong><span>{tr(locale,'旧版成就','舊版成就','Legacy achievements')}</span></div>
+      <div className="trophy-counter"><strong>{unlocked}</strong><span>{tr(locale,'旧版成就','舊版成就',englishNoun(unlocked,'Legacy achievement'))}</span></div>
       <section aria-label={t(locale, 'trophiesTitle')} className="trophy-grid" role="list">
         {presentations.map(({ status, trophy }) => {
           return (

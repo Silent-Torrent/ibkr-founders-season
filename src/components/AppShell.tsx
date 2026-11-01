@@ -145,7 +145,7 @@ export function AppShell({
             <strong>{report.accountIdMasked}</strong>
           </div>
           <div className="topbar-actions">
-            <span className={`source-pill ${report.source} mobile-source`}>
+            <span className={`source-pill ${report.source} mobile-source`} title={t(locale, reportSourceStatusKey(report.source))}>
               {t(locale, reportSourceStatusKey(report.source))}
             </span>
             <select

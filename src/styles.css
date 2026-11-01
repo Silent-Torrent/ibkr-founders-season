@@ -3430,3 +3430,12 @@ h2 {
   .topbar-actions,.button-row,.table-toolbar {flex-wrap:wrap}
   .metric-help summary {display:inline-flex;align-items:center;justify-content:center}
 }
+
+@media(max-width:780px){
+  .topbar { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:10px; }
+  .topbar strong,.topbar .language-select { white-space:nowrap; }
+  .topbar-actions { min-width:0; flex-wrap:nowrap; justify-content:flex-end; }
+  .topbar .mobile-source { display:block; flex:0 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .topbar .language-select { flex:0 0 auto; }
+}
+.share-card-preview[data-size=story] .face-lower {row-gap:3.5cqw}

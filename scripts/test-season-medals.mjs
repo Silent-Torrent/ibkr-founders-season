@@ -178,6 +178,15 @@ try {
       }
     }
   }
+  const {englishNoun,sourceRowCount}=await vite.ssrLoadModule('/src/lib/countLabel.ts')
+  for(const n of [1,2]){
+    for(const noun of ['payer','day','bowl','source row','CSV section','Assignment','Exercise','Expiration','Local achievement','Fictional sample medal','Legacy achievement'])
+      assert.equal(englishNoun(n,noun),noun+(n===1?'':'s'))
+    const report={...demoReport,medalValues:[...demoReport.medalValues]}
+    report.medalValues[6]=n
+    assert.equal(medalOutcome(6,report,'en',defaults).detail,n===1?'1 payer':'2 payers')
+    assert.equal(sourceRowCount('en',n),n===1?'1 source row':'2 source rows')
+  }
   console.log(count + ' fictional medal cases passed across all 18 rules.')
 } finally {
   await vite.close()
