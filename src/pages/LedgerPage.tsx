@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type {
   Locale,
   PortfolioReport,
@@ -71,6 +71,19 @@ function reconciliationHelp(locale: Locale, id: ReconciliationCheckId): string {
   return t(locale, 'reconciliationNavBridgeHelp')
 }
 
+// Keep the full table searchable while yielding between DOM insertions on large imports.
+function useRenderedSymbols(symbols: SymbolPnl[]) {
+  const batchSize = 32
+  const [batch, setBatch] = useState({ symbols, count: batchSize })
+  const count = batch.symbols === symbols ? batch.count : batchSize
+  useEffect(() => {
+    if (count >= symbols.length) return
+    const frame = requestAnimationFrame(() => setBatch({ symbols, count: count + batchSize }))
+    return () => cancelAnimationFrame(frame)
+  }, [symbols, count])
+  return symbols.slice(0, count)
+}
+
 export function LedgerPage({ report, locale }: LedgerPageProps) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterMode>('all')
@@ -98,6 +111,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
           : a.symbol.localeCompare(b.symbol),
       )
   }, [filter, query, report.symbols, sort])
+  const renderedSymbols = useRenderedSymbols(symbols)
 
   return (
     <>
@@ -230,7 +244,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {symbols.map((item) => (
+                {renderedSymbols.map((item) => (
                   <tr key={item.symbol} onClick={() => setSelected(item)}>
                     <td>
                       <strong>{item.symbol}</strong>
