@@ -6,7 +6,7 @@ import {createWorkerHeapSampler} from './worker-heap-sampling.mjs'
 export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPageValue,navigateAndWait,previewUrl,resolveFileInputNodeId,accessibleNodeForSelector,armNextWorkerHeap,holdNextWorker,downloadStarts,downloadProgress,inspectPng,full,capacity,empty}) {
   mkdirSync(directory,{recursive:true})
   const browser=(await cdp.send('Browser.getVersion')).product
-  const report={browser,commit:process.env.GITHUB_SHA,run:process.env.GITHUB_RUN_ID,mode:'Linux Chrome touch emulation, loopback HTTP, fictional statements',checks:[]}
+  const report={browser,commit:process.env.GITHUB_SHA,prHead:process.env.RELEASE_GATE_PR_HEAD_SHA,run:process.env.GITHUB_RUN_ID,mode:'Linux Chrome touch emulation, loopback HTTP, fictional statements',checks:[]}
   const settle=()=>evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
   const wait=(expr,label)=>waitForPageValue('Boolean('+expr+')',Boolean,label)
   const shot=async name=>{

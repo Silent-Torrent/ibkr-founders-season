@@ -30,6 +30,7 @@ jobs:
       - name: Collect mobile release gate evidence
         run: node scripts/test-browser-import.mjs --release-gate-evidence-only
         env:
+          RELEASE_GATE_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           RELEASE_GATE_QA_DIR: ${{ runner.temp }}/release-gate-evidence
       - run: npm run check
         env:

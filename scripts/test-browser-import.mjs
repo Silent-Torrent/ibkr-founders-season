@@ -3477,6 +3477,36 @@ async function runBrowserChecks() {
     'The production parser Worker chunk was not requested.',
   )
 
+  // Always exercise the imported-report action, including when no QA artifact is requested.
+  await navigateAndWait(previewUrl)
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
+  await clickPrimaryNavigation('Import')
+  await cdp.send('DOM.setFileInputFiles',{
+    files:[resolve(projectRoot,'tests/fixtures/full-season-medals-fictional.csv')],nodeId:await resolveFileInputNodeId(),
+  })
+  await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','fictional import before touch clear')
+  const clearTarget=await evaluate(`(async()=>{
+    const button=document.querySelector('[data-action="clear-report"]')
+    button.scrollIntoView({block:'center',behavior:'instant'})
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))
+    const rect=button.getBoundingClientRect(),x=rect.left+rect.width/2,y=rect.top+rect.height/2
+    button.addEventListener('click',event=>{window.__trustedClear=event.isTrusted},{once:true,capture:true})
+    return {x,y,width:rect.width,height:rect.height,visible:button.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}),
+      hit:button.contains(document.elementFromPoint(x,y))}
+  })()`)
+  assert(clearTarget.visible && clearTarget.hit && clearTarget.width>=44 && clearTarget.height>=44,
+    'Mobile clear-report target: '+JSON.stringify(clearTarget))
+  const stopConfirm=cdp.on('Page.javascriptDialogOpening',async event=>{
+    if(event.type==='confirm') await cdp.send('Page.handleJavaScriptDialog',{accept:true})
+  })
+  try {
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:clearTarget.x,y:clearTarget.y}]})
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+    await waitForPageValue(`Boolean(window.__trustedClear && document.querySelector('.source-pill.demo')
+      && !document.querySelector('[data-action="clear-report"]'))`,Boolean,'trusted mobile clear restores Demo')
+  } finally {stopConfirm()}
+
   if (process.env.RELEASE_GATE_QA_DIR) await collectEvidence()
   console.log('Browser import, cancellation, capacity, and PNG download regression passed.')
   console.log({
