@@ -79,7 +79,7 @@ export default function App() {
       const raw=JSON.parse(window.localStorage.getItem('pnl-arena.settings.v1') ?? '{}')
       const prices:Record<string,number>={}
       for(const [k,n] of Object.entries(raw.prices??{})) if(/^[A-Z]{3}$/.test(k)&&typeof n==='number'&&n>0&&Number.isFinite(n)) prices[k]=n
-      return {roast:raw.roast!==false,amount:raw.amount===true,hideTickers:raw.hideTickers!==false,
+      return {benchmark:typeof raw.benchmark==='number'&&Number.isFinite(raw.benchmark)?raw.benchmark:undefined,roast:raw.roast!==false,amount:raw.amount===true,hideTickers:raw.hideTickers!==false,
         colors:raw.colors==='red'||raw.colors==='green'?raw.colors:'auto',prices,
         firstMonth:/^2026-(0[1-9]|1[0-2])$/.test(raw.firstMonth)?raw.firstMonth:undefined}
     } catch {return defaults}

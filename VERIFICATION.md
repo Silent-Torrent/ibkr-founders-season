@@ -567,3 +567,5 @@ Batch 1.4 regression coverage: `npm run test:medals` checks fees below one bowl,
 Batch 1.5 checks the trophy heading and archive spacing at 393px, measures the 3:4 preview ramen line count in all three locales after a fictional import, and checks sentence endings in every medal description.
 
 Release gate evidence can be reproduced by setting RELEASE_GATE_QA_DIR to an empty output directory when running npm run check with the existing non-root Chrome configuration. See docs/RELEASE_GATE_TRACKER.md for owner-provided HTTPS evidence and the distinction between sampled metrics and acceptance.
+
+Batch 2 cloud evidence: PR #4 head 88ec54a and docs-only PR #5 cd557ac passed the full product check and mobile evidence jobs. For PRs #6–#8 the release evidence step passed, then the unchanged product-policy test rejected the new medals preference key. The conflict is recorded on #6 for owner decision. The final arena branch also exercises the stacked UI and captures locale screenshots in release-gate-evidence/batch2-mobile. Local Work uses Node 22 but has no non-root Chrome execution identity. This record does not accept or close any release gate.

@@ -5,6 +5,7 @@ import { formatCurrency } from './format'
 import type { Locale, PortfolioReport } from '../types'
 import { medals, lines, local, tr, insufficient } from '../data/medals'
 export interface Preferences {
+  benchmark?: number
   worn?: number[]
   roast: boolean
   amount: boolean
