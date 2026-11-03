@@ -51,7 +51,7 @@ try {
     const {resolve,reject}=pending.get(msg.id);pending.delete(msg.id);msg.error?reject(Error(msg.error.message)):resolve(msg.result)}
   function send(method,params={}){return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}))})}
   async function ev(expression){const result=await send('Runtime.evaluate',{expression,returnByValue:true});assert(!result.exceptionDetails,result.exceptionDetails?.exception?.description);return result.result.value}
-  async function wait(expression){for(let i=0;i<100;i++){if(await ev(expression))return;await delay(50)}throw Error('Missing: '+expression)}
+  async function wait(expression){for(let i=0;i<100;i++){if(await ev(`Boolean(${expression})`))return;await delay(50)}throw Error('Missing: '+expression)}
   for(const [width,height] of [[393,852],[844,390]])for(const locale of ['zh-CN','zh-TW','en']){
     const initial=calls.length
     await send('Emulation.setDeviceMetricsOverride',{width,height,mobile:true,deviceScaleFactor:1})
