@@ -168,6 +168,7 @@ export interface ParserFacts {
 }
 
 export interface PortfolioReport {
+  persona?: number
   medalValues?: (number | null)[]
   source: ReportSource
   fingerprint?: string

@@ -1,3 +1,4 @@
+import { classify } from './persona'
 import { parseNumber, sumExactNumbers } from './csv'
 import { hotTickers } from '../data/hotStocks'
 export { hotTickers }
@@ -60,6 +61,26 @@ export function medalIndex() {
   }
   return {
     visit,
+    persona(start: string,end: string,currency: string,values: MedalValues) {
+      if(bad.has('Trades')) return undefined
+      const orders=data.get('Trades')
+      if(!orders?.length || orders.some(r=>!r['Date/Time'] || !r['Asset Category'] || !r.Code)) return undefined
+      const seasonOrders=orders.filter(r=>r['Date/Time'].slice(0,10)>=start && r['Date/Time'].slice(0,10)<=end)
+      if(!seasonOrders.length) return undefined
+      const weeks=Math.max(1,(dateMs(end)-dateMs(start)+dayMs)/(7*dayMs))
+      const months=new Set(seasonOrders.filter(r=>r['Asset Category']==='Stocks' && r.Code.split(';').includes('O') && (parseNumber(r.Quantity) ?? 0)>0).map(r=>r['Date/Time'].slice(0,7)))
+      const dividends=data.get('Dividends')
+      const sameCurrency=seasonOrders.every(r=>r.Currency===currency && parseNumber(r['Realized P/L'])!=null)
+      let dividendShare: number|undefined
+      if(sameCurrency && !bad.has('Dividends') && dividends?.every(r=>r.Currency===currency && parseNumber(r.Amount)!=null)){
+        const income=dividends.filter(r=>r.Date>=start && r.Date<=end).reduce((a,r)=>a+Math.max(0,parseNumber(r.Amount)!),0)
+        const realized=seasonOrders.reduce((a,r)=>a+Math.abs(parseNumber(r['Realized P/L'])!),0)
+        if(income+realized>0) dividendShare=income/(income+realized)
+      }
+      return classify({holdDays:values[0] ?? undefined,ordersPerWeek:seasonOrders.length/weeks,
+        optionShare:seasonOrders.filter(r=>r['Asset Category'].includes('Options')).length/seasonOrders.length,
+        dividendShare,shortExpiry:Boolean(values[4]),premiumExpiry:Boolean(values[3]),recurringMonths:months.size})
+    },
     finish(end: string, currency: string) {
       const rows = (s: string) => (bad.has(s) ? undefined : data.get(s))
       return evaluateMedals(

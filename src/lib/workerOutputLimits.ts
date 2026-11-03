@@ -71,6 +71,7 @@ function reconciliationDifferenceMatches(
 
 const REPORT_KEYS = [
   'medalValues',
+  'persona',
   'source',
   'fingerprint',
   'accountComparisonKey',
@@ -658,6 +659,7 @@ function validateReport(
   referenceTimeMs: number,
 ): value is PortfolioReport {
   if (!hasExactKeys(value, REPORT_KEYS, REQUIRED_REPORT_KEYS)) return false
+  if (value.persona !== undefined && !(typeof value.persona === 'number' && Number.isInteger(value.persona) && value.persona >= 0 && value.persona < 6)) return false
   if (value.medalValues !== undefined && (!isDenseArray(value.medalValues,18,budget) || !validMedalValues(value.medalValues))) return false
 
   if (

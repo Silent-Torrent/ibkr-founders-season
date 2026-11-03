@@ -1,3 +1,4 @@
+import { personaCopy,mascot } from './persona'
 import {ribbon,seal,sealLines} from './medalArt'
 import {cardMedals,cardTheme,defaults,dimensions,ramen,type CardSize,type Template,type Preferences} from './cardOptions'
 import {advice} from '../data/medals'
@@ -202,6 +203,16 @@ export async function downloadSeasonCard(
     context!.restore()
     textAt(badge.label,x+px+12,y,px,span-px-12)
   }
+  const identity=personaCopy(report,locale,prefs.roast)
+  const mascotPath=mascot(report)
+  if(mascotPath) {
+    context.save()
+    context.translate(83,305)
+    context.fillStyle=accent
+    context.fill(new Path2D(mascotPath))
+    context.restore()
+  }
+  if(report.persona!=null) textAt(identity.name,142,338,32,width-240)
   if(size==='portrait') {
     // A wide masthead and a single-column performance poster.
     textAt(season,100,144,40)

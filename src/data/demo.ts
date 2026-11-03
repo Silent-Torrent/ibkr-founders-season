@@ -3,6 +3,7 @@ import type { PortfolioReport } from '../types'
 
 export const demoReport: PortfolioReport = {
   source: 'demo',
+  persona: 3,
   medalValues: demoMedalValues,
   accountComparisonKey: 'demo-only',
   accountIdMasked: '••••2026',

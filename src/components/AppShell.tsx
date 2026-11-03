@@ -1,3 +1,4 @@
+import { PersonaIdentity } from './PersonaIdentity'
 import { useContext } from 'react'
 import { Settings } from './Preferences'
 import { displayedMedals } from '../lib/medalCollection'
@@ -159,7 +160,7 @@ export function AppShell({
             </select>
           </div>
         </header>
-        <div className="identity-strip">{worn.map(id=><svg key={id} role="img" aria-label={local(medals[id][0],locale)} viewBox="0 0 64 64"><path d={seal} fill="#c4a466"/><path d={sealLines(id)} fill="none" stroke="#122124" strokeWidth="3"/></svg>)}</div>
+        <div className="identity-strip"><PersonaIdentity report={report} locale={locale} roast={prefs.roast}/>{worn.map(id=><svg key={id} role="img" aria-label={local(medals[id][0],locale)} viewBox="0 0 64 64"><path d={seal} fill="#c4a466"/><path d={sealLines(id)} fill="none" stroke="#122124" strokeWidth="3"/></svg>)}</div>
         {isImportedSource(report.source) && (
           <button
             className="text-button danger clear-current-report"
