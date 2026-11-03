@@ -1,3 +1,4 @@
+import { isMedalSelection, medalKey } from './lib/medalCollection'
 import { flushSync } from 'react-dom'
 import { Settings } from './components/Preferences'
 import { defaults,type Preferences } from './lib/cardOptions'
@@ -55,8 +56,24 @@ function hasSeenGettingStarted(): boolean {
   }
 }
 
+function removeStoredMedals() {
+  try { window.localStorage.removeItem(medalKey) } catch { /* storage unavailable */ }
+}
+
+function readStoredMedals(): number[] {
+  try {
+    const raw = window.localStorage.getItem(medalKey)
+    if (raw === null) return []
+    const selection: unknown = JSON.parse(raw)
+    if (isMedalSelection(selection)) return selection
+  } catch { /* malformed JSON or unavailable storage */ }
+  removeStoredMedals()
+  return []
+}
+
 export default function App() {
   const [locale, setLocale] = useState<Locale>(loadStoredLocale)
+  const [worn,setWorn] = useState<number[]>(readStoredMedals)
   const [prefs,setPrefs] = useState<Preferences>(() => {
     try {
       const raw=JSON.parse(window.localStorage.getItem('pnl-arena.settings.v1') ?? '{}')
@@ -68,8 +85,14 @@ export default function App() {
     } catch {return defaults}
   })
   function updatePrefs(next:Preferences) {
-    setPrefs(next)
-    try { window.localStorage.setItem('pnl-arena.settings.v1',JSON.stringify(next)) } catch { /* session-only */ }
+    const {worn: selection, ...settings} = next
+    if (selection !== worn && isMedalSelection(selection)) {
+      const ids = selection
+      setWorn(ids)
+      try { localStorage.setItem(medalKey, JSON.stringify(ids)) } catch { /* session only */ }
+    }
+    setPrefs(settings)
+    try { window.localStorage.setItem('pnl-arena.settings.v1',JSON.stringify(settings)) } catch { /* session-only */ }
   }
   useEffect(()=>{document.documentElement.dataset.gains=prefs.colors==='auto'?(locale==='zh-CN'?'red':'green'):prefs.colors},[prefs.colors,locale])
   const [page, setPage] = useState<PageId>('ledger')
@@ -130,13 +153,19 @@ export default function App() {
 
   function clearLocal() {
     if (!window.confirm(t(locale, 'clearConfirm'))) return
+    removeStoredMedals()
+    setWorn([])
     setReport(demoReport)
     setPage('ledger')
     showNotice('reportCleared', 'info')
   }
 
   function useDemo() {
-    if (isImportedSource(report.source) && !window.confirm(t(locale, 'clearConfirm'))) return
+    if (isImportedSource(report.source)) {
+      if (!window.confirm(t(locale, 'clearConfirm'))) return
+      removeStoredMedals()
+      setWorn([])
+    }
     setReport(demoReport)
     setPage('ledger')
     showNotice('demoReady', 'info')
@@ -183,7 +212,7 @@ export default function App() {
   }
 
   return (
-    <Settings.Provider value={{prefs,update:updatePrefs}}>
+    <Settings.Provider value={{prefs:{...prefs,worn},update:updatePrefs}}>
       <AppShell
         focusOnMount={focusAppOnMount}
         locale={locale}

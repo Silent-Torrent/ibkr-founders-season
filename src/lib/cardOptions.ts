@@ -1,9 +1,11 @@
+import { displayedMedals } from './medalCollection'
 import { englishNoun } from './countLabel'
 import { hotTickers } from './medalRules'
 import { formatCurrency } from './format'
 import type { Locale, PortfolioReport } from '../types'
 import { medals, lines, local, tr, insufficient } from '../data/medals'
 export interface Preferences {
+  worn?: number[]
   roast: boolean
   amount: boolean
   hideTickers: boolean
@@ -104,7 +106,7 @@ export function medalOutcome(
   if (earned && value !== null) {
     switch (index) {
       case 0:
-        tier = value >= 270 ? 2 : value >= 180 ? 1 : 0
+        tier = value >= 365 ? 3 : value >= 270 ? 2 : value >= 180 ? 1 : 0
         detail = value + tr(locale, ' 天', ' 天', ' ' + englishNoun(value,'day'))
         break
       case 1:
@@ -112,7 +114,7 @@ export function medalOutcome(
           detail = formatCurrency(value, report.baseCurrency, locale)
         break
       case 6:
-        tier = value >= 10 ? 2 : value >= 5 ? 1 : 0
+        tier = value >= 20 ? 3 : value >= 10 ? 2 : value >= 5 ? 1 : 0
         detail = value + tr(locale, ' 个派息标的', ' 檔配息標的', ' ' + englishNoun(value,'payer'))
         break
       case 7:
@@ -136,7 +138,7 @@ export function medalOutcome(
   return { value, earned, tier, detail }
 }
 export function tierName(tier: number | null, locale: Locale) {
-  return tier == null ? '' : local(['铜|銅|Bronze', '银|銀|Silver', '金|金|Gold'][tier], locale)
+  return tier == null ? '' : local(['铜|銅|Bronze', '银|銀|Silver', '金|金|Gold', '钻石|鑽石|Diamond'][tier], locale)
 }
 
 export function cardMedals(
@@ -144,8 +146,8 @@ export function cardMedals(
   locale: Locale,
   prefs: Preferences,
 ) {
-  return medals
-    .flatMap((m, i) => {
+  return displayedMedals(report.medalValues ?? [], prefs.worn ?? []).flatMap(i => {
+      const m = medals[i]
       const badge = medalOutcome(i, report, locale, prefs)
       if (!badge.earned) return []
       return [

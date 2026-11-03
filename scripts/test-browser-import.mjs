@@ -3497,6 +3497,13 @@ async function runBrowserChecks() {
     'The production parser Worker chunk was not requested.',
   )
 
+  const medalStorageKey = 'pnl-arena.medals.v1'
+  for (const invalid of ['{', '[0,1,2,3]', '[0,18]', '[0,"GME"]']) {
+    await evaluate(`localStorage.setItem('pnl-arena.medals.v1', ${JSON.stringify(invalid)})`)
+    await navigateAndWait(previewUrl)
+    await waitForPageValue("document.querySelector('main h1') && localStorage.getItem('pnl-arena.medals.v1') === null", Boolean, 'discard invalid medal storage')
+  }
+  await evaluate("localStorage.setItem('pnl-arena.medals.v1', '[0,1,17]')")
   // Always exercise the imported-report action, including when no QA artifact is requested.
   await navigateAndWait(previewUrl)
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
@@ -3506,6 +3513,10 @@ async function runBrowserChecks() {
     files:[resolve(projectRoot,'tests/fixtures/full-season-medals-fictional.csv')],nodeId:await resolveFileInputNodeId(),
   })
   await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','fictional import before touch clear')
+  assert.equal(await evaluate(`localStorage.getItem('${medalStorageKey}')`), '[0,1,17]')
+  assert.deepEqual(await evaluate('Object.keys(localStorage).sort()'), [
+    'pnl-arena.locale.v1', 'pnl-arena.medals.v1', 'pnl-arena.onboarding.v1', 'pnl-arena.settings.v1',
+  ])
   const clearTarget=await evaluate(`(async()=>{
     const button=document.querySelector('[data-action="clear-report"]')
     button.scrollIntoView({block:'center',behavior:'instant'})
@@ -3525,6 +3536,7 @@ async function runBrowserChecks() {
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
     await waitForPageValue(`Boolean(window.__trustedClear && document.querySelector('.source-pill.demo')
       && !document.querySelector('[data-action="clear-report"]'))`,Boolean,'trusted mobile clear restores Demo')
+    assert.equal(await evaluate(`localStorage.getItem('${medalStorageKey}')`), null)
   } finally {stopConfirm()}
 
   if (process.env.RELEASE_GATE_QA_DIR) await collectEvidence()

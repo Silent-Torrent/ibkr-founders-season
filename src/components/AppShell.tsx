@@ -1,3 +1,8 @@
+import { useContext } from 'react'
+import { Settings } from './Preferences'
+import { displayedMedals } from '../lib/medalCollection'
+import { medals,local } from '../data/medals'
+import { seal,sealLines } from '../lib/medalArt'
 import { SettingsPanel } from './Preferences'
 import { advice } from '../data/medals'
 import { useEffect, useRef, type ReactNode } from 'react'
@@ -38,6 +43,8 @@ export function AppShell({
   onOpenGuide,
   onOpenPrivacy,
 }: AppShellProps) {
+  const {prefs} = useContext(Settings)
+  const worn = displayedMedals(report.medalValues ?? [],prefs.worn ?? [])
   const compactSource = report.source === 'synthetic' ? t(locale, 'compactSynthetic') : t(locale, reportSourceStatusKey(report.source))
   const mainRef = useRef<HTMLElement>(null)
   const previousPageRef = useRef(page)
@@ -152,6 +159,7 @@ export function AppShell({
             </select>
           </div>
         </header>
+        <div className="identity-strip">{worn.map(id=><svg key={id} role="img" aria-label={local(medals[id][0],locale)} viewBox="0 0 64 64"><path d={seal} fill="#c4a466"/><path d={sealLines(id)} fill="none" stroke="#122124" strokeWidth="3"/></svg>)}</div>
         {isImportedSource(report.source) && (
           <button
             className="text-button danger clear-current-report"

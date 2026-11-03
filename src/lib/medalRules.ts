@@ -1,12 +1,6 @@
 import { parseNumber, sumExactNumbers } from './csv'
-export const hotTickers: Record<number, readonly (readonly string[])[]> = {
-  2026: [
-    ['GME', 'AMC'],
-    ['SPCX'],
-    ['NVDA', 'AMD', 'AVGO', 'TSM', 'MU', 'INTC'],
-    ['KO', 'BRK.B', 'JNJ', 'PG'],
-  ],
-}
+import { hotTickers } from '../data/hotStocks'
+export { hotTickers }
 // null = insufficient evidence; zero = rule evaluated, not earned.
 export type MedalValues = (number | null)[]
 type Row = Record<string, string>

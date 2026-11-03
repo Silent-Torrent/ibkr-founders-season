@@ -619,8 +619,8 @@ try {
   const preferenceKeys = [...new Set(functionalSource.match(/pnl-arena\.[a-z.-]+\.v1/g) ?? [])].sort()
   assert.deepEqual(
     preferenceKeys,
-    ['pnl-arena.locale.v1', 'pnl-arena.onboarding.v1', 'pnl-arena.settings.v1'],
-    'App persistence expanded beyond the two approved non-financial preferences.',
+    ['pnl-arena.locale.v1', 'pnl-arena.medals.v1', 'pnl-arena.onboarding.v1', 'pnl-arena.settings.v1'],
+    'App persistence expanded beyond the four approved preference keys.',
   )
   for (const [label, pattern] of [
     ['sessionStorage API', /\b(?:window\s*\.\s*|globalThis\s*\.\s*)?sessionStorage\s*(?:\.|\[)/],
@@ -643,10 +643,14 @@ try {
   const localStorageCalls = functionalSourceFiles.flatMap(({ name, source }) =>
     [...source.matchAll(/\blocalStorage\s*\.\s*(getItem|setItem|removeItem|clear|key)\s*\(/g)]
       .map((match) => ({ method: match[1], name })))
-  assert.equal(localStorageCalls.length, 6, 'The approved localStorage call surface changed.')
+  assert.deepEqual(localStorageCalls.map(call => call.method).sort(), [
+    'getItem', 'getItem', 'getItem', 'getItem', 'removeItem', 'setItem', 'setItem', 'setItem', 'setItem',
+  ])
+  assert.ok(appSource.includes('window.localStorage.removeItem(medalKey)'))
+  assert.equal(localStorageCalls.length, 9, 'The approved localStorage call surface changed.')
   assert.ok(
     localStorageCalls.every(({ method, name }) =>
-      name.endsWith('/src/App.tsx') && (method === 'getItem' || method === 'setItem')),
+      name.endsWith('/src/App.tsx') && ['getItem','setItem','removeItem'].includes(method)),
     `localStorage access escaped the preference-only App boundary: ${JSON.stringify(localStorageCalls)}`,
   )
   assert.ok(!/\blocalStorage\s*\[/.test(functionalSource), 'Dynamic localStorage access was introduced.')
