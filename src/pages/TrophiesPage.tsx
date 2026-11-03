@@ -1,3 +1,4 @@
+import { SeasonWrapped } from '../components/SeasonWrapped'
 import { englishNoun } from '../lib/countLabel'
 import { tr,medals } from '../data/medals'
 import { MedalWall } from '../components/MedalWall'
@@ -111,6 +112,7 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
         </div>
       </div>
 
+      {report.source!=='demo' && <SeasonWrapped key={report.importedAt} locale={locale} report={report}/>}
       <MedalWall locale={locale} report={report} />
       <details><summary>{tr(locale,'旧版成就档案','舊版成就檔案','Legacy achievement archive')}</summary>
       <div className="trophy-counter"><strong>{unlocked}</strong><span>{tr(locale,'旧版成就','舊版成就',englishNoun(unlocked,'Legacy achievement'))}</span></div>

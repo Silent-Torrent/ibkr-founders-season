@@ -3480,3 +3480,8 @@ h2 {
 .persona-identity { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:14px; }
 .persona-identity svg { width:32px; height:32px; }
 .persona-identity small { font-size:14px; color:var(--muted); }
+
+.wrapped-panel canvas { display:block; width:min(100%,36vh); height:auto; margin:auto; touch-action:pan-y; }
+.story-controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.story-controls button,.wrapped-launch { min-width:44px; min-height:44px; padding:8px 12px; }
+@media (prefers-reduced-motion:reduce){.wrapped-panel * { animation:none; transition:none; }}

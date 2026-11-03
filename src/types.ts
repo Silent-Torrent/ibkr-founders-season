@@ -168,6 +168,7 @@ export interface ParserFacts {
 }
 
 export interface PortfolioReport {
+  storyFacts?: {top:string[];months:(number|null)[];best:number|null;worst:number|null}
   persona?: number
   medalValues?: (number | null)[]
   source: ReportSource

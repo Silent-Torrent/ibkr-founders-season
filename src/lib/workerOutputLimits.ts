@@ -72,6 +72,7 @@ function reconciliationDifferenceMatches(
 const REPORT_KEYS = [
   'medalValues',
   'persona',
+  'storyFacts',
   'source',
   'fingerprint',
   'accountComparisonKey',
@@ -659,6 +660,14 @@ function validateReport(
   referenceTimeMs: number,
 ): value is PortfolioReport {
   if (!hasExactKeys(value, REPORT_KEYS, REQUIRED_REPORT_KEYS)) return false
+  if (value.storyFacts !== undefined) {
+    const f=value.storyFacts
+    if (!hasExactKeys(f,['top','months','best','worst']) ||
+        !isDenseArray(f.top,5,budget) || !f.top.every(s=>consumeString(s,budget,MAX_SYMBOL_CHARACTERS)) ||
+        !isDenseArray(f.months,12,budget) || f.months.length!==12 || !f.months.every(n=>n===null||isFiniteNumber(n)) ||
+        !(f.best===null || (isFiniteNumber(f.best)&&f.best>0)) ||
+        !(f.worst===null || (isFiniteNumber(f.worst)&&f.worst<0))) return false
+  }
   if (value.persona !== undefined && !(typeof value.persona === 'number' && Number.isInteger(value.persona) && value.persona >= 0 && value.persona < 6)) return false
   if (value.medalValues !== undefined && (!isDenseArray(value.medalValues,18,budget) || !validMedalValues(value.medalValues))) return false
 
