@@ -35,3 +35,24 @@ assert.ok(standardBackdropDeclarations > 0, 'Expected at least one backdrop-filt
 
 console.log('Browser compatibility contract checks passed.')
 console.log({ requiredTargets, prefixedBackdropDeclarations: standardBackdropDeclarations })
+
+// Framing policy is enforced only by the response header. All shared directives must match.
+const html = await readFile(new URL('index.html',projectRoot),'utf8')
+const config = JSON.parse(await readFile(new URL('vercel.json',projectRoot),'utf8'))
+const headers = config.headers.find(rule=>rule.source==='/(.*)').headers
+const policy = headers.find(h=>h.key.toLowerCase()==='content-security-policy').value
+const meta = html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i)
+assert(meta,'Missing CSP meta')
+function directives(value) {
+  const result = {}
+  for (const part of value.split(';').map(s=>s.trim()).filter(Boolean)) {
+    const [name,...sources] = part.split(/\s+/)
+    assert(!Object.hasOwn(result,name),'Duplicate CSP directive '+name)
+    result[name] = sources.sort()
+  }
+  return result
+}
+const {'frame-ancestors':ancestors,...shared} = directives(policy)
+assert.deepEqual(ancestors,["'none'"])
+assert.deepEqual(directives(meta[1]),shared)
+assert.equal(headers.find(h=>h.key.toLowerCase()==='x-frame-options').value,'DENY')

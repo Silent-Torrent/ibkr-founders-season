@@ -461,7 +461,6 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
           {formatShareSeasonReturn(report.seasonReturn,locale)}
         </div>
         <p className="face-caption">{theme.line}</p>
-        {size==='story' && <p className="face-extra">{theme.secondLine}</p>}
         {prefs.amount&&<strong>{formatCurrency(report.seasonPnl,report.baseCurrency,locale)}</strong>}
         <div className="share-grid">
           <div>
@@ -489,7 +488,7 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
         </div><p>{ramen(report,locale,prefs)}</p></div>
         <div className="share-card-bottom"><span>{advice(locale)}</span>
           <span>{t(locale, 'dataThrough')} {formatDate(report.endDate, locale)}</span>
-          <span>{t(locale, 'shareNoHoldings')}</span>
+          {size!=='story' && <span>{t(locale, 'shareNoHoldings')}</span>}
         </div>
       </div></div>
     </section>

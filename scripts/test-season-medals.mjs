@@ -182,6 +182,11 @@ try {
     }
   }
   const {medals,local} = await vite.ssrLoadModule('/src/data/medals.ts')
+  assert.equal(local(medals[4][0],'zh-CN'),'末日轮骑士')
+  assert.equal(defaults.roast,true)
+  assert.equal(defaults.amount,false)
+  assert.equal(medalOutcome(1,imported.report,'en',defaults).detail,'')
+  assert(medalOutcome(1,imported.report,'en',{...defaults,amount:true}).detail.includes('$'))
   for (const locale of ['zh-CN','zh-TW','en']) {
     for (const medal of medals) {
       for (const line of medal.slice(1)) assert.match(local(line,locale), /[。！？.!?]$/u, local(line,locale))

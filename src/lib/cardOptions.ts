@@ -89,7 +89,6 @@ export function cardTheme(
       ? tr(l, '吃肉', '吃肉', 'Gain Day Feast')
       : tr(l, '关灯吃面', '關燈吃麵', 'Noodles in the Dark'),
     line: local(variants[Number(r.endDate.slice(-2)) % variants.length], l),
-    secondLine: local(variants[(Number(r.endDate.slice(-2)) + 1) % variants.length], l),
   }
 }
 export function medalOutcome(

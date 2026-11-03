@@ -20,6 +20,7 @@ import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
 import { runReleaseGateEvidence } from './release-gate-evidence.mjs'
+import { testMobilePolish } from './test-mobile-polish.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
 import { testShortLandscape } from './test-short-landscape.mjs'
 import { testMobilePrivacyModal } from './test-mobile-privacy-modal.mjs'
@@ -3198,6 +3199,7 @@ async function runBrowserChecks() {
     }
   }
   await clickPrimaryNavigation('Trophies')
+  await testMobilePolish({cdp,evaluate,accessibleNodeForSelector,outputDirectory:process.env.CARD_LAYOUT_QA_DIR})
   const gaps = await evaluate(`(() => {
     const rect = sel => document.querySelector(sel).getBoundingClientRect()
     return [rect('.trophy-hero h1').top - rect('.trophy-hero .eyebrow').bottom,
@@ -3271,6 +3273,14 @@ async function runBrowserChecks() {
   for(const [size,width,height] of [['portrait',1200,1500],['story',1080,1920],['3x4',1080,1440]]){
     await evaluate(`document.querySelector('[data-card-size="${size}"]').click()`)
     await waitForPageValue("document.querySelector('.share-card-preview')?.dataset.size",v=>v===size,'demo export size')
+    if(size==='story') await evaluate(`(()=>{
+      const draw=CanvasRenderingContext2D.prototype.fillText
+      window.__storyText=[]
+      CanvasRenderingContext2D.prototype.fillText=function(text,...args){
+        window.__storyText.push({text,font:this.font,y:args[1]})
+        return Reflect.apply(draw,this,[text,...args])
+      }
+    })()`)
     const before=downloadStarts.length
     await evaluate(`document.querySelector('[data-action="download-card"]').click()`)
     await waitForCondition(()=>downloadStarts.length===before+1,'explicit demo download')
@@ -3281,6 +3291,16 @@ async function runBrowserChecks() {
     await waitForCondition(()=>downloadProgress.some(e=>e.guid===guid&&e.state==='completed')&&existsSync(path),'demo PNG bytes')
     const bytes=readFileSync(path)
     assert.deepEqual(inspectPng(bytes),{width,height})
+    if(size==='story'){
+      const calls=await evaluate('window.__storyText')
+      const fontPx=text=>Number(calls.find(c=>c.text===text)?.font.match(/([0-9.]+)px/)?.[1])
+      assert(fontPx('Not investment advice')>=28*1920/1440,'Story disclaimer too small')
+      assert(fontPx('P&L ARENA')>=30*1920/1440,'Story brand too small')
+      assert(!calls.some(c=>c.text==='Excludes holdings, account identifiers, and exact net liquidation value.'))
+      const caption=await evaluate("document.querySelector('.face-caption').textContent")
+      assert.deepEqual(calls.filter(c=>c.y>800 && c.y<1000).map(c=>c.text),[caption])
+      assert(!await evaluate("Boolean(document.querySelector('.face-extra'))"))
+    }
     const blank=await evaluate(`(async()=>{
       const bytes=Uint8Array.from(atob(${JSON.stringify(bytes.toString('base64'))}),c=>c.charCodeAt(0))
       const img=await createImageBitmap(new Blob([bytes],{type:'image/png'}))

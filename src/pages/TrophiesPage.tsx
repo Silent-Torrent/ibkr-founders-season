@@ -92,12 +92,13 @@ export function TrophiesPage({ report, locale }: TrophiesPageProps) {
     <>
       <section className="trophy-hero">
         <div>
-          <span className="eyebrow">{seasonCount}/{medals.length} {counterLabel}</span>
+          <span className="eyebrow">{report.seasonYear} · {t(locale,'seasonLabel')}</span>
           <h1>{t(locale, 'trophiesTitle')}</h1>
           <p>{t(locale, 'trophiesSubtitle')}</p>
         </div>
         <div className="trophy-counter">
-          <strong>{seasonCount}</strong>
+          <div className="season-medal-fraction" aria-hidden="true"><strong>{seasonCount}</strong>/{medals.length}</div>
+          <p className="sr-only">{tr(locale,`已获得 ${medals.length} 枚勋章中的 ${seasonCount} 枚`,`已獲得 ${medals.length} 枚勳章中的 ${seasonCount} 枚`,`${seasonCount} of ${medals.length} medals earned`)}</p>
           <span>{locale==='en'?englishNoun(seasonCount,isSynthetic?'Fictional sample medal':'Local achievement'):counterLabel}</span>
         </div>
       </section>
