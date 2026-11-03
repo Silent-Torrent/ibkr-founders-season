@@ -5680,6 +5680,7 @@ function parseIndexedStatement(
 
   const medalValues = statementIndex.medals.finish(endIso,baseCurrency)
   const report: PortfolioReport = {
+    storyFacts: statementIndex.medals.storyFacts(startIso,endIso,baseCurrency),
     persona: statementIndex.medals.persona(startIso,endIso,baseCurrency,medalValues),
     medalValues,
     source: isKnownSyntheticStatement ? 'synthetic' : 'local',

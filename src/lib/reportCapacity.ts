@@ -130,6 +130,8 @@ export function parseResultFitsReportResourceBudget(
     !consumeString(budget, report.startDate, 10, 10) ||
     !consumeString(budget, report.endDate, 10, 10) ||
     !consumeString(budget, report.importedAt, 24, 24) ||
+    !consumeItems(budget,(report.storyFacts?.top.length??0)+(report.storyFacts?.months.length??0)) ||
+    report.storyFacts?.top.some(s=>!consumeString(budget,s,MAX_SYMBOL_CHARACTERS,1)) ||
     !consumeItems(budget, report.medalValues?.length ?? 0) ||
     report.symbols.length > MAX_REPORT_UNDERLYINGS ||
     !consumeItems(budget, report.symbols.length)

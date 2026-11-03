@@ -79,6 +79,32 @@ export async function testMobilePolish({cdp,evaluate,accessibleNodeForSelector,o
       assert.deepEqual([poster.w,poster.h],[1080,1080])
       assert(poster.name && poster.button.every(n=>n>=44))
       assert.equal(poster.badges,3)
+      if(width>=393){
+        await evaluate("document.querySelector('.wrapped-launch').click()")
+        await settle()
+        const heading=await evaluate("document.querySelector('.wrapped-panel h2').textContent")
+        const pages=Number(heading.split('/')[1].split('·')[0])
+        assert(pages>=8 && pages<=10)
+        for(let page=1;page<=pages;page++){
+          const saved=await evaluate(`(async()=>{
+            const panel=document.querySelector('.wrapped-panel')
+            const btns=[...panel.querySelectorAll('button')]
+            const original=HTMLAnchorElement.prototype.click
+            let filename,url
+            try { HTMLAnchorElement.prototype.click=function(){filename=this.download;url=this.href};btns[3].click() }
+            finally {HTMLAnchorElement.prototype.click=original}
+            const img=new Image();img.src=url;await img.decode()
+            return [filename,img.naturalWidth,img.naturalHeight,panel.querySelector('canvas').getAttribute('aria-label'),...btns.map(b=>b.getBoundingClientRect().height)]
+          })()`)
+          assert.equal(saved[0],'pnl-arena-2026-wrapped-'+String(page).padStart(2,'0')+'.png')
+          assert.deepEqual(saved.slice(1,3),[1080,1920]);assert(saved[3]);assert(saved.slice(4).every(h=>h>=44))
+          if(page===1 && width===393)await screenshot(locale+'-wrapped')
+          if(page<pages){await cdp.send('Input.dispatchKeyEvent',{type:'keyDown',key:'ArrowRight'});await settle()}
+        }
+        await evaluate("document.querySelector('.wrapped-panel button:last-child').click()")
+        await settle()
+        assert(await evaluate("document.activeElement===document.querySelector('.wrapped-launch')"))
+      }
       if(width===393){await evaluate('window.scrollTo(0,0)');await settle();await screenshot(locale+'-trophies')}
     }
     assert(Math.min(...gaps)>=12 && Math.max(...gaps)-Math.min(...gaps)<=2,`eyebrow gaps at ${width}: ${gaps}`)

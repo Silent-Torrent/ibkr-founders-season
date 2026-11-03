@@ -61,6 +61,30 @@ export function medalIndex() {
   }
   return {
     visit,
+    storyFacts(start:string,end:string,currency:string) {
+      const rows=data.get('Trades')
+      if (!rows?.length || bad.has('Trades') || rows.some(r=>!Number.isFinite(dateMs((r['Date/Time']??'').slice(0,10))) || !r.Symbol)) return undefined
+      const counts=new Map<string,number>()
+      const monthly:number[][]=Array.from({length:12},()=>[])
+      let best:number|null=null, worst:number|null=null, complete=true
+      for(const row of rows) {
+        const date=row['Date/Time'].slice(0,10)
+        if(date<start || date>end) continue
+        const symbol=row.Symbol.match(option)?.[1] ?? row.Symbol
+        if(symbol.length>128) return undefined
+        counts.set(symbol,(counts.get(symbol)??0)+1)
+        if(!row.Code) complete=false
+        if(!row.Code?.split(';').includes('C'))continue
+        const n=parseNumber(row['Realized P/L'])
+        if(n==null || row.Currency!==currency){complete=false;continue}
+        monthly[Number(date.slice(5,7))-1].push(n)
+        if(n>0)best=Math.max(best??n,n)
+        if(n<0)worst=Math.min(worst??n,n)
+      }
+      const top=[...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,5).map(([symbol])=>symbol)
+      return {top,best:complete?best:null,worst:complete?worst:null,
+        months:monthly.map(nums=>complete && nums.length ? sumExactNumbers(nums)??null:null)}
+    },
     persona(start: string,end: string,currency: string,values: MedalValues) {
       if(bad.has('Trades')) return undefined
       const orders=data.get('Trades')

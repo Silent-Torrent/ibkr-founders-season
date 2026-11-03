@@ -176,6 +176,14 @@ try {
   const full=readFileSync(new URL('../tests/fixtures/full-season-medals-fictional.csv',import.meta.url))
   const imported=await parseIbkrActivityStatementBlob(new Blob([full]),options)
   assert.deepEqual(imported.errors,[])
+  const {stories}=await vite.ssrLoadModule('/src/lib/seasonStories.ts')
+  for (const l of ['zh-CN','zh-TW','en']){
+    const pages=stories(imported.report,l,defaults)
+    assert(pages.length>=8 && pages.length<=10)
+    assert(!JSON.stringify(pages).includes('FICTLOSS'))
+    assert.deepEqual(stories({...imported.report,source:'demo'},l,defaults),[])
+    assert.equal(stories({source:'local',seasonYear:2026},l,defaults).length,1)
+  }
   assert.equal(imported.report.source,'synthetic')
   assert(isWorkerParseResultWithinLimits(imported,options.currentDate.getTime()))
   assert(imported.report.reconciliations.every(r=>r.status==='PASS_EXACT'))
