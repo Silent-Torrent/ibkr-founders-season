@@ -1,3 +1,4 @@
+import './board.css'
 import {useRef, useState} from 'react'
 import type {Locale, PortfolioReport} from '../src/types'
 import {local} from '../src/data/medals'
