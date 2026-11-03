@@ -292,3 +292,5 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [ ] Moderation, reporting, blocking, and anti-scam controls.
 
 Batch 1.4 on draft PR #2 covers fractional ramen, medal-specific hot-list copy and an importable fictional red-loss/gold-tier example.
+
+Batch 2 review stack adds the public-board design and four local-only feature drafts. Review the exact medals preference allowlist change before accepting the feature stack. Individual instrument ROI ranking still needs a defensible return denominator.

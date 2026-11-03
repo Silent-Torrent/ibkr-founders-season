@@ -80,7 +80,13 @@ export async function testMobilePolish({cdp,evaluate,accessibleNodeForSelector,o
       assert(poster.name && poster.button.every(n=>n>=44))
       assert.equal(poster.badges,3)
       if(width>=393){
+        await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]})
         await evaluate("document.querySelector('.wrapped-launch').click()")
+        await settle()
+        assert(await evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches && document.activeElement===document.querySelector('.wrapped-panel')"))
+        await evaluate("document.querySelectorAll('.story-controls button')[2].click()")
+        await settle()
+        await evaluate("document.querySelectorAll('.story-controls button')[2].click();document.querySelector('.wrapped-panel').focus()")
         await settle()
         const heading=await evaluate("document.querySelector('.wrapped-panel h2').textContent")
         const pages=Number(heading.split('/')[1].split('·')[0])
@@ -104,8 +110,30 @@ export async function testMobilePolish({cdp,evaluate,accessibleNodeForSelector,o
         await evaluate("document.querySelector('.wrapped-panel button:last-child').click()")
         await settle()
         assert(await evaluate("document.activeElement===document.querySelector('.wrapped-launch')"))
+        await cdp.send('Emulation.setEmulatedMedia',{features:[]})
       }
       if(width===393){await evaluate('window.scrollTo(0,0)');await settle();await screenshot(locale+'-trophies')}
+      await evaluate("document.querySelector('.side-nav [data-page=arena]').click()")
+      await settle()
+      const arena=await evaluate(`(async()=>{
+        const board=document.querySelector('.local-arena')
+        const target=board.querySelector('[data-arena-export]')
+        target.scrollIntoView({block:'center'})
+        const saved=HTMLAnchorElement.prototype.click
+        let url,filename
+        try{HTMLAnchorElement.prototype.click=function(){url=this.href;filename=this.download};target.click()}
+        finally{HTMLAnchorElement.prototype.click=saved}
+        const img=new Image();img.src=url;await img.decode()
+        return {size:[img.naturalWidth,img.naturalHeight],filename,body:board.textContent,width:document.documentElement.scrollWidth,
+          targets:[...board.querySelectorAll('input,select,button')].map(e=>Math.min(e.getBoundingClientRect().height,e.getBoundingClientRect().width))}
+      })()`)
+      assert.equal(arena.filename,'pnl-arena-2026-arena.png')
+      assert.deepEqual(arena.size,[1080,1440])
+      assert(!arena.body.includes('FICTLOSS'))
+      assert(arena.width<=width && arena.targets.every(px=>px>=44),JSON.stringify(arena))
+      if(width===393){await evaluate("document.querySelector('.local-arena').scrollIntoView()");await settle();await screenshot(locale+'-arena')}
+      await evaluate("document.querySelector('.side-nav [data-page=trophies]').click()")
+      await settle()
     }
     assert(Math.min(...gaps)>=12 && Math.max(...gaps)-Math.min(...gaps)<=2,`eyebrow gaps at ${width}: ${gaps}`)
   }

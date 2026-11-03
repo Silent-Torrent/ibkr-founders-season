@@ -17,7 +17,7 @@ export function medalPoster(report: PortfolioReport, id: number, l: Locale, p: P
   ctx.textAlign = 'center'
   function line(text: string, y: number, size: number, color = '#edf8f4') {
     ctx!.fillStyle = color
-    ctx!.font = 'bold '+size+'px system-ui'
+    ctx!.font = 'bold '+size+'px ArenaSeason, system-ui'
     ctx!.fillText(text,540,y,950)
   }
   line('P&L ARENA   /   '+report.seasonYear,104,40)

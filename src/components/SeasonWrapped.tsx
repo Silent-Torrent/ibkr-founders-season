@@ -19,7 +19,13 @@ export function SeasonWrapped({report,locale}:{report:PortfolioReport,locale:Loc
   const i=Math.min(index,pages.length-1)
   const page=pages[i]
   useEffect(()=>{
-    if(open && page && canvas.current)paintStory(canvas.current,page,locale,getShareSourceLabel(report,locale),(i+1)+' / '+pages.length)
+    let current=true
+    if(open && page && canvas.current){
+      const paint=()=>{if(current && canvas.current)paintStory(canvas.current,page,locale,getShareSourceLabel(report,locale),(i+1)+' / '+pages.length)}
+      paint()
+      void document.fonts.ready.then(paint)
+    }
+    return ()=>{current=false}
   },[open,page,locale,report,i,pages.length])
   useEffect(()=>{if(open)panel.current?.focus()},[open])
   useEffect(()=>{

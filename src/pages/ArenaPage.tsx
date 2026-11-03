@@ -1,3 +1,7 @@
+import {useContext} from 'react'
+import {Settings} from '../components/Preferences'
+import {local} from '../data/medals'
+import { LocalArena } from '../components/LocalArena'
 import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { formatCurrency, formatPercent, pnlClass } from '../lib/format'
@@ -18,6 +22,7 @@ interface LeaderboardRow {
 }
 
 export function ArenaPage({ report, locale }: ArenaPageProps) {
+  const {prefs} = useContext(Settings)
   const localDivision = report.source === 'local'
     ? getDivision(report.netLiquidationValue, report.baseCurrency)
     : undefined
@@ -86,7 +91,7 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
                   : formatPercent(report.seasonReturn, locale)}
               </dd>
             </div>
-            <div><dt>{t(locale, 'pnl')}</dt><dd>{formatCurrency(report.seasonPnl, report.baseCurrency, locale)}</dd></div>
+            <div><dt>{t(locale, 'pnl')}</dt><dd>{prefs.amount?formatCurrency(report.seasonPnl, report.baseCurrency, locale):local('金额隐藏|金額隱藏|Amount hidden',locale)}</dd></div>
             <div><dt>{t(locale, 'sourceType')}</dt><dd>{t(locale, 'selfReportedUnverified')}</dd></div>
             <div>
               <dt>{t(locale, 'trustCalculationCheck')}</dt>
@@ -96,6 +101,7 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
         </section>
       )}
 
+      <LocalArena key={report.importedAt} report={report} locale={locale} players={demoRows}/>
       <section className="panel leaderboard-panel">
         <div className="section-heading">
           <div>

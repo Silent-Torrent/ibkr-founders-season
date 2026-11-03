@@ -11,7 +11,7 @@ export function paintStory(canvas:HTMLCanvasElement,page:Story,l:Locale,source:s
   ctx.fillRect(0,0,1080,height)
   function text(line:string,y:number,size:number,color='#faf5df'){
     ctx!.fillStyle=color
-    ctx!.font='bold '+size+'px system-ui'
+    ctx!.font='bold '+size+'px ArenaSeason, system-ui'
     ctx!.fillText(line,72,y,936)
   }
   text('P&L ARENA   /   '+position,128,38,'#7bdcc2')

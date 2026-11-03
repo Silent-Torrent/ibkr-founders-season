@@ -14,6 +14,16 @@ try {
     '/src/lib/cardOptions.ts',
   )
   const {classify,personaCopy,mascot}=await vite.ssrLoadModule('/src/lib/persona.ts')
+  const {encodeBattle,decodeBattle,rankRows}=await vite.ssrLoadModule('/src/lib/battleCode.ts')
+  const payload={percent:-1.25,division:'retailLeague',medals:[6,2]}
+  const code=encodeBattle(payload)
+  assert.deepEqual(decodeBattle(code),payload)
+  assert.equal(encodeBattle({...payload,amount:987654,account:'FICTIONAL',ticker:'FICT'}),code)
+  assert.throws(()=>decodeBattle(code.replace('-125','125')))
+  assert.throws(()=>decodeBattle(code+'!'))
+  assert.throws(()=>encodeBattle({...payload,medals:[1,2,3,4]}))
+  assert.deepEqual(rankRows([{label:'B',value:-2},{label:'A',value:-2},{label:'C',value:-3}]).map(r=>[r.label,r.rank]),[['A',1],['B',1],['C',3]])
+  assert.equal(rankRows([{label:'A',value:-3}])[0].rank,1)
   const samples=readFileSync(new URL('../tests/fixtures/personas-fictional.csv',import.meta.url),'utf8').trim().split('\n').slice(1)
   for (const [id,row] of samples.entries()) {
     const [,key,v,key2,v2]=row.split(',')
