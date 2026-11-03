@@ -5678,8 +5678,10 @@ function parseIndexedStatement(
     accountId.startsWith('SYNTHETIC_') &&
     KNOWN_SYNTHETIC_STATEMENTS.has(source.knownSyntheticIdentity())
 
+  const medalValues = statementIndex.medals.finish(endIso,baseCurrency)
   const report: PortfolioReport = {
-    medalValues: statementIndex.medals.finish(endIso,baseCurrency),
+    persona: statementIndex.medals.persona(startIso,endIso,baseCurrency,medalValues),
+    medalValues,
     source: isKnownSyntheticStatement ? 'synthetic' : 'local',
     fingerprint,
     accountComparisonKey: sha256Hex(

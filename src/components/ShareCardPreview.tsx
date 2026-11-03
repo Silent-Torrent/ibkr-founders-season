@@ -1,3 +1,4 @@
+import { PersonaIdentity } from './PersonaIdentity'
 import {useContext} from 'react'
 import {Settings} from './Preferences'
 import {cardBadges,cardTheme,ramen,type Template,type CardSize} from '../lib/cardOptions'
@@ -456,7 +457,7 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
             <span>P&amp;L ARENA</span>
           </span>
         </div>
-        <p className="face-title">{theme.title}</p>
+        <PersonaIdentity report={report} locale={locale} roast={prefs.roast}/><p className="face-title">{theme.title}</p>
         <div className={`share-pnl ${pnlClass(report.seasonPnl)}`}>
           {formatShareSeasonReturn(report.seasonReturn,locale)}
         </div>

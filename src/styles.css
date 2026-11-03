@@ -3475,3 +3475,8 @@ h2 {
 .medal:not(.earned) summary svg { color:#879096; filter:grayscale(1); }
 .medal:not(.earned) summary svg path:last-child { display:none; }
 .medal.earned[data-tier="diamond"] summary svg { color:#a4edef; }
+
+.identity-strip { flex-wrap:wrap; }
+.persona-identity { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:14px; }
+.persona-identity svg { width:32px; height:32px; }
+.persona-identity small { font-size:14px; color:var(--muted); }

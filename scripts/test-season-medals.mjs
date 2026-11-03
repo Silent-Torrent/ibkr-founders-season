@@ -13,6 +13,21 @@ try {
   const { medalOutcome, defaults, ramen } = await vite.ssrLoadModule(
     '/src/lib/cardOptions.ts',
   )
+  const {classify,personaCopy,mascot}=await vite.ssrLoadModule('/src/lib/persona.ts')
+  const samples=readFileSync(new URL('../tests/fixtures/personas-fictional.csv',import.meta.url),'utf8').trim().split('\n').slice(1)
+  for (const [id,row] of samples.entries()) {
+    const [,key,v,key2,v2]=row.split(',')
+    assert.equal(classify({[key]:Number(v),...(key2?{[key2]:v2==='true'}:{})}),id)
+  }
+  assert.equal(classify({}),undefined)
+  assert.equal(classify({ordersPerWeek:4.99}),undefined)
+  assert.equal(classify({holdDays:180,ordersPerWeek:5}),0)
+  for(const locale of ['en','zh-CN','zh-TW']){
+    const r={netLiquidationValue:100,cashValue:1,persona:3,medalValues:[0,-4,1]}
+    assert.equal(personaCopy(r,locale,true).tags.length,2)
+    assert.deepEqual(personaCopy(r,locale,false).tags,[])
+  }
+  assert.equal(new Set([24999,25000,100000,500000,1000000].map(netLiquidationValue=>mascot({baseCurrency:'USD',netLiquidationValue}))).size,5)
   const {validSelection,displayedMedals,bagholder,nextTarget}=await vite.ssrLoadModule('/src/lib/medalCollection.ts')
   const {isMedalSelection} = await vite.ssrLoadModule('/src/lib/medalCollection.ts')
   for (const invalid of [null, {}, '0', [0,1,2,3], [-1], [18], [1,1], [0,'GME'], [{amount:2}], [0.5]]) {

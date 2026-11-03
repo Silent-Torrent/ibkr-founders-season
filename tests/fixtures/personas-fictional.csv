@@ -1,0 +1,7 @@
+# 虚构数据 — classification signals only
+diamond,holdDays,180
+lightning,ordersPerWeek,5
+landlord,optionShare,0.4,premiumExpiry,true
+expiry,optionShare,0.4,shortExpiry,true
+dividend,dividendShare,0.4
+regular,recurringMonths,3
