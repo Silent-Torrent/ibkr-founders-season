@@ -8,3 +8,7 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+import './design/fonts'
+import './design/tokens.css'
+import './design/shell.css'

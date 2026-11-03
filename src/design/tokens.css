@@ -1,0 +1,11 @@
+:root {
+  --poster-ink: #0b0b0b;
+  --poster-red: #ff2b2b;
+  --poster-paper: #f4efe6;
+  --poster-graphite: #3a3a3a;
+  --poster-surface: #171717;
+  --poster-muted: #c2bdb5;
+  --poster-body: 'Space Grotesk', ArenaSeason, 'Noto Sans CJK SC', sans-serif;
+  --poster-display: Anton, ArenaSeason, 'Noto Sans CJK SC', sans-serif;
+  --poster-dots: radial-gradient(circle, #f4efe620 1px, transparent 1.3px);
+}

@@ -35,6 +35,10 @@ jobs:
       - run: npm run check
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
+      - name: Capture fictional poster layouts
+        run: npm run build && node scripts/capture-poster-demo.mjs
+        env:
+          CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
       - uses: actions/upload-artifact@v4
         with:
           name: fictional-share-card-layouts
