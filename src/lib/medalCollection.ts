@@ -1,3 +1,11 @@
+import { medals } from '../data/medals'
+
+export function isMedalSelection(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length <= 3 &&
+    value.every(id => Number.isInteger(id) && id >= 0 && id < medals.length) &&
+    new Set(value).size === value.length
+}
+
 // Rarity describes the rule, never the proportion of users earning it.
 export const rarity = [3,0,1,2,1,2,2,0,2,3,1,1,1,0,1,2,1,1] as const
 export const rarityLabels = ['普通|普通|Common','稀有|稀有|Rare','史诗|史詩|Epic','传说|傳說|Legendary']
