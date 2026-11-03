@@ -40,13 +40,13 @@ h1, .brand strong, .welcome-brand strong, .season-medal-fraction, .step-label {
 .welcome-hero {
   position: relative; isolation: isolate; overflow: hidden;
   background: var(--poster-surface); border: 1px solid var(--border);
-  padding: clamp(22px,4.5vw,58px); border-radius: 20px;
+  max-width: none; padding: clamp(22px,4.5vw,58px); border-radius: 20px;
 }
 .welcome-hero::before {
   content: ''; position: absolute; z-index: -1; top: 0; right: -5%; width: 31%; height: 100%;
   transform: skewX(-16deg); background: var(--poster-dots) 0 0 / 8px 8px, var(--poster-red);
 }
-.welcome-hero > * {max-width: 70%;}
+.welcome-hero > :is(.eyebrow,h1,p) {max-width: 65%;}
 .welcome-hero h1 {font-size: clamp(2rem,4.8vw,4.8rem); line-height: 1.08;}
 .welcome-hero p {color: var(--poster-muted);}
 .primary-choice, .welcome-choice-card.primary-choice {border-color: var(--poster-paper); background: #201f1e;}
@@ -56,7 +56,7 @@ h1, .brand strong, .welcome-brand strong, .season-medal-fraction, .step-label {
 :where(.page-content, .getting-started-main) summary {cursor: pointer;}
 @media (max-width: 620px) {
   .welcome-hero::before {width: 16%;}
-  .welcome-hero > * {max-width: 88%;}
+  .welcome-hero > :is(.eyebrow,h1,p) {max-width: 82%;}
 }
 @media (forced-colors: active) {
   .poster-chapters .current {outline: 2px solid Highlight;}
