@@ -3504,3 +3504,8 @@ h2 {
 .local-arena :is(button,input,select),.story-controls button,.wrapped-launch,.medal-tools button {
   color:#f2f6ee; background:#26373c; border:1px solid #65797c; border-radius:6px;
 }
+
+.closed-board pre {white-space:pre-wrap;overflow-wrap:anywhere}
+.closed-board label,.closed-board a {display:flex;align-items:center;gap:.5rem;min-height:44px}
+.closed-board button {min-width:44px}
+.closed-board button,.closed-board select,.closed-board input:not([type=checkbox]) {min-height:44px;max-width:100%}

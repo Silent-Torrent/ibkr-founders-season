@@ -1,3 +1,4 @@
+import {Board} from '../../leaderboard/Board'
 import {useContext} from 'react'
 import {Settings} from '../components/Preferences'
 import {local} from '../data/medals'
@@ -101,6 +102,8 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
         </section>
       )}
 
+      {import.meta.env.VITE_LEADERBOARD_BETA === 'enabled' &&
+        <Board key={report.importedAt + report.source} report={report} locale={locale} worn={prefs.worn ?? []}/>}
       <LocalArena key={report.importedAt} report={report} locale={locale} players={demoRows}/>
       <section className="panel leaderboard-panel">
         <div className="section-heading">

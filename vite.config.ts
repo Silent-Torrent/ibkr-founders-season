@@ -5,6 +5,20 @@ export default defineConfig({
   plugins: [
     react(),
     {
+      name: 'closed-beta-api-csp',
+      apply: 'build',
+      transformIndexHtml() {
+        if (process.env.VITE_LEADERBOARD_BETA !== 'enabled') return []
+        const origin = new URL(process.env.LEADERBOARD_ORIGIN ?? '')
+        if (origin.protocol !== 'https:' || origin.origin !== process.env.LEADERBOARD_ORIGIN) {
+          throw Error('A canonical HTTPS beta origin is required.')
+        }
+        // Browsers intersect this policy with the existing self-only header and meta.
+        return [{tag: 'meta', attrs: {'http-equiv': 'Content-Security-Policy',
+          content: 'connect-src ' + origin.origin + '/api/'}, injectTo: 'head-prepend' as const}]
+      },
+    },
+    {
       name: 'dev-hmr-csp',
       apply: 'serve',
       transformIndexHtml(html) {
