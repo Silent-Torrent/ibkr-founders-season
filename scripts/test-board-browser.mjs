@@ -12,6 +12,7 @@ import {accepts} from '../leaderboard/contract.js'
 const chrome=process.env.CHROME_PATH || (process.platform==='darwin'?'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome':'google-chrome')
 const temp=await mkdtemp(join(tmpdir(),'fictional-board-'))
 const calls=[]
+let submissionState='pending'
 const server=createServer(async(req,res)=>{
   try {
     if(req.url.startsWith('/api/leaderboard')){
@@ -19,7 +20,7 @@ const server=createServer(async(req,res)=>{
       for await(const part of req)body.push(part)
       calls.push({method:req.method,body:Buffer.concat(body).toString(),url:req.url,auth:req.headers.authorization})
       res.setHeader('Content-Type','application/json')
-      res.end(JSON.stringify(req.method==='GET'?{rows:[]}:{status:req.method==='DELETE'?'withdrawn':'listed'}));return
+      res.end(JSON.stringify(req.method==='GET'?{rows:[]}:{status:req.method==='DELETE'?'withdrawn':submissionState}));return
     }
     if(req.url.startsWith('/board.js') || req.url.startsWith('/board.css')){
       const css=req.url.startsWith('/board.css')
@@ -32,7 +33,7 @@ const server=createServer(async(req,res)=>{
 })
 let browser, socket
 try {
-  await build({configFile:false,plugins:[react()],logLevel:'warn',define:{'process.env.NODE_ENV':'"production"'},
+  await build({configFile:false,plugins:[react()],logLevel:'warn',define:{'process.env.NODE_ENV':'"production"','import.meta.env.VITE_LEADERBOARD_BETA':'"enabled"'},
     build:{outDir:temp,emptyOutDir:false,lib:{entry:'tests/fixtures/leaderboard-fictional.tsx',formats:['es'],fileName:()=> 'board.js',cssFileName:'board'}}})
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve))
   const origin='http://127.0.0.1:'+server.address().port
@@ -53,6 +54,7 @@ try {
   async function ev(expression){const result=await send('Runtime.evaluate',{expression,returnByValue:true});assert(!result.exceptionDetails,result.exceptionDetails?.exception?.description);return result.result.value}
   async function wait(expression){for(let i=0;i<100;i++){if(await ev(`Boolean(${expression})`))return;await delay(50)}throw Error('Missing: '+expression)}
   for(const [width,height] of [[393,852],[844,390]])for(const locale of ['zh-CN','zh-TW','en']){
+    submissionState=width===393?'pending':'listed'
     const initial=calls.length
     await send('Emulation.setDeviceMetricsOverride',{width,height,mobile:true,deviceScaleFactor:1})
     await send('Page.navigate',{url:origin+'/?locale='+locale})
@@ -72,6 +74,8 @@ try {
     await wait("!document.querySelectorAll('.closed-board button')[1].disabled")
     await ev("const submit=document.querySelectorAll('.closed-board button')[1];submit.click();submit.click()")
     await wait("document.querySelector('[role=status]').innerText.trim()")
+    const statusText=await ev("document.querySelector('[role=status]').innerText")
+    assert.match(statusText, submissionState==='pending' ? /等待人工复核|等待人工覆核|manual review/ : /已通过|已通過|Accepted/)
     assert.equal(calls.length,initial+1)
     const post=calls.at(-1)
     assert.equal(post.method,'POST');assert.equal(post.url,'/api/leaderboard')

@@ -14,3 +14,5 @@ export const divisions: readonly string[]
 export const fields: readonly string[]
 export const medalCount: number
 export function expiresAt(year: number): number
+export const MAX_RETURN_BPS: number
+export function displayNickname(nickname: string, locale: string): string

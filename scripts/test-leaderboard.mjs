@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import {createHash} from 'node:crypto'
 import {readFileSync} from 'node:fs'
 import {createServer} from 'vite'
-import {accepts, expiresAt, fields, medalCount} from '../leaderboard/contract.js'
+import {accepts, displayNickname, expiresAt, fields, medalCount, nicknameFor} from '../leaderboard/contract.js'
 import {handle} from '../api/leaderboard.js'
-import {rate, mutate, publicRows} from '../leaderboard/store.js'
+import {rate, mutate, publicRows} from '../server/store.js'
 
 const vite = await createServer({server:{middlewareMode:true}, appType:'custom',logLevel:'silent'})
 try {
@@ -29,14 +29,23 @@ try {
   for(const invalid of [{asOf:'2026-02-30'},{asOf:'2026-11-04'},{year:2025},{returnBps:.5},{source:'verified'},
     {medals:[1,2,3,4]},{medals:[1,1]},{medals:[18]},{account:'fictional'},{amount:0},{symbol:'fictional'},{nickname:'free text'}])
     assert(!accepts({...entry,...invalid},today))
+  assert.match(entry.nickname, /^(韭菜|老登|牛魔王|熊大|梭哈侠|抄底王)-[0-9]{4}$/)
+  assert.equal(nicknameFor('0000000400000001' + '0'.repeat(16)), '梭哈侠-0001')
+  assert.equal(displayNickname('梭哈侠-0001','zh-TW'), '梭哈俠-0001')
+  assert.equal(displayNickname('梭哈侠-0001','en'), 'All-In Ace-0001')
+  for (const nickname of ['自由输入-8241','韭菜-123','韭菜-12345', nicknameFor('0'.repeat(32))]) {
+    assert(!accepts({...entry,nickname},today))
+  }
+  assert.equal(expiresAt(2027), Date.parse('2028-04-01T00:00:00Z')/1000)
   for(const key of fields){const missing={...entry};delete missing[key];assert(!accepts(missing,today))}
   assert.equal(expiresAt(2026), Date.parse('2027-04-01T00:00:00Z')/1000)
   const commands=[]
   let attempts=1
+  let storeResult
   const cmd=async args=>{
     commands.push(args)
     if(args[1]===rate)return attempts
-    if(args[1]===mutate)return args[6]==='withdraw'?'withdrawn':args[6]
+    if(args[1]===mutate)return storeResult ?? (args[2]===2?'withdrawn':args[7])
     return []
   }
   const env={LEADERBOARD_BETA:'enabled',LEADERBOARD_WRITES:'enabled',LEADERBOARD_ORIGIN:'https://beta.example',
@@ -47,13 +56,30 @@ try {
     await handle(cmd,env,()=>today)({method,body,url:'/api/leaderboard'+query,headers:{...headers,...additional}},res)
     return [res.code,res.value]
   }
+  assert.deepEqual(await call('POST',entry),[200,{status:'pending'}])
+  assert.deepEqual(JSON.parse(commands.at(-1)[8]),entry)
+  assert.match(commands.at(-1)[5], /^lb:daily:[a-f0-9]{64}$/)
+  assert.equal(commands.at(-1)[10], Date.parse('2026-11-04T00:00:00Z')/1000)
+  for (const returnBps of [-10001,100000001,Number.MAX_SAFE_INTEGER]) {
+    assert.deepEqual(await call('POST',{...entry,returnBps}),[400,{error:'schema'}])
+    assert.equal(commands.at(-1)[1],rate)
+  }
+  env.LEADERBOARD_AUTO_LIST='true'
+  assert.deepEqual(await call('POST',entry),[200,{status:'pending'}])
+  env.LEADERBOARD_AUTO_LIST='enabled'
   assert.deepEqual(await call('POST',entry),[200,{status:'listed'}])
-  assert.deepEqual(JSON.parse(commands.at(-1)[7]),entry)
+  assert.deepEqual(await call('POST',{...entry,returnBps:10000}),[200,{status:'listed'}])
+  for (const returnBps of [100001,100000000]) {
+    assert.deepEqual(await call('POST',{...entry,returnBps}),[200,{status:'pending'}])
+  }
   assert.deepEqual(await call('POST',{...entry,returnBps:10001}),[200,{status:'pending'}])
   assert.deepEqual(await call('POST',{...entry,returnBps:-10000}),[200,{status:'listed'}])
   assert.equal((await call('POST',{...entry,amount:1}))[0],400)
   assert.equal((await call('POST',entry,'',{origin:'https://foreign.example'}))[0],403)
   attempts=6;assert.equal((await call('POST',entry))[0],429);attempts=1
+  storeResult='daily';assert.deepEqual(await call('POST',entry),[429,{status:'daily'}])
+  storeResult='full';assert.deepEqual(await call('POST',entry),[503,{status:'full'}])
+  storeResult=undefined
   env.LEADERBOARD_WRITES='off';assert.equal((await call('POST',entry))[0],503)
   assert.equal((await call('DELETE',null,'?year=2026',{authorization:'Bearer '+secret}))[0],200)
   assert.equal(commands.at(-1)[5],entry.id)

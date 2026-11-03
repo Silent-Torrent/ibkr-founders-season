@@ -6,7 +6,7 @@ import {t} from '../src/i18n'
 import type {DivisionKey} from '../src/lib/season'
 import {boardApi, type Row} from './transport'
 import {project} from './projection'
-import {divisions, expiresAt} from './contract.js'
+import {displayNickname, divisions, expiresAt} from './contract.js'
 
 interface Props { report: PortfolioReport; locale: Locale; worn: number[] }
 export function Board(props: Props) {
@@ -50,6 +50,8 @@ function Enrollment({report, locale, worn, secret}: Props & {secret: string}) {
     <h2>{tr('自报成绩 · 未验证|自報成績 · 未驗證|Self-reported · Unverified')}</h2>
     {entry ? <>
       <p>{tr('以下八项将提交给内测榜。分组会透露资产区间。至少十条已通过记录才显示分组。|以下八項將提交至內測榜。分組會透露資產區間。至少十筆通過紀錄才顯示分組。|These eight fields go to the private beta. Your division reveals an asset range. A group is visible at ten accepted entries.')}</p>
+      <p>{tr('系统昵称|系統暱稱|Assigned nickname')} · {displayNickname(entry.nickname, locale)}</p>
+      <details><summary>{t(locale, 'privacyLocalTitle')}</summary><p>{t(locale, 'privacyLocalBody')}</p></details>
       <pre aria-label={tr('提交预览|提交預覽|Submission preview')}>{JSON.stringify(entry, null, 2)}</pre>
       <p>{tr('删除日期（UTC）|刪除日期（UTC）|Deletion date (UTC)')} · {new Date(expiresAt(entry.year)*1000).toISOString().slice(0,10)}</p>
       <a download="pnl-arena-withdrawal.txt" href={'data:text/plain;charset=utf-8,'+encodeURIComponent(receiptText)}
@@ -59,7 +61,7 @@ function Enrollment({report, locale, worn, secret}: Props & {secret: string}) {
       <button type="button" disabled={!saved || !consent || sent || busy} onClick={() => act(async () => {
         const result = await boardApi.submit(entry)
         setSent(true)
-        setStatus(result.status === 'pending' ? tr('等待人工复核。|等待人工覆核。|Awaiting manual review.') : tr('已提交。|已提交。|Submitted.'))
+        setStatus(result.status === 'pending' ? tr('已提交，等待人工复核。通过后才计入榜单。|已提交，等待人工覆核。通過後才計入榜單。|Submitted for manual review. Your entry counts toward the standings after approval.') : tr('已通过，分组满十条后展示。|已通過，分組滿十筆後顯示。|Accepted. Standings appear at ten approved entries in the group.'))
       })}>{tr('提交一次|提交一次|Submit entry')}</button>
     </> : <p>{tr('参赛需本年度可计算收益率及分组的本地年初至今报表。|參賽需本年度可計算報酬率及分組的本機年初至今報表。|Enter with a local year-to-date report with an eligible return and division.')}</p>}
     <h3>{tr('查看分组|查看分組|View a group')}</h3>
@@ -67,7 +69,7 @@ function Enrollment({report, locale, worn, secret}: Props & {secret: string}) {
     <label>{tr('分组|分組|Division')} <select value={division} onChange={e=>{setDivision(e.target.value);setRows(null)}} disabled={busy}>
       {divisions.map(d=><option key={d} value={d}>{t(locale,d as DivisionKey)}</option>)}</select></label>
     <button type="button" disabled={busy} onClick={()=>act(async()=>setRows((await boardApi.read(year,division)).rows))}>{tr('读取内测榜|讀取內測榜|Load beta standings')}</button>
-    {rows && (rows.length ? <ol>{rows.map(row=><li key={row.rank+'-'+row.nickname+'-'+row.asOf}>{row.rank}. {row.nickname} · {(row.returnBps/100).toFixed(2)}% · {row.asOf}</li>)}</ol>
+    {rows && (rows.length ? <ol>{rows.map(row=><li key={row.rank+'-'+row.nickname+'-'+row.asOf}>{row.rank}. {displayNickname(row.nickname, locale)} · {(row.returnBps/100).toFixed(2)}% · {row.asOf}</li>)}</ol>
       : <p>{tr('本组尚未展示。|本組尚未顯示。|This group is not displayed yet.')}</p>)}
     <h3>{tr('撤回成绩|撤回成績|Withdraw an entry')}</h3>
     <label>{tr('本机撤回码|本機撤回碼|Withdrawal receipt')} <input type="password" autoComplete="off" value={receipt} onChange={e=>setReceipt(e.target.value.trim())}/></label>

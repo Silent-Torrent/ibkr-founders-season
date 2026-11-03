@@ -1,5 +1,7 @@
 import type { Locale } from './types'
 
+const leaderboardBeta = import.meta.env.VITE_LEADERBOARD_BETA === 'enabled'
+
 const en = {
   appName: 'P&L Arena',
   seasonLabel: 'Founders Season',
@@ -16,8 +18,9 @@ const en = {
   welcomePageTitle: 'Get started',
   welcomeEyebrow: 'PRIVATE · LOCAL · BEGINNER-FRIENDLY',
   welcomeTitle: 'Start with a demo or your own IBKR statement',
-  welcomeSubtitle:
-    'Your statement data is not sent to our server. Explore fictional numbers first, or import one supported CSV when you are ready.',
+  welcomeSubtitle: leaderboardBeta
+    ? 'Try fictional data or import a supported CSV on this device. Submitting an entry to the closed leaderboard is optional.'
+    : 'Your statement data is not sent to our server. Explore fictional numbers first, or import one supported CSV when you are ready.',
   welcomeChoiceLabel: 'Choose how to begin',
   welcomeDemoTitle: 'Explore the fictional demo',
   welcomeDemoBody:
@@ -44,11 +47,13 @@ const en = {
     'This app parses your statement in this browser and does not send it to our server.',
   privacyNoticeOpen: 'Privacy & data details',
   privacyNoticeTitle: 'Privacy & data notice',
-  privacyNoticeIntro:
-    'This local-first beta keeps statement data off our servers, but local checks do not make an imported report broker-verified.',
+  privacyNoticeIntro: leaderboardBeta
+    ? 'Importing a report is local. Leaderboard entries are optional and self-reported.'
+    : 'This local-first beta keeps statement data off our servers, but local checks do not make an imported report broker-verified.',
   privacyLocalTitle: 'Where processing happens',
-  privacyLocalBody:
-    'The selected English IBKR Activity Statement CSV is converted to a filename-free browser object, then read and parsed by a dedicated worker in this tab. This beta has no backend and does not upload the file or its financial contents.',
+  privacyLocalBody: leaderboardBeta
+    ? 'Your CSV and all monetary amounts are processed only on this device. Only when you check the consent box and click Submit are the eight previewed fields sent to Upstash Redis in the United States. The app stores no raw IP addresses. Rate limits use HMAC counters for 60 seconds and a daily submission counter that expires at midnight UTC. Entries are deleted automatically on April 1 UTC of the following year. Use your withdrawal receipt to remove yours earlier.'
+    : 'The selected English IBKR Activity Statement CSV is converted to a filename-free browser object, then read and parsed by a dedicated worker in this tab. This beta has no backend and does not upload the file or its financial contents.',
   privacyMemoryTitle: 'What stays in memory',
   privacyMemoryBody:
     'The CSV data read by this app and the complete parsed report remain in current-tab memory only. The app does not write them to localStorage, sessionStorage, IndexedDB, or Cache Storage.',
@@ -251,7 +256,9 @@ const en = {
   reqFormat: 'Format: CSV',
   reqLanguage: 'Language: English',
   reqAccount: 'Account: one account only',
-  importPrivacy: 'The raw CSV is not sent to a server. Parsed results stay in this tab only and are cleared on refresh or close.',
+  importPrivacy: leaderboardBeta
+    ? 'The raw CSV and complete report stay in this tab. To submit the eight leaderboard fields, open the closed leaderboard and give consent.'
+    : 'The raw CSV is not sent to a server. Parsed results stay in this tab only and are cleared on refresh or close.',
   importing: 'Parsing statement…',
   importProcessingDetail: 'Usually a few seconds. The 12-second safety limit stops slow work; cancelling does not change the current report.',
   importSuccess: 'Statement imported locally. Review the data-source and internal-check statuses below.',
@@ -365,7 +372,9 @@ const zhCN: typeof en = {
   welcomePageTitle: '开始使用',
   welcomeEyebrow: '隐私优先 · 本机处理 · 新手友好',
   welcomeTitle: '先看演示，或导入你自己的 IBKR 报表',
-  welcomeSubtitle: '你的报表数据不会发送到我们的服务器。你可以先用全虚构数据熟悉界面，准备好后再导入一份支持的 CSV。',
+  welcomeSubtitle: leaderboardBeta
+    ? '可以先体验虚构数据，也可以在本机导入支持的 CSV。提交内测榜成绩由你选择。'
+    : '你的报表数据不会发送到我们的服务器。你可以先用全虚构数据熟悉界面，准备好后再导入一份支持的 CSV。',
   welcomeChoiceLabel: '选择开始方式',
   welcomeDemoTitle: '体验全虚构演示',
   welcomeDemoBody: '无需使用个人数据即可了解各个页面；演示中的账户、持仓和数字全部是虚构的。',
@@ -387,10 +396,13 @@ const zhCN: typeof en = {
   privateDetail: '本应用在当前浏览器中解析报表，不会将报表发送到我们的服务器。',
   privacyNoticeOpen: '隐私与数据详情',
   privacyNoticeTitle: '隐私与数据说明',
-  privacyNoticeIntro: '当前 Beta 采用本地处理，报表数据不会发送到我们的服务器；但本地检查不等于券商真实性验证。',
+  privacyNoticeIntro: leaderboardBeta
+    ? '导入报表在本机完成。参加内测榜由你选择，成绩由参与者自报。'
+    : '当前 Beta 采用本地处理，报表数据不会发送到我们的服务器；但本地检查不等于券商真实性验证。',
   privacyLocalTitle: '数据在哪里处理',
-  privacyLocalBody:
-    '你选择的英文 IBKR Activity Statement CSV 会先转为不含文件名的浏览器对象，再由当前标签页中的专用后台线程读取和解析。当前 Beta 没有后端，不会上传文件或其中的财务数据。',
+  privacyLocalBody: leaderboardBeta
+    ? 'CSV 和所有金额只在本机处理。只有你主动勾选同意并点击提交，才会把预览中的八项发送至位于美国的 Upstash Redis。应用不保存原始 IP。限速使用 HMAC 计数器，短期限速窗口为 60 秒，每日提交计数在 UTC 零点删除。条目于次年 4 月 1 日 UTC 自动删除，你也可以提前用撤回码撤回。'
+    : '你选择的英文 IBKR Activity Statement CSV 会先转为不含文件名的浏览器对象，再由当前标签页中的专用后台线程读取和解析。当前 Beta 没有后端，不会上传文件或其中的财务数据。',
   privacyMemoryTitle: '哪些数据留在内存',
   privacyMemoryBody:
     '本应用读取的 CSV 数据和完整解析结果只保留在当前标签页的内存中。本应用不会将它们写入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
@@ -573,7 +585,9 @@ const zhCN: typeof en = {
   reqFormat: '格式：CSV',
   reqLanguage: '语言：English',
   reqAccount: '账户：仅一个账户',
-  importPrivacy: '原始 CSV 不会发送至服务器；解析结果只保留在当前标签页，刷新或关闭后即清除。',
+  importPrivacy: leaderboardBeta
+    ? '原始 CSV 和完整报告留在本标签页。提交八项榜单数据需另行打开内测榜并同意。'
+    : '原始 CSV 不会发送至服务器；解析结果只保留在当前标签页，刷新或关闭后即清除。',
   importing: '正在解析报表……',
   importProcessingDetail: '通常只需几秒；超过 12 秒会触发安全停止。取消操作不会改动当前报表。',
   importSuccess: '报表已在本机导入。请查看下方相互独立的“数据来源”和“内部检查”状态。',
@@ -685,7 +699,9 @@ const zhTW: typeof en = {
   welcomePageTitle: '開始使用',
   welcomeEyebrow: '隱私優先 · 本機處理 · 新手友善',
   welcomeTitle: '先看示範，或匯入你自己的 IBKR 報表',
-  welcomeSubtitle: '你的報表資料不會傳送到我們的伺服器。你可以先用全虛構資料熟悉介面，準備好後再匯入一份支援的 CSV。',
+  welcomeSubtitle: leaderboardBeta
+    ? '可以先體驗虛構資料，也可以在本機匯入支援的 CSV。是否提交內測榜成績由你決定。'
+    : '你的報表資料不會傳送到我們的伺服器。你可以先用全虛構資料熟悉介面，準備好後再匯入一份支援的 CSV。',
   welcomeChoiceLabel: '選擇開始方式',
   welcomeDemoTitle: '體驗全虛構示範',
   welcomeDemoBody: '不需使用個人資料即可了解各個頁面；示範中的帳戶、持倉和數字全都是虛構的。',
@@ -707,10 +723,13 @@ const zhTW: typeof en = {
   privateDetail: '本應用在目前瀏覽器中解析報表，不會將報表傳送到我們的伺服器。',
   privacyNoticeOpen: '隱私與資料詳情',
   privacyNoticeTitle: '隱私與資料說明',
-  privacyNoticeIntro: '目前 Beta 採用本機處理，報表資料不會傳送到我們的伺服器；但本機檢查不等於券商真實性驗證。',
+  privacyNoticeIntro: leaderboardBeta
+    ? '匯入報表在本機完成。是否參加內測榜由你決定，成績由參與者自報。'
+    : '目前 Beta 採用本機處理，報表資料不會傳送到我們的伺服器；但本機檢查不等於券商真實性驗證。',
   privacyLocalTitle: '資料在哪裡處理',
-  privacyLocalBody:
-    '你選擇的英文 IBKR Activity Statement CSV 會先轉為不含檔名的瀏覽器物件，再由目前分頁中的專用後台執行緒讀取與解析。目前 Beta 沒有後端，不會上傳檔案或其中的財務資料。',
+  privacyLocalBody: leaderboardBeta
+    ? 'CSV 和所有金額只在本機處理。只有你主動勾選同意並點選提交，才會將預覽中的八項傳送至位於美國的 Upstash Redis。應用程式不儲存原始 IP。限流使用 HMAC 計數器，短期限流視窗為 60 秒，每日提交計數在 UTC 零時刪除。紀錄於次年 4 月 1 日 UTC 自動刪除，你也可以提前使用撤回碼撤回。'
+    : '你選擇的英文 IBKR Activity Statement CSV 會先轉為不含檔名的瀏覽器物件，再由目前分頁中的專用後台執行緒讀取與解析。目前 Beta 沒有後端，不會上傳檔案或其中的財務資料。',
   privacyMemoryTitle: '哪些資料留在記憶體',
   privacyMemoryBody:
     '本應用讀取的 CSV 資料和完整解析結果只保留在目前分頁的記憶體中。本應用不會將它們寫入 localStorage、sessionStorage、IndexedDB 或 Cache Storage。',
@@ -893,7 +912,9 @@ const zhTW: typeof en = {
   reqFormat: '格式：CSV',
   reqLanguage: '語言：English',
   reqAccount: '帳戶：僅一個帳戶',
-  importPrivacy: '原始 CSV 不會傳送至伺服器；解析結果只保留在目前分頁，重新整理或關閉後即清除。',
+  importPrivacy: leaderboardBeta
+    ? '原始 CSV 和完整報告留在本分頁。提交八項榜單資料需另行開啟內測榜並同意。'
+    : '原始 CSV 不會傳送至伺服器；解析結果只保留在目前分頁，重新整理或關閉後即清除。',
   importing: '正在解析報表……',
   importProcessingDetail: '通常只需幾秒；超過 12 秒會觸發安全停止。取消操作不會改動目前報表。',
   importSuccess: '報表已在本機匯入。請查看下方相互獨立的「資料來源」和「內部檢查」狀態。',

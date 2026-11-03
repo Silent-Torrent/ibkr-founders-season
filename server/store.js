@@ -14,6 +14,16 @@ if previous then
   return redis.call('HEXISTS', KEYS[1], active) == 1 and 'listed' or 'pending'
 end
 if redis.call('HLEN', KEYS[1]) >= 500 then return 'full' end
+if action == 'pending' then
+  local count = 0
+  for _, field in ipairs(redis.call('HKEYS', KEYS[1])) do
+    if string.sub(field, 1, 2) == 'p:' then count = count + 1 end
+  end
+  if count >= 200 then return 'full' end
+end
+if tonumber(redis.call('GET', KEYS[3]) or '0') >= 10 then return 'daily' end
+redis.call('INCR', KEYS[3])
+redis.call('EXPIREAT', KEYS[3], ARGV[5])
 redis.call('HSET', KEYS[1], action == 'pending' and pending or active, ARGV[3])
 redis.call('EXPIREAT', KEYS[1], ARGV[4])
 return action

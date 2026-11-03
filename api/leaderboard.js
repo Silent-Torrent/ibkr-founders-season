@@ -1,7 +1,7 @@
 import { createHash, createHmac } from 'node:crypto'
 import { isIP } from 'node:net'
 import { accepts, divisions, expiresAt, fields } from '../leaderboard/contract.js'
-import { mutate, publicRows, rate, redis } from '../leaderboard/store.js'
+import { mutate, publicRows, rate, redis } from '../server/store.js'
 
 export function handle(command = redis, env = process.env, now = () => new Date()) {
   return async (req, res) => {
@@ -35,10 +35,12 @@ export function handle(command = redis, env = process.env, now = () => new Date(
           return send(413, { error: 'size' })
         if (!accepts(payload, today)) return send(400, { error: 'schema' })
         const entry = Object.fromEntries(fields.map(key => [key, payload[key]]))
-        const state = Math.abs(entry.returnBps) > 10000 ? 'pending' : 'listed'
-        const result = await command(['EVAL', mutate, 2, 'lb:' + entry.year, 'lb:stop', entry.id,
-          state, JSON.stringify(entry), expiresAt(entry.year)])
-        return send(({ paused: 503, full: 503, conflict: 409 })[result] ?? 200, { status: result })
+        const state = env.LEADERBOARD_AUTO_LIST === 'enabled' && Math.abs(entry.returnBps) <= 10000
+          ? 'listed' : 'pending'
+        const endOfDay = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 1) / 1000
+        const result = await command(['EVAL', mutate, 3, 'lb:' + entry.year, 'lb:stop', 'lb:daily:' + bucket,
+          entry.id, state, JSON.stringify(entry), expiresAt(entry.year), endOfDay])
+        return send(({ paused: 503, full: 503, daily: 429, conflict: 409 })[result] ?? 200, { status: result })
       }
       const year = Number(query.get('year'))
       if (!Number.isInteger(year) || year < 2026 || year > today.getUTCFullYear() ||
