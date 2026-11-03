@@ -220,15 +220,14 @@ export async function downloadSeasonCard(
     textAt(t(locale,'shareNoHoldings'),100,1290,25)
     textAt(advice(locale),100,1352,29)
   } else if(size==='story') {
-    // A vertical reading sequence with a second caption and stacked medal rows.
+    // A vertical reading sequence with stacked medal rows.
     textAt(season,86,150,38)
     textAt(division,86,228,42,425,accent)
     textAt(sourceLabel,540,228,30,452)
     textAt(theme.title,86,447,85)
     textAt(value,86,663,156,908,returnColor)
     if(prefs.amount) textAt(amount,86,746,47)
-    textAt(theme.line,86,834,43)
-    textAt(theme.secondLine,86,911,36,908,accent)
+    textAt(theme.line,86,865,43)
     panel(65,1000,950,180)
     textAt(t(locale,'trustCalculationCheck'),98,1064,30)
     textAt(qualityLabel,98,1140,44,440)
@@ -236,8 +235,7 @@ export async function downloadSeasonCard(
     textAt(t(locale,'trophiesTitle'),86,1280,40,908,accent)
     badges.forEach((badge,i)=>medalAt(badge,89,1364+i*62,904,38))
     textAt(cost,86,badges.length>1?1620:1524,36)
-    textAt(t(locale,'shareNoHoldings'),86,1678,26)
-    textAt(advice(locale),86,1750,30)
+    textAt(advice(locale),86,1750,38)
   } else {
     // A compact two-column scorecard; the medal and cost panels anchor its lower half.
     textAt(season,82,139,37)
@@ -268,7 +266,7 @@ export async function downloadSeasonCard(
 
   context.textAlign = 'right'
   context.fillStyle = '#f3f7fb'
-  context.font = '700 30px -apple-system, BlinkMacSystemFont, sans-serif'
+  context.font = `700 ${size==='story'?40:30}px -apple-system, BlinkMacSystemFont, sans-serif`
   const brand = 'P&L ARENA'
   const labelRight = width-100
   const metrics = context.measureText(brand)

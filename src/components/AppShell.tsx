@@ -38,6 +38,7 @@ export function AppShell({
   onOpenGuide,
   onOpenPrivacy,
 }: AppShellProps) {
+  const compactSource = report.source === 'synthetic' ? t(locale, 'compactSynthetic') : t(locale, reportSourceStatusKey(report.source))
   const mainRef = useRef<HTMLElement>(null)
   const previousPageRef = useRef(page)
   const previousReportSourceRef = useRef(report.source)
@@ -135,8 +136,8 @@ export function AppShell({
             <strong>{report.accountIdMasked}</strong>
           </div>
           <div className="topbar-actions">
-            <span className={`source-pill ${report.source} mobile-source`} title={t(locale, reportSourceStatusKey(report.source))}>
-              {t(locale, reportSourceStatusKey(report.source))}
+            <span className={`source-pill ${report.source} mobile-source`} title={compactSource}>
+              {compactSource}
             </span>
             <select
               aria-label={t(locale, 'languageLabel')}
@@ -163,7 +164,7 @@ export function AppShell({
         )}
 
         <div className="page-content" data-page={page}>{children}</div>
-        <SettingsPanel locale={locale} currency={report.baseCurrency} />
+        <div className="settings-column"><SettingsPanel locale={locale} currency={report.baseCurrency} /></div>
         <footer className="site-footer">
           <span>{t(locale, 'footerDisclaimer')} · {advice(locale)}</span>
           <button

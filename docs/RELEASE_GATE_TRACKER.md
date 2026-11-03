@@ -189,7 +189,7 @@
 
 - R01 · OPEN。除 Vercel SSO 跳转外，未见第三方请求或 POST/PUT。CSP 响应头与 vercel.json 相符，含 `connect-src 'self'`、`worker-src 'self'`、`frame-ancestors 'none'`。HSTS 为 `max-age=31536000`，Referrer-Policy 为 `no-referrer`，另确认 nosniff、X-Frame-Options DENY、预期的 Permissions-Policy 及正确的 Content-Type。
 - localStorage 只有 `pnl-arena.onboarding.v1` 和 `pnl-arena.settings.v1`。sessionStorage、IndexedDB、Cache Storage 均空，唯一 cookie 为平台的 `_vercel_jwt`。刷新回到虚构演示。线上 index.html 的 MD5 与本地 dist 一致，静态资源文件名一致。
-- 后续核对：HTML 的 CSP meta 未列 frame-ancestors；该指令由响应头执行，可在文档说明。所有资源带有 `Access-Control-Allow-Origin: *`，待评估是否移除。
+- 后续核对（R01 仍 OPEN）：已在 index.html 和[部署方案](DEPLOYMENT_PLAN.md)说明 frame-ancestors 由响应头执行，并增加 CSP 契约测试。已记录公开静态资源的通配 CORS 风险及凭据限制，是否移除由负责人决定。
 - R02 · OPEN。Chrome 390×844 触控模拟使用直接下载路径，得到 `pnl-arena-2026-season.png`（1200×1500）、`pnl-arena-2026-season-story.png`（1080×1920）、`pnl-arena-2026-season-3x4.png`（1080×1440）。金额开关和吃肉／吃面模板正常。未调用系统分享面板。
 
 ### 可重复的手机模拟证据

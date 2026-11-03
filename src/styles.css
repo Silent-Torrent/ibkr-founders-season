@@ -442,10 +442,13 @@ h2 {
   font-size:max(var(--reading-floor, 0px), 11px);
 }
 
-.page-content {
+.page-content, .settings-column {
   width: min(1480px, 100%);
   margin: 0 auto;
-  padding: 44px 42px 74px;
+  padding-inline: var(--content-inset, 42px);
+}
+.page-content {
+  padding-block: 44px 74px;
 }
 
 .app-notice {
@@ -2930,8 +2933,9 @@ h2 {
     display: inline-flex;
   }
 
+  .main-column { --content-inset: 16px; }
   .page-content {
-    padding: 27px 16px 100px;
+    padding-block: 27px 100px;
   }
 
   .getting-started-main {
@@ -3420,7 +3424,7 @@ h2 {
 .face-medals {display:flex;flex-wrap:wrap;gap:1cqw}
 .face-medals span {border-inline-start:2px solid currentColor;padding-inline-start:1cqw}
 .share-card-preview[data-size=story] .face-medals {flex-direction:column;gap:1.8cqw}
-.face-extra {color:#dfc9ae}
+.share-card-preview[data-size=story] .share-card-bottom span {font-size:3.5cqw}
 .share-card-preview[data-size="3x4"] .share-card-face {display:grid;grid-template-columns:1.15fr 1fr;align-content:space-between;align-items:center;gap:.7cqw 2cqw}
 .share-card-preview[data-size="3x4"] .share-card-face > * {grid-column:1/-1}
 .share-card-preview[data-size="3x4"] .face-title {grid-column:1;font-size:5cqw}
@@ -3454,3 +3458,12 @@ h2 {
     min-width:44px; min-height:44px;
   }
 }
+
+
+@media (min-width:781px) and (max-width:900px) {
+  .topbar .mobile-source {display:inline-flex}
+}
+.eyebrow:has(+ h1) {line-height:1.4; margin-bottom:12px}
+.eyebrow + h1 {margin-top:0}
+.season-medal-fraction {font-size:clamp(2.5rem,6vw,3.625rem); font-variant-numeric:tabular-nums}
+.season-medal-fraction strong {display:inline; font-size:inherit}
