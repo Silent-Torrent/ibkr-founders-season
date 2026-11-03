@@ -1,0 +1,30 @@
+name: Fictional leaderboard database
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  redis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      redis:
+        image: redis:7-alpine
+        options: --health-cmd "redis-cli ping" --health-interval 2s --health-timeout 2s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/test-board-redis.mjs
+        env:
+          FICTIONAL_REDIS_CONTAINER: ${{ job.services.redis.id }}
+      - run: npm ci
+      - name: Verify opt-in production build and API-only connection policy
+        env:
+          VITE_LEADERBOARD_BETA: enabled
+          LEADERBOARD_ORIGIN: https://fictional.example
+        run: |
+          npm run build
+          node --input-type=module -e "import assert from 'node:assert/strict'; import fs from 'node:fs'; const html=fs.readFileSync('dist/index.html','utf8'); assert(html.includes('connect-src https://fictional.example/api/')); assert(html.includes(\"connect-src 'self'\"));"

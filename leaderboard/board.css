@@ -1,0 +1,9 @@
+/* Supplemental glyphs from the bundled OFL-licensed Noto Sans CJK SC font. */
+@font-face {
+  font-family: BoardSupplement;
+  src: url('../src/assets/board-ui.woff?no-inline') format('woff');
+  unicode-range: U+516B, U+5341, U+5C01, U+64A4;
+}
+.closed-board, .closed-board button, .closed-board input, .closed-board select {
+  font-family: BoardSupplement, ArenaSeason, system-ui, sans-serif;
+}

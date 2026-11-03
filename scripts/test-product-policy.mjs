@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { createServer } from 'vite'
+import { build, createServer } from 'vite'
 
 const vite = await createServer({
   appType: 'custom',
@@ -614,7 +614,18 @@ try {
     hostedCsp.split(';').map((directive) => directive.trim()).includes("worker-src 'self'"),
     'The configured host must not allow Blob-backed executable Workers.',
   )
-  const functionalSourceFiles = readFunctionalSourceTree(new URL('../src/', import.meta.url))
+  const functionalSourceFiles = ['src', 'leaderboard'].flatMap(dir =>
+    readFunctionalSourceTree(new URL('../' + dir + '/', import.meta.url)))
+  const transportPath = new URL('../leaderboard/transport.ts', import.meta.url).pathname
+  const allowedCall = "fetch('/api/leaderboard' + (params ? '?' + params.toString() : ''), {"
+  const transport = functionalSourceFiles.find(file => file.name === transportPath)
+  assert.equal(transport?.source.split(allowedCall).length, 2, 'Expected exactly one approved leaderboard request.')
+  const networkSource = functionalSourceFiles.map(({ name, source }) =>
+    name === transportPath ? source.replace(allowedCall, '') : source).join('\n')
+  for (const api of ['fetch', 'XMLHttpRequest', 'sendBeacon', 'WebSocket', 'EventSource']) {
+    assert.doesNotMatch(networkSource, new RegExp('\\b' + api + '\\b'), 'Unapproved browser network API: ' + api)
+  }
+
   const functionalSource = functionalSourceFiles.map(({ source }) => source).join('\n')
   const preferenceKeys = [...new Set(functionalSource.match(/pnl-arena\.[a-z.-]+\.v1/g) ?? [])].sort()
   assert.deepEqual(
@@ -629,11 +640,6 @@ try {
     ['cookie persistence', /\bdocument\s*\.\s*cookie\b/],
     ['origin-private file storage', /\bnavigator\s*\.\s*storage\s*\.\s*getDirectory\s*\(/],
     ['service worker registration', /\bnavigator\s*\.\s*serviceWorker\s*\.\s*register\s*\(/],
-    ['fetch network API', /\bfetch\s*\(/],
-    ['XMLHttpRequest network API', /\bXMLHttpRequest\b/],
-    ['sendBeacon network API', /\bnavigator\s*\.\s*sendBeacon\s*\(/],
-    ['WebSocket network API', /\bnew\s+WebSocket\s*\(/],
-    ['EventSource network API', /\bnew\s+EventSource\s*\(/],
   ]) {
     assert.ok(!pattern.test(functionalSource), `Source tree introduced ${label}.`)
   }
@@ -946,6 +952,33 @@ try {
   assert.equal(decideSnapshotImport(localReport, newer), 'accept')
   assert.equal(decideSnapshotImport(localReport, otherAccount), 'accept')
 
+  // Exercise the real Vite production entry point, including emitted lazy and worker chunks.
+  const previousFlag = process.env.VITE_LEADERBOARD_BETA
+  const previousOrigin = process.env.LEADERBOARD_ORIGIN
+  try {
+    for (const beta of [false, true]) {
+      if (beta) process.env.VITE_LEADERBOARD_BETA = 'enabled'
+      else delete process.env.VITE_LEADERBOARD_BETA
+      process.env.LEADERBOARD_ORIGIN = 'https://fictional.example'
+      const output = await build({ envDir: false, logLevel: 'silent', build: { write: false } })
+      const js = [output].flat().flatMap(bundle => bundle.output)
+        .filter(file => file.fileName.endsWith('.js'))
+        .map(file => file.type === 'chunk' ? file.code : Buffer.from(file.source).toString()).join('\n')
+        .replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      for (const marker of ['/api/leaderboard', 'closed-board', 'Upstash Redis in the United States',
+        '位于美国的 Upstash Redis', '位於美國的 Upstash Redis']) {
+        assert.equal(js.includes(marker), beta, 'Incorrect build exposure: ' + marker)
+      }
+      for (const marker of ['This beta has no backend', '当前 Beta 没有后端', '目前 Beta 沒有後端']) {
+        assert.equal(js.includes(marker), !beta, 'Incorrect offline privacy copy: ' + marker)
+      }
+    }
+  } finally {
+    if (previousFlag === undefined) delete process.env.VITE_LEADERBOARD_BETA
+    else process.env.VITE_LEADERBOARD_BETA = previousFlag
+    if (previousOrigin === undefined) delete process.env.LEADERBOARD_ORIGIN
+    else process.env.LEADERBOARD_ORIGIN = previousOrigin
+  }
   console.log('Product policy and privacy contracts passed.')
 } finally {
   await vite.close()
