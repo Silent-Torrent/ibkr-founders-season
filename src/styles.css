@@ -3467,3 +3467,11 @@ h2 {
 .eyebrow + h1 {margin-top:0}
 .season-medal-fraction {font-size:clamp(2.5rem,6vw,3.625rem); font-variant-numeric:tabular-nums}
 .season-medal-fraction strong {display:inline; font-size:inherit}
+
+.identity-strip { display:flex; align-items:center; gap:4px; padding:4px 1rem; }
+.identity-strip svg { width:28px; height:28px; }
+.medal-tools { display:flex; flex-wrap:wrap; gap:8px; }
+.medal-tools button { min-height:44px; min-width:44px; padding:6px 12px; }
+.medal:not(.earned) summary svg { color:#879096; filter:grayscale(1); }
+.medal:not(.earned) summary svg path:last-child { display:none; }
+.medal.earned[data-tier="diamond"] summary svg { color:#a4edef; }

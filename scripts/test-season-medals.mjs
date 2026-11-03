@@ -13,6 +13,22 @@ try {
   const { medalOutcome, defaults, ramen } = await vite.ssrLoadModule(
     '/src/lib/cardOptions.ts',
   )
+  const {validSelection,displayedMedals,bagholder,nextTarget}=await vite.ssrLoadModule('/src/lib/medalCollection.ts')
+  assert.deepEqual(validSelection([1,2,3,4]),[1,2,3])
+  assert.deepEqual(validSelection([null,true,-1,18,1,1]),[1])
+  assert.deepEqual(displayedMedals([120,-1,1], [2,1]),[2,1])
+  assert.deepEqual(displayedMedals([0,0,1], [1]),[2])
+  assert.deepEqual(displayedMedals([], [2]),[])
+  assert.equal(bagholder([]),undefined)
+  assert.equal(bagholder([179,0,0]),0)
+  assert.equal(bagholder([180,0,0]),1)
+  assert.equal(bagholder([270,-1,1]),4)
+  assert.equal(nextTarget(0,233),270)
+  assert.equal(nextTarget(0,270),365)
+  assert.equal(nextTarget(0,365),undefined)
+  assert.equal(nextTarget(6,0),1)
+  assert.equal(nextTarget(6,10),20)
+  assert.equal(nextTarget(6,20),undefined)
   const rows = parseCsvRows(
     readFileSync(
       new URL('../tests/fixtures/season-medals-fictional.csv', import.meta.url),

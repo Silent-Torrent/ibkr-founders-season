@@ -58,6 +58,27 @@ export async function testMobilePolish({cdp,evaluate,accessibleNodeForSelector,o
         assert.equal(spoken.filter(n=>n.name.value===count).length,1)
         assert(!spoken.some(n=>n.name.value.includes('14/18')))
       }
+      const poster = await evaluate(`(async()=>{
+        const medal=document.querySelector('.medal.earned')
+        medal.open=true
+        const buttons=medal.querySelectorAll('.medal-tools button')
+        const rect=buttons[1].getBoundingClientRect()
+        let file, url
+        const original=HTMLAnchorElement.prototype.click
+        try {
+          HTMLAnchorElement.prototype.click=function(){ file=this.download; url=this.href }
+          buttons[1].click()
+        } finally { HTMLAnchorElement.prototype.click=original; medal.open=false }
+        const image=new Image()
+        image.src=url
+        await image.decode()
+        return {file,w:image.naturalWidth,h:image.naturalHeight,button:[rect.width,rect.height],
+          name:buttons[1].textContent, badges:document.querySelectorAll('.identity-strip svg[aria-label]').length}
+      })()`)
+      assert.match(poster.file,/^pnl-arena-2026-medal-\d+\.png$/)
+      assert.deepEqual([poster.w,poster.h],[1080,1080])
+      assert(poster.name && poster.button.every(n=>n>=44))
+      assert.equal(poster.badges,3)
       if(width===393){await evaluate('window.scrollTo(0,0)');await settle();await screenshot(locale+'-trophies')}
     }
     assert(Math.min(...gaps)>=12 && Math.max(...gaps)-Math.min(...gaps)<=2,`eyebrow gaps at ${width}: ${gaps}`)
