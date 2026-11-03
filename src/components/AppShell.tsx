@@ -136,6 +136,9 @@ export function AppShell({
       </aside>
 
       <main className="main-column" id="main-content" ref={mainRef} tabIndex={-1}>
+        <div className="poster-chapters" aria-hidden="true">
+          {navItems.map((item, index) => <i key={item.id} className={item.id === page ? 'current' : index < navItems.findIndex(pageItem => pageItem.id === page) ? 'read' : ''} />)}
+        </div>
         <header className="topbar">
           <div>
             <span className="eyebrow">
