@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url'
 import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
+import { runReleaseGateEvidence } from './release-gate-evidence.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
 import { testShortLandscape } from './test-short-landscape.mjs'
 import { testMobilePrivacyModal } from './test-mobile-privacy-modal.mjs'
@@ -52,7 +53,7 @@ if (externalDistDirectory !== undefined) {
   assert(indexMetadata.isFile() && !indexMetadata.isSymbolicLink(), 'IBKR_BROWSER_IMPORT_DIST_DIR requires a regular index.html file.')
 }
 const measureWorkerHeap = process.argv.includes('--measure-worker-heap')
-assert(process.argv.slice(2).every((argument) => argument === '--measure-worker-heap'), 'Unknown browser test argument.')
+assert(process.argv.slice(2).every((argument) => ['--measure-worker-heap','--release-gate-evidence-only'].includes(argument)), 'Unknown browser test argument.')
 const heapQaDirectory = process.env.WORKER_HEAP_QA_DIR
 if (heapQaDirectory) {
   assert(measureWorkerHeap, 'WORKER_HEAP_QA_DIR requires --measure-worker-heap.')
@@ -691,7 +692,7 @@ let nextWorkerHold = null
 let nextWorkerHeap = null
 
 function armNextWorkerHeap(label) {
-  assert(measureWorkerHeap, 'Worker heap sampling requires the explicit diagnostic flag.')
+  assert(measureWorkerHeap || process.env.RELEASE_GATE_QA_DIR, 'Worker heap sampling requires the explicit diagnostic flag.')
   assert.equal(nextWorkerHeap, null, 'A heap diagnostic is already armed.')
   assert.equal(nextWorkerHold, null, 'Do not combine heap sampling with a stalled-Worker timeout test.')
   const ticket = { label, ready: false, error: null, sampler: null, targetId: null, sessionId: null, isolateId: null }
@@ -721,7 +722,7 @@ async function releaseWorkerHold(ticket) {
   }
 }
 
-try {
+async function runBrowserChecks() {
   if (process.env.IBKR_BROWSER_IMPORT_SKIP_BUILD === '1') {
     assert(
       existsSync(join(productionDirectory, 'index.html')),
@@ -1176,6 +1177,21 @@ try {
     flatten: true,
     waitForDebuggerOnStart: true,
   })
+
+  async function collectEvidence() {
+    await runReleaseGateEvidence({
+      directory: process.env.RELEASE_GATE_QA_DIR, cdp, evaluate, waitForPageValue,
+      navigateAndWait, previewUrl, resolveFileInputNodeId, accessibleNodeForSelector,
+      armNextWorkerHeap, holdNextWorker, downloadStarts, downloadProgress, inspectPng,
+      full: resolve(projectRoot, 'tests/fixtures/full-season-medals-fictional.csv'),
+      capacity: capacityFixturePath, empty: emptyFixturePath,
+    })
+  }
+  if (process.argv.includes('--release-gate-evidence-only')) {
+    assert(process.env.RELEASE_GATE_QA_DIR)
+    await collectEvidence()
+    return
+  }
 
   console.log(`Opening ${previewUrl}`)
   await navigateAndWait(previewUrl)
@@ -3461,6 +3477,37 @@ try {
     'The production parser Worker chunk was not requested.',
   )
 
+  // Always exercise the imported-report action, including when no QA artifact is requested.
+  await navigateAndWait(previewUrl)
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
+  await clickPrimaryNavigation('Import')
+  await cdp.send('DOM.setFileInputFiles',{
+    files:[resolve(projectRoot,'tests/fixtures/full-season-medals-fictional.csv')],nodeId:await resolveFileInputNodeId(),
+  })
+  await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','fictional import before touch clear')
+  const clearTarget=await evaluate(`(async()=>{
+    const button=document.querySelector('[data-action="clear-report"]')
+    button.scrollIntoView({block:'center',behavior:'instant'})
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))
+    const rect=button.getBoundingClientRect(),x=rect.left+rect.width/2,y=rect.top+rect.height/2
+    button.addEventListener('click',event=>{window.__trustedClear=event.isTrusted},{once:true,capture:true})
+    return {x,y,width:rect.width,height:rect.height,visible:button.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}),
+      hit:button.contains(document.elementFromPoint(x,y))}
+  })()`)
+  assert(clearTarget.visible && clearTarget.hit && clearTarget.width>=44 && clearTarget.height>=44,
+    'Mobile clear-report target: '+JSON.stringify(clearTarget))
+  const stopConfirm=cdp.on('Page.javascriptDialogOpening',async event=>{
+    if(event.type==='confirm') await cdp.send('Page.handleJavaScriptDialog',{accept:true})
+  })
+  try {
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:clearTarget.x,y:clearTarget.y}]})
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]})
+    await waitForPageValue(`Boolean(window.__trustedClear && document.querySelector('.source-pill.demo')
+      && !document.querySelector('[data-action="clear-report"]'))`,Boolean,'trusted mobile clear restores Demo')
+  } finally {stopConfirm()}
+
+  if (process.env.RELEASE_GATE_QA_DIR) await collectEvidence()
   console.log('Browser import, cancellation, capacity, and PNG download regression passed.')
   console.log({
     cancelledWorkerTerminated,
@@ -3499,6 +3546,10 @@ try {
     workerFixedTime: workerFixedTimes.find(({ url }) => url.includes('ibkrParser.worker'))?.value,
     workerTargets: workerTargets.length,
   })
+}
+
+try {
+  await runBrowserChecks()
 } catch (error) {
   if (previewOutput) console.error(`Preview output:\n${tail(previewOutput)}`)
   if (chromeOutput) console.error(`Chrome output:\n${tail(chromeOutput)}`)

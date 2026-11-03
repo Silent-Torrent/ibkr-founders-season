@@ -160,7 +160,7 @@
 - 2026-09-25 再核：IBKR 另行申请的 Reporting Integration Activity 馈送虽有 `EXE` 行权代码并可用 `.csv` 扩展名，但不是此 MVP 的 Client Portal Activity Statement CSV，不能移植其记录布局。公开 Activity 样例仍是 HTML；详见 [独立馈送边界](OPTION_EXERCISE_EVIDENCE_2026-08-30.md#2026-09-25-separate-feed-boundary)。F01 继续 `OPEN`。
 - 真正关闭条件：获得可独立核验的准确节名、表头、记录类型及行形状，验证事件类型、日期、合约、底层映射、来源引用，且不重复增加盈亏；私有数据不入库，再以完全虚构内容覆盖已证形状。把 `Ep` 改成 `Ex` 或自行编造行不能关闭此项；此检查也不是报表真实性认证。
 
-## 三、部署：3 项（已选 Vercel，待审批）
+## 三、部署：3 项（Vercel 路线已获负责人批准）
 
 ### R01 — 部署后的网络、存储与安全边界
 
@@ -178,10 +178,23 @@
 
 ### R03 — 用户重开部署并批准具体路线
 
-- 状态：`OPEN`。用户已决定解冻、选定 Vercel，待审批 [DEPLOYMENT_PLAN](DEPLOYMENT_PLAN.md)。本轮只准备，R01、R02 待获准部署后实测。映射：P0“Revisit hosting only after the user explicitly reopens deployment…”（基线第 164 行）。
+- 状态：`OPEN`。2026-11-01 Philip 已批准 [Vercel 部署方案](DEPLOYMENT_PLAN.md)。审批决定已记录，正式关闭由负责人决定。映射：P0“Revisit hosting only after the user explicitly reopens deployment…”（基线第 164 行）。
 - 依赖谁：用户作出明确决定；开发方提供届时可核验的具体方案和服务方发布门槛。
 - 历史记录：此前用户选择 L，随后授权开源和云端开发；本轮解冻及平台选择见上。见 [冻结决策](../PROJECT_DECISIONS.md)。
 - 真正关闭条件：用户明确重开部署讨论并批准具体经过复核的路线及权限范围，记录决定与适用门槛。只有此项关闭仍不等于 R01/R02 通过或自动获准公开 Production；不得提前创建替代账户、授权、上传或购买计划。
+
+### 2026-11-01 受保护预览实测（Philip 提供）
+
+环境为 Vercel 受保护预览 `dpl_CXvdKR9Ec5Zfx1u1bhUTan823UL4`，提交 `e6f2405`。以下为负责人采集的证据，与 CI 的本地 HTTP 测试分开记录。
+
+- R01 · OPEN。除 Vercel SSO 跳转外，未见第三方请求或 POST/PUT。CSP 响应头与 vercel.json 相符，含 `connect-src 'self'`、`worker-src 'self'`、`frame-ancestors 'none'`。HSTS 为 `max-age=31536000`，Referrer-Policy 为 `no-referrer`，另确认 nosniff、X-Frame-Options DENY、预期的 Permissions-Policy 及正确的 Content-Type。
+- localStorage 只有 `pnl-arena.onboarding.v1` 和 `pnl-arena.settings.v1`。sessionStorage、IndexedDB、Cache Storage 均空，唯一 cookie 为平台的 `_vercel_jwt`。刷新回到虚构演示。线上 index.html 的 MD5 与本地 dist 一致，静态资源文件名一致。
+- 后续核对：HTML 的 CSP meta 未列 frame-ancestors；该指令由响应头执行，可在文档说明。所有资源带有 `Access-Control-Allow-Origin: *`，待评估是否移除。
+- R02 · OPEN。Chrome 390×844 触控模拟使用直接下载路径，得到 `pnl-arena-2026-season.png`（1200×1500）、`pnl-arena-2026-season-story.png`（1080×1920）、`pnl-arena-2026-season-3x4.png`（1080×1440）。金额开关和吃肉／吃面模板正常。未调用系统分享面板。
+
+### 可重复的手机模拟证据
+
+在非 root Chrome 上设置 `RELEASE_GATE_QA_DIR` 后运行完整 `npm run check`。GitHub Actions 的同名检查上传 `release-gate-evidence`，含逐项结果、测量样本和视口截图。D01/D02/D07/D08 均 OPEN。D01 没有经批准的内存数值上限；报告单独对照现有浏览器回归耗时与停顿阈值。抽样可能遗漏短峰，Chrome 可访问性树不证明 VoiceOver 实际出声。
 
 ## 每次 session 结束的固定通报
 
