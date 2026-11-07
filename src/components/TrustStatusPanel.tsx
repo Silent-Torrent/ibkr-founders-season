@@ -32,28 +32,27 @@ export function TrustStatusPanel({ locale, report }: TrustStatusPanelProps) {
 
   return (
     <section aria-labelledby="trust-status-title" className="panel trust-status-panel">
-      <details open={report.dataQuality !== 'good' || undefined}>
-        <summary id="trust-status-title">{t(locale, 'trustPanelTitle')} · {t(locale, sourceLabelKey)}</summary>
-      <div className="trust-status-intro">
-        <span className="eyebrow">{t(locale, 'trustPanelEyebrow')}</span>
-
-        <p>{t(locale, 'trustPanelBoundary')}</p>
-      </div>
-      <dl className="trust-status-grid">
-        <div>
-          <dt>{t(locale, 'trustDataSource')}</dt>
-          <dd className={`trust-badge ${report.source}`}>{t(locale, sourceLabelKey)}</dd>
-          <small>{t(locale, sourceDetailKey(report))}</small>
+      <details open={report.source !== 'demo' && report.dataQuality !== 'good' || undefined}>
+        <summary id="trust-status-title">{t(locale, 'trustPanelTitle')} · {t(locale, sourceLabelKey)} · {t(locale, qualityLabelKey(report))}</summary>
+        <div className="trust-status-intro">
+          <span className="eyebrow">{t(locale, 'trustPanelEyebrow')}</span>
+          <p>{t(locale, 'trustPanelBoundary')}</p>
         </div>
-        <div>
-          <dt>{t(locale, 'trustCalculationCheck')}</dt>
-          <dd className={`quality-badge ${report.dataQuality}`}>
-            <span aria-hidden="true" />
-            {t(locale, qualityLabelKey(report))}
-          </dd>
-          <small>{t(locale, qualityDetailKey(report))}</small>
-        </div>
-      </dl>
+        <dl className="trust-status-grid">
+          <div>
+            <dt>{t(locale, 'trustDataSource')}</dt>
+            <dd className={`trust-badge ${report.source}`}>{t(locale, sourceLabelKey)}</dd>
+            <small>{t(locale, sourceDetailKey(report))}</small>
+          </div>
+          <div>
+            <dt>{t(locale, 'trustCalculationCheck')}</dt>
+            <dd className={`quality-badge ${report.dataQuality}`}>
+              <span aria-hidden="true" />
+              {t(locale, qualityLabelKey(report))}
+            </dd>
+            <small>{t(locale, qualityDetailKey(report))}</small>
+          </div>
+        </dl>
       </details>
     </section>
   )

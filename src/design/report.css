@@ -42,6 +42,7 @@
 @media(max-width:640px){
   .season-poster {grid-template-columns:minmax(0,1fr); padding:18px;gap:10px;}
   .season-poster .persona-identity {justify-self:end;grid-template-columns:auto 1fr;align-items:center;gap:8px;}
-  .season-poster .persona-identity svg {width:44px;}
-  .poster-score {font-size:clamp(4.25rem,20vw,7rem);}
+  .season-poster .persona-identity svg {width:58px;}
+  .season-poster .persona-identity > span {font-size:1.15rem; font-weight:700;}
+  .poster-score {font-size:clamp(4.5rem,26vw,8rem);}
 }
