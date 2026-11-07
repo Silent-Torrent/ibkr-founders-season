@@ -58,7 +58,7 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
     {!rows.length&&<p>{tr('本季无可比数据。|本季無可比資料。|No comparable data this season.')}</p>}
     {tab==='symbols'&&<p>{tr('报表缺少逐标的收益率分母，按盈亏排序。|報表缺少逐標的報酬率分母，依損益排序。|Per-symbol return denominators are unavailable. Ranked by P&L.')}</p>}
     {rows.length>3&&<ol start={4}>{rows.slice(3).map(row=><li key={row.label}>{row.label} · {display(row.value)}</li>)}</ol>}
-    {tab==='league' && myRank!=null && (!group||group===div) && <p className="league-standing"><span className="standing-rank">{String(myRank).padStart(2,'0')}</span>{tr('我|我|You')} · {tr('与虚构选手对比，仅供娱乐|與虛構選手比較，僅供娛樂|Against fictional players, for fun')}</p>}
+    {tab==='league' && myRank!=null && (!group||group===div) && <p className="league-standing" data-current-player><span className="standing-rank">{String(myRank).padStart(2,'0')}</span>{tr('我|我|You')} · {tr('与虚构选手对比，仅供娱乐|與虛構選手比較，僅供娛樂|Against fictional players, for fun')}</p>}
     <button onClick={save} data-arena-export>{tr('导出榜单|匯出榜單|Save leaderboard PNG')}</button>
     <h3>{tr('你与基准|你與基準|You vs benchmark')}</h3>
     <label>{tr('自定义基准收益率（%）|自訂基準報酬率（%）|Custom benchmark (%)')} <input type="number" step="any" value={benchmark} onChange={e=>setBenchmark(e.target.value)} onBlur={()=>{
