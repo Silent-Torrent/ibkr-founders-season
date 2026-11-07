@@ -86,6 +86,23 @@ try {
       await waitFor('.page-content[data-page="'+page+'"]')
       await capture(size+'-'+page,'main')
       if(section) await capture(size+'-'+page+'-detail',section)
+      if(page==='arena'){
+        await evaluate(`(()=>{const select=document.querySelector('option[value=league]').parentElement;select.value='league';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+        await capture(size+'-arena-controls','.arena-controls')
+        assert(await evaluate(`(()=>{
+          const panel=document.querySelector('.local-arena'), control=panel.querySelector('select'), s=getComputedStyle(control)
+          return parseFloat(getComputedStyle(panel).paddingLeft)>=18 && s.backgroundColor==='rgb(23, 23, 23)' && s.appearance==='none' && parseFloat(s.borderRadius)>=24
+        })()`),'Arena padding or capsule selector regressed')
+        await capture(size+'-league-standing','.league-standing')
+        assert(await evaluate(`(()=>{const s=getComputedStyle(document.querySelector('[data-current-player]'));return s.backgroundColor==='rgb(244, 239, 230)'&&s.color==='rgb(11, 11, 11)'&&s.position==='static'})()`),'Own standing must stay highlighted in the list')
+        await capture(size+'-battle-code','.local-arena input[maxlength]')
+        assert(await evaluate(`(()=>{
+          const input=getComputedStyle(document.querySelector('.local-arena input[maxlength]'))
+          const buttons=[...document.querySelectorAll('.local-arena button')]
+          return input.backgroundColor==='rgb(23, 23, 23)' && buttons.every(b=>{const s=getComputedStyle(b);return s.backgroundColor==='rgb(244, 239, 230)' && s.color==='rgb(11, 11, 11)' && parseFloat(s.borderRadius)>=24})
+        })()`),'Battle actions must use paper buttons and dark inputs')
+        if(width===390) assert(await evaluate("document.querySelector('.podium li strong').getBoundingClientRect().width > 120"),'Narrow podium label')
+      }
     }
   }
 } finally {
