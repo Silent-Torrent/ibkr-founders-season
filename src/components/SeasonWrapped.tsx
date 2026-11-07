@@ -21,12 +21,12 @@ export function SeasonWrapped({report,locale}:{report:PortfolioReport,locale:Loc
   useEffect(()=>{
     let current=true
     if(open && page && canvas.current){
-      const paint=()=>{if(current && canvas.current)paintStory(canvas.current,page,locale,getShareSourceLabel(report,locale),(i+1)+' / '+pages.length)}
+      const paint=()=>{if(current && canvas.current)paintStory(canvas.current,page,locale,getShareSourceLabel(report,locale),(i+1)+' / '+pages.length,1920,prefs.colors)}
       paint()
       void document.fonts.ready.then(paint)
     }
     return ()=>{current=false}
-  },[open,page,locale,report,i,pages.length])
+  },[open,page,locale,report,i,pages.length,prefs.colors])
   useEffect(()=>{if(open)panel.current?.focus()},[open])
   useEffect(()=>{
     if(!playing || !open || i>=pages.length-1)return
@@ -39,6 +39,7 @@ export function SeasonWrapped({report,locale}:{report:PortfolioReport,locale:Loc
   if(!open)return <button className="wrapped-launch" ref={launch} onClick={()=>{setOpen(true);setIndex(0)}}>{label('打开赛季回顾|開啟賽季回顧|Open Season Wrapped')}</button>
   return <section className="wrapped-panel panel" ref={panel} tabIndex={-1} aria-label="Season Wrapped"
     onKeyDown={e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();move(e.key==='ArrowRight'?1:-1)}}}>
+    <div className="story-ticks" aria-hidden="true">{pages.map((_,n)=><i key={n} className={n<=i ? 'read' : undefined}/>)}</div>
     <h2 aria-live="polite">{i+1} / {pages.length} · {page.title}</h2>
     <canvas ref={canvas} role="img" aria-label={[page.title,...page.lines].join(' · ')}
       onTouchStart={e=>{start.current=e.touches[0].clientX}}

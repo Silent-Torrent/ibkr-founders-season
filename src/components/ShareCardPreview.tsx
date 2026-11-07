@@ -458,7 +458,7 @@ function CardPreview({ report, locale,size,template,previewRef }: ShareCardPrevi
           </span>
         </div>
         <PersonaIdentity report={report} locale={locale} roast={prefs.roast}/><p className="face-title">{theme.title}</p>
-        <div className={`share-pnl ${pnlClass(report.seasonPnl)}`}>
+        <div className={`share-pnl ${pnlClass(report.seasonReturn)}`}>
           {formatShareSeasonReturn(report.seasonReturn,locale)}
         </div>
         <p className="face-caption">{theme.line}</p>

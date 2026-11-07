@@ -193,6 +193,8 @@ export default function App() {
     return (
       <>
         <GettingStartedScreen
+          report={report}
+          roast={prefs.roast}
           focusOnMount={focusGuideOnMount}
           hasCurrentReport={isImportedSource(report.source)}
           locale={locale}

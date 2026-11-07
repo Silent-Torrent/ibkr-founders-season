@@ -1,6 +1,8 @@
 import { advice } from '../data/medals'
 import { useEffect, useRef } from 'react'
-import type { Locale } from '../types'
+import {SeasonPoster} from './SeasonPoster'
+import {demoReport} from '../data/demo'
+import type { Locale, PortfolioReport } from '../types'
 import { t } from '../i18n'
 import { ArenaMark } from './ArenaMark'
 
@@ -8,6 +10,8 @@ interface GettingStartedScreenProps {
   focusOnMount: boolean
   hasCurrentReport: boolean
   locale: Locale
+  report?: PortfolioReport
+  roast?: boolean
   seasonYear: number
   onImport: () => void
   onLocaleChange: (locale: Locale) => void
@@ -20,6 +24,8 @@ export function GettingStartedScreen({
   hasCurrentReport,
   locale,
   seasonYear,
+  report=demoReport,
+  roast=false,
   onImport,
   onLocaleChange,
   onOpenPrivacy,
@@ -75,7 +81,11 @@ export function GettingStartedScreen({
         <section className="welcome-hero" aria-labelledby="welcome-title">
           <span className="eyebrow">{t(locale, 'welcomeEyebrow')}</span>
           <h1 id="welcome-title">{t(locale, 'welcomeTitle')}</h1>
-          <p>{t(locale, 'welcomeSubtitle')}</p>
+          <SeasonPoster report={report} locale={locale} roast={roast} />
+          <details className="welcome-explainer">
+            <summary>{t(locale, 'trustDataSource')}</summary>
+            <p>{t(locale, 'welcomeSubtitle')}</p>
+          </details>
         </section>
 
         <section aria-label={t(locale, 'welcomeChoiceLabel')} className="welcome-choice-grid">

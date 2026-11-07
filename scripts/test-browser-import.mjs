@@ -456,6 +456,12 @@ function inspectPng(buffer) {
   }
 }
 
+async function openLedgerAmounts() {
+  await waitForPageValue("Boolean(document.querySelector('.private-ledger > summary'))", Boolean, 'Ledger disclosure ready')
+  await evaluate("document.querySelector('.private-ledger:not([open]) > summary')?.click()")
+  assert(await evaluate("document.querySelector('.private-ledger').open"), 'Ledger amounts explicitly opened')
+}
+
 async function clickPrimaryNavigation(label) {
   const clicked = await evaluate(`(() => {
     const button = [...document.querySelectorAll('nav.side-nav button')]
@@ -571,6 +577,7 @@ async function assertProductionWorkerCapacityFailure(filePath, label) {
   )
 
   await clickPrimaryNavigation('Ledger')
+  await openLedgerAmounts()
   const preservedLedger = await waitForPageValue(
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
@@ -656,6 +663,7 @@ async function assertProductionWorkerRejectedAndPreserved(
   assert(alert.text.includes(expectedErrorPart), `${label} error is absent from the accessibility tree.`)
 
   await clickPrimaryNavigation('Ledger')
+  await openLedgerAmounts()
   const preservedLedger = await waitForPageValue(
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
@@ -1486,6 +1494,8 @@ async function runBrowserChecks() {
     'Notice dismissal focus recovery',
   )
 
+  assert.equal(await evaluate("document.querySelector('.private-ledger').open"),false,'Amounts must start collapsed on import')
+  await openLedgerAmounts()
   const ledgerDetails = await evaluate(`(() => {
     const metrics = [...document.querySelectorAll('.metric-card')].map((card) => ({
       label: card.querySelector('.metric-card-head span')?.textContent?.trim() ?? '',
@@ -1787,6 +1797,7 @@ async function runBrowserChecks() {
     screenWidth: 320,
     width: 320,
   })
+  await openLedgerAmounts()
   const mobileLedgerState = await evaluate(`(() => {
     const visibleText = (element) => element && getComputedStyle(element).display !== 'none'
       ? element.textContent?.trim() ?? ''
@@ -2799,6 +2810,7 @@ async function runBrowserChecks() {
     `Exact-capacity import produced a ${maxLongTaskMs.toFixed(1)} ms long task.`,
   )
 
+  await openLedgerAmounts()
   const searchStartedAt = await evaluate(`(() => {
     const input = document.querySelector('input[aria-label="Search symbols"]');
     if (!input) return null;
@@ -3079,6 +3091,7 @@ async function runBrowserChecks() {
     deviceScaleFactor: 1, mobile: false, screenHeight: 568, screenWidth: 320,
     height: 568, width: 320,
   })
+  await openLedgerAmounts()
   for (let index = 0; index < 3; index += 1) {
     const focused = await evaluate(`(() => {
       const summary = document.querySelectorAll('.reconciliation-item > summary')[${index}];
@@ -3164,6 +3177,7 @@ async function runBrowserChecks() {
   })
   await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','UI import of complete fictional medal statement')
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
+  await openLedgerAmounts()
   for(const locale of ['zh-CN','zh-TW','en']){
     await evaluate(`(() => {
       const el=document.querySelector('select.language-select')

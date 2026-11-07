@@ -12,8 +12,14 @@ export function medalPoster(report: PortfolioReport, id: number, l: Locale, p: P
   canvas.width = canvas.height = 1080
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Canvas unavailable')
-  ctx.fillStyle = '#111e27'
+  ctx.fillStyle = '#0b0b0b'
   ctx.fillRect(0,0,1080,1080)
+  ctx.fillStyle='#ff2b2b'
+  ctx.fillRect(0,0,1080,22)
+  ctx.beginPath()
+  ctx.arc(540,380,222,0,Math.PI*2)
+  ctx.fillStyle='#353331'
+  ctx.fill()
   ctx.textAlign = 'center'
   function line(text: string, y: number, size: number, color = '#edf8f4') {
     ctx!.fillStyle = color
