@@ -663,6 +663,7 @@ async function assertProductionWorkerRejectedAndPreserved(
   assert(alert.text.includes(expectedErrorPart), `${label} error is absent from the accessibility tree.`)
 
   await clickPrimaryNavigation('Ledger')
+  await openLedgerAmounts()
   const preservedLedger = await waitForPageValue(
     `(() => ({
       heading: document.querySelector('main h1')?.textContent?.trim() ?? '',
