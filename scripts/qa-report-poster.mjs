@@ -25,10 +25,11 @@ export async function verifyReportPoster(name, evaluate) {
   if (name.endsWith('-ledger-detail')) {
     for (const template of ['noodles','feast']) {
       await evaluate(`(async()=>{document.querySelector('[data-card-template=${template}]').click();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))})()`)
-      const style=await evaluate(`(()=>{const c=document.querySelector('.share-card-preview'),s=getComputedStyle(c);return {bg:s.backgroundColor,border:s.borderTopColor,image:s.backgroundImage}})()`)
+      const style=await evaluate(`(()=>{const c=document.querySelector('.share-card-preview'),s=getComputedStyle(c),stripe=getComputedStyle(c,'::before');return {bg:s.backgroundColor,border:s.borderTopColor,stripe:stripe.backgroundColor,stripeHeight:parseFloat(stripe.height),clip:stripe.clipPath}})()`)
       assert.equal(style.bg,'rgb(11, 11, 11)')
       assert.equal(style.border,'rgb(244, 239, 230)')
-      assert(style.image.includes('rgb(255, 43, 43)'),template+' missing decorative diagonal')
+      assert.equal(style.stripe,'rgb(255, 43, 43)')
+      assert(style.stripeHeight>=12 && style.clip!=='none',template+' missing visible decorative diagonal')
     }
   }
   if (name.endsWith('-trophies-detail')) {

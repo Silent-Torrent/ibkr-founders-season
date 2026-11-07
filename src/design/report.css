@@ -70,12 +70,16 @@
   box-sizing:border-box; width:84px; height:84px; border:2px solid currentColor;
   border-radius:50%; padding:10px; background:#252525;
 }
-.medal-wall .medal summary strong {margin:3px 0; font-size:16px; font-weight:900; line-height:1.35;}
+.medal-wall .medal summary strong {margin:3px 0; font-size:16px; font-weight:900; font-synthesis:weight; line-height:1.35;}
 .medal-wall .medal summary :is(small,span) {margin:0; font-size:14px; line-height:1.4; color:var(--poster-muted);}
 /* [data-size] keeps both templates ahead of legacy .share-card-preview.feast. */
 .share-card-preview[data-size]:is(.feast,.noodles) {
-  background:linear-gradient(163deg,var(--poster-red) 0 1%,transparent 1% 100%),var(--poster-ink);
+  background:var(--poster-ink);
   border-color:var(--poster-paper);
+}
+.share-card-preview[data-size]::before {
+  content:''; position:absolute; inset:0 0 auto; height:3.2%; background:var(--poster-red);
+  clip-path:polygon(0 0,100% 0,100% 25%,0 100%); pointer-events:none;
 }
 .share-card-preview[data-size]::after {display:none;}
 .share-card-preview .face-title, .share-card-preview .share-pnl {font-family:var(--poster-display);}
