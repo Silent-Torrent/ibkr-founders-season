@@ -6,7 +6,7 @@ import {displayedMedals} from '../lib/medalCollection'
 import {decodeBattle,encodeBattle,rankRows} from '../lib/battleCode'
 import {getShareSourceLabel} from '../lib/shareCard'
 import {paintStory} from '../lib/storyCanvas'
-import {formatPercent,formatCurrency} from '../lib/format'
+import {formatPercent,formatCurrency,pnlClass} from '../lib/format'
 import {t} from '../i18n'
 import type {PortfolioReport,Locale} from '../types'
 
@@ -54,11 +54,11 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
       {tab==='league'&&<label>{t(l,'division')} <select value={group} onChange={e=>setGroup(e.target.value)}><option value="">{tr('全部|全部|All')}</option>{[...new Set(players.map(x=>x.division))].map(d=><option value={d} key={d}>{t(l,d)}</option>)}</select></label>}
       <label>{tr('排序|排序|Sort')} <select value={ascending?'asc':'desc'} onChange={e=>setAscending(e.target.value==='asc')}><option value="desc">{tr('从高到低|由高到低|Highest first')}</option><option value="asc">{tr('从低到高|由低到高|Lowest first')}</option></select></label>
     </div>
-    <ol className="podium">{podium.map(row=><li key={row.label}><span>#{row.rank}</span><strong>{row.label}</strong><small>{badge(row.rank)}</small><b>{display(row.value)}</b></li>)}</ol>
+    <ol className="podium">{podium.map(row=><li key={row.label}><span>{String(row.rank).padStart(2,'0')}</span><strong>{row.label}</strong><small>{badge(row.rank)}</small><b className={tab==='league' || p.amount ? pnlClass(row.value) : undefined}>{display(row.value)}</b></li>)}</ol>
     {!rows.length&&<p>{tr('本季无可比数据。|本季無可比資料。|No comparable data this season.')}</p>}
     {tab==='symbols'&&<p>{tr('报表缺少逐标的收益率分母，按盈亏排序。|報表缺少逐標的報酬率分母，依損益排序。|Per-symbol return denominators are unavailable. Ranked by P&L.')}</p>}
     {rows.length>3&&<ol start={4}>{rows.slice(3).map(row=><li key={row.label}>{row.label} · {display(row.value)}</li>)}</ol>}
-    {tab==='league' && myRank!=null && (!group||group===div) && <p className="league-standing">{tr('与虚构选手对比，仅供娱乐|與虛構選手比較，僅供娛樂|Against fictional players, for fun')} · #{myRank}</p>}
+    {tab==='league' && myRank!=null && (!group||group===div) && <p className="league-standing"><span className="standing-rank">{String(myRank).padStart(2,'0')}</span>{tr('我|我|You')} · {tr('与虚构选手对比，仅供娱乐|與虛構選手比較，僅供娛樂|Against fictional players, for fun')}</p>}
     <button onClick={save} data-arena-export>{tr('导出榜单|匯出榜單|Save leaderboard PNG')}</button>
     <h3>{tr('你与基准|你與基準|You vs benchmark')}</h3>
     <label>{tr('自定义基准收益率（%）|自訂基準報酬率（%）|Custom benchmark (%)')} <input type="number" step="any" value={benchmark} onChange={e=>setBenchmark(e.target.value)} onBlur={()=>{

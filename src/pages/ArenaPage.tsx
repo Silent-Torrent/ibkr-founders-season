@@ -1,3 +1,4 @@
+import '../design/arena.css'
 import {useContext} from 'react'
 import {Settings} from '../components/Preferences'
 import {local} from '../data/medals'
@@ -122,11 +123,11 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
           </div>
           {demoRows.map((row) => (
             <article className="leaderboard-row" key={`${row.rank}-${row.handle}`} role="row">
-              <span className="rank-number" role="cell">#{row.rank}</span>
+              <span className="rank-number" role="cell">{String(row.rank).padStart(2,'0')}</span>
               <div className="trader-cell" role="cell"><span aria-hidden="true" className="avatar-token">{row.badge}</span><strong>{row.handle}</strong></div>
               <span className="division-label" role="cell">{t(locale, row.division)}</span>
               <strong className={pnlClass(row.returnValue)} role="cell">{formatPercent(row.returnValue, locale)}</strong>
-              <strong className={pnlClass(row.pnl)} role="cell">{formatCurrency(row.pnl, 'USD', locale)}</strong>
+              <strong className={pnlClass(row.pnl)} role="cell">{prefs.amount ? formatCurrency(row.pnl, 'USD', locale) : local('金额隐藏|金額隱藏|Amount hidden', locale)}</strong>
               <span className="status-chip demo" role="cell">{t(locale, 'demoStatus')}</span>
             </article>
           ))}
