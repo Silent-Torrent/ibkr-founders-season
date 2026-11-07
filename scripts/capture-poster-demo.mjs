@@ -1,5 +1,6 @@
 // Only the built-in fictional demo, served on loopback. No file import or credentials.
 import assert from 'node:assert/strict'
+import { verifyReportPoster } from './qa-report-poster.mjs'
 import { spawn } from 'node:child_process'
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -55,10 +56,14 @@ try {
   }
   async function capture(name, selector) {
     await waitFor(selector)
+    await verifyReportPoster(name,evaluate)
     await evaluate(`(async()=>{
       await document.fonts.ready
       if (${JSON.stringify(selector)}==='main') window.scrollTo(0,0)
-      else document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center',behavior:'instant'})
+      else if (${JSON.stringify(selector)}==='.medal-wall') {
+        const y=document.querySelector('.medal-grid').getBoundingClientRect().top+scrollY
+        window.scrollTo({top:y-(document.querySelector('.topbar')?.getBoundingClientRect().height??0)-20,behavior:'instant'})
+      } else document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block:'center',behavior:'instant'})
       await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))
     })()`)
     assert(await evaluate('document.documentElement.scrollWidth <= innerWidth'), name+' overflows')

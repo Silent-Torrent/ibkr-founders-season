@@ -7,7 +7,7 @@ import '../design/report.css'
 
 export function SeasonPoster({report,locale,roast}:{report:PortfolioReport;locale:Locale;roast:boolean}) {
   const value = report.seasonReturn
-  return <div className="season-poster">
+  return <div className="season-poster" data-roast={roast}>
     <div className="poster-copy">
       <span className="poster-slug">{report.seasonYear} / {getShareSourceLabel(report,locale)}</span>
       <span className="poster-label">{t(locale,'seasonReturn')}</span>

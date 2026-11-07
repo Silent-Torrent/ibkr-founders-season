@@ -17,12 +17,29 @@
 .poster-score {font: 400 clamp(4.2rem,12vw,11rem)/1 var(--poster-display); overflow-wrap: anywhere;
   background: var(--poster-ink); max-width: 100%; letter-spacing: -.045em;}
 .poster-score[data-available=false]{font-size:clamp(1.5rem,4vw,3rem);}
-.season-poster .persona-identity {position: relative; display: grid; justify-items: center; text-align:center;
-  max-width: 14rem; padding: 10px; background: var(--poster-paper); color: var(--poster-ink);
-  border:3px solid var(--poster-ink); border-radius: 18px; transform: rotate(2deg); box-shadow: 4px 4px var(--poster-ink);}
-.season-poster .persona-identity svg {width: clamp(50px,8vw,112px); height: auto;}
-.season-poster .persona-identity small {background: var(--poster-ink); color: var(--poster-paper);}
+/* Scoped above legacy component rules, independent of stylesheet load order. */
+.season-poster .persona-identity {
+  position:relative; display:grid; justify-items:center; text-align:center; gap:8px;
+  max-width:14rem; padding:4px; background:transparent; color:var(--poster-ink);
+  transform:rotate(3deg);
+}
+.season-poster .persona-identity svg {
+  box-sizing:border-box; width:116px; height:116px; padding:16px; flex:none;
+  border:4px solid var(--poster-ink); border-radius:50%; background:var(--poster-paper);
+  box-shadow:5px 5px var(--poster-ink);
+}
+.season-poster .persona-identity > span {
+  background:var(--poster-paper); border:2px solid var(--poster-ink); border-radius:24px;
+  padding:6px 12px; font-size:1.1rem; font-weight:900; transform:rotate(-6deg);
+}
+.season-poster .persona-identity small {
+  padding:6px 12px; border:2px solid var(--poster-ink); border-radius:24px;
+  background:var(--poster-paper); color:var(--poster-ink); font-weight:700;
+  transform:rotate(-6deg); box-shadow:3px 3px var(--poster-ink);
+}
 .persona-identity small::before {content:'#';}
+/* The classified persona itself is the sticker when no earned roast tag applies. */
+.season-poster[data-roast=true] .persona-identity:not(:has(small)) > span::before {content:'#';}
 .welcome-hero:has(.season-poster) {background:var(--poster-surface);padding:clamp(16px,3vw,32px);}
 .welcome-hero:has(.season-poster)::before {display:none;}
 .welcome-hero .season-poster,.welcome-hero .welcome-explainer {max-width:100%;}
@@ -32,18 +49,44 @@
 .trust-status-panel details[open] .trust-status-grid {margin-top:16px;}
 .trophy-hero {background:var(--poster-dots) top right / 9px 9px, var(--poster-ink);}
 .season-medal-fraction {font:400 clamp(4rem,12vw,9rem)/1 var(--poster-display);color:var(--poster-paper);}
-.medal-wall .medal {background:var(--poster-surface);border-radius:20px;}
-.medal-wall summary svg {box-sizing:content-box;border:2px solid currentColor;border-radius:50%;padding:8px;background:#252525;}
-.share-card-preview:is(.feast,.noodles) {background:linear-gradient(163deg,#ff2b2b 0 1%,transparent 1% 100%),var(--poster-ink); border-color:#69645f;}
+.medal-wall .medal-grid {
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; align-items:start;
+}
+.medal-wall .medal {
+  min-width:0; padding:12px; background:var(--poster-surface); border-radius:20px;
+}
+.medal-wall .medal > summary {
+  display:flex; flex-direction:column; align-items:center; gap:5px; min-height:190px;
+  text-align:center; list-style:none;
+}
+.medal-wall .medal > summary::-webkit-details-marker {display:none;}
+.medal-wall .medal > summary::after {
+  content:''; width:8px; height:8px; margin-top:auto; margin-bottom:3px;
+  border-right:2px solid var(--poster-muted); border-bottom:2px solid var(--poster-muted); transform:rotate(45deg);
+}
+.medal-wall .medal[open] > summary::after {transform:rotate(225deg);}
+.medal-wall .medal[open] {grid-column:span 2;}
+.medal-wall .medal summary svg {
+  box-sizing:border-box; width:84px; height:84px; border:2px solid currentColor;
+  border-radius:50%; padding:10px; background:#252525;
+}
+.medal-wall .medal summary strong {margin:3px 0; font-size:16px; font-weight:900; line-height:1.35;}
+.medal-wall .medal summary :is(small,span) {margin:0; font-size:14px; line-height:1.4; color:var(--poster-muted);}
+/* [data-size] keeps both templates ahead of legacy .share-card-preview.feast. */
+.share-card-preview[data-size]:is(.feast,.noodles) {
+  background:linear-gradient(163deg,var(--poster-red) 0 1%,transparent 1% 100%),var(--poster-ink);
+  border-color:var(--poster-paper);
+}
+.share-card-preview[data-size]::after {display:none;}
 .share-card-preview .face-title, .share-card-preview .share-pnl {font-family:var(--poster-display);}
 .story-ticks {display:flex;gap:4px;margin-bottom:12px;}
 .story-ticks i {flex:1;height:4px;background:var(--poster-graphite);border-radius:4px;}
 .story-ticks .read {background:var(--poster-paper);}
 @media(max-width:640px){
   .season-poster {grid-template-columns:minmax(0,1fr); padding:18px;gap:10px;}
-  .season-poster .persona-identity {justify-self:end;grid-template-columns:auto 1fr;align-items:center;gap:8px;}
-  .season-poster .persona-identity svg {width:58px;}
+  .season-poster .persona-identity {justify-self:end;}
   .season-poster .persona-identity > span {font-size:1.15rem; font-weight:700;}
+  .medal-wall .medal-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
   .poster-score {font-size:clamp(4.5rem,26vw,8rem);}
 }
 
