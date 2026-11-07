@@ -161,11 +161,13 @@ export async function downloadSeasonCard(
   if (signal?.aborted) return { filename, kind: 'cancelled' }
   const theme=cardTheme(report,locale,prefs,template)
   const background=context.createLinearGradient(0,0,width,height)
-  background.addColorStop(0,theme.feast?'#4a2c1c':'#222637')
-  background.addColorStop(1,theme.feast?'#201710':'#0c101a')
+  background.addColorStop(0,theme.feast?'#252321':'#1c1c1c')
+  background.addColorStop(1,'#0b0b0b')
   context.fillStyle=background
   context.fillRect(0,0,width,height)
-  context.strokeStyle=theme.feast?'#e6b869':'#677593'
+  context.strokeStyle='#f4efe6'
+  context.fillStyle='#ff2b2b'
+  context.fillRect(0,0,width,24)
   context.lineWidth=3
   roundedRect(context,50,50,width-100,height-100,36)
   context.stroke()
@@ -181,13 +183,13 @@ export async function downloadSeasonCard(
   const badges = cardMedals(report,locale,prefs)
   const cost = ramen(report,locale,prefs)
   function textAt(text:string,x:number,y:number,px:number,span=width-x-90,color=ink) {
-    context!.font=`650 ${px}px ArenaSeason, sans-serif`
+    context!.font=px>=70 ? `400 ${px}px Anton, ArenaSeason, sans-serif` : `650 ${px}px "Space Grotesk", ArenaSeason, sans-serif`
     context!.fillStyle=color
     context!.fillText(text,x,y,span)
   }
   function panel(x:number,y:number,w:number,h:number) {
     roundedRect(context!,x,y,w,h,26)
-    context!.fillStyle=theme.feast?'#503625':'#2a3041'
+    context!.fillStyle=theme.feast?'#38332f':'#303030'
     context!.fill()
   }
   function medalAt(badge:(typeof badges)[number],x:number,y:number,span:number,px=32) {

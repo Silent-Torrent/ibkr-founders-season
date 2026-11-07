@@ -1,0 +1,47 @@
+.season-poster {
+  position: relative; isolation: isolate; overflow: hidden; display: grid;
+  grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 16px;
+  min-height: clamp(245px, 28vw, 360px); padding: clamp(20px, 4vw, 48px);
+  background: var(--poster-dots) right top / 9px 9px, var(--poster-ink);
+  color: var(--poster-paper); border: 1px solid #494541; border-radius: 18px;
+}
+.season-poster::before {
+  content: ''; position: absolute; z-index: -1; right: -3%; top: 0; height: 100%; width: 26%;
+  background: repeating-radial-gradient(circle at 70% 42%, transparent 0 9px, #0b0b0b33 10px 14px), var(--poster-red);
+  transform: skewX(-15deg);
+}
+.poster-copy {min-width: 0; display: grid; justify-items: start; gap: 8px;}
+.poster-slug {background: var(--poster-paper); color: var(--poster-ink); transform: rotate(-2deg);
+  font-weight: 700; padding: 4px 10px; text-transform: uppercase;}
+.poster-label {font-weight: 700; margin-top: 10px;}
+.poster-score {font: 400 clamp(4.2rem,12vw,11rem)/1 var(--poster-display); overflow-wrap: anywhere;
+  background: var(--poster-ink); max-width: 100%; letter-spacing: -.045em;}
+.poster-score[data-available=false]{font-size:clamp(1.5rem,4vw,3rem);}
+.season-poster .persona-identity {position: relative; display: grid; justify-items: center; text-align:center;
+  max-width: 14rem; padding: 10px; background: var(--poster-paper); color: var(--poster-ink);
+  border:3px solid var(--poster-ink); border-radius: 18px; transform: rotate(2deg); box-shadow: 4px 4px var(--poster-ink);}
+.season-poster .persona-identity svg {width: clamp(50px,8vw,112px); height: auto;}
+.season-poster .persona-identity small {background: var(--poster-ink); color: var(--poster-paper);}
+.persona-identity small::before {content:'#';}
+.welcome-hero:has(.season-poster) {background:var(--poster-surface);padding:clamp(16px,3vw,32px);}
+.welcome-hero:has(.season-poster)::before {display:none;}
+.welcome-hero .season-poster,.welcome-hero .welcome-explainer {max-width:100%;}
+.welcome-hero:has(.season-poster) h1 {font-size:clamp(1.35rem,2.2vw,2.1rem); max-width:100%;}
+.welcome-explainer summary,.trust-status-panel summary {display:list-item;align-content:center;min-height:44px;cursor:pointer;}
+.trust-status-panel {display:block;}
+.trust-status-panel details[open] .trust-status-grid {margin-top:16px;}
+.trophy-hero {background:var(--poster-dots) top right / 9px 9px, var(--poster-ink);}
+.season-medal-fraction {font:400 clamp(4rem,12vw,9rem)/1 var(--poster-display);color:var(--poster-paper);}
+.medal-wall .medal {background:var(--poster-surface);border-radius:20px;}
+.medal-wall summary svg {box-sizing:content-box;border:2px solid currentColor;border-radius:50%;padding:8px;background:#252525;}
+.share-card-preview:is(.feast,.noodles) {background:linear-gradient(163deg,#ff2b2b 0 1%,transparent 1% 100%),var(--poster-ink); border-color:#69645f;}
+.share-card-preview .face-title, .share-card-preview .share-pnl {font-family:var(--poster-display);}
+.story-ticks {display:flex;gap:4px;margin-bottom:12px;}
+.story-ticks i {flex:1;height:4px;background:var(--poster-graphite);border-radius:4px;}
+.story-ticks .read {background:var(--poster-paper);}
+@media(max-width:640px){
+  .season-poster {grid-template-columns:minmax(0,1fr); padding:18px;gap:10px;}
+  .season-poster .persona-identity {justify-self:end;grid-template-columns:auto 1fr;align-items:center;gap:8px;}
+  .season-poster .persona-identity svg {width:44px;}
+  .poster-score {font-size:clamp(4.25rem,20vw,7rem);}
+}

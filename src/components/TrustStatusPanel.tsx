@@ -32,9 +32,11 @@ export function TrustStatusPanel({ locale, report }: TrustStatusPanelProps) {
 
   return (
     <section aria-labelledby="trust-status-title" className="panel trust-status-panel">
+      <details open={report.dataQuality !== 'good' || undefined}>
+        <summary id="trust-status-title">{t(locale, 'trustPanelTitle')} · {t(locale, sourceLabelKey)}</summary>
       <div className="trust-status-intro">
         <span className="eyebrow">{t(locale, 'trustPanelEyebrow')}</span>
-        <h2 id="trust-status-title">{t(locale, 'trustPanelTitle')}</h2>
+
         <p>{t(locale, 'trustPanelBoundary')}</p>
       </div>
       <dl className="trust-status-grid">
@@ -52,6 +54,7 @@ export function TrustStatusPanel({ locale, report }: TrustStatusPanelProps) {
           <small>{t(locale, qualityDetailKey(report))}</small>
         </div>
       </dl>
+      </details>
     </section>
   )
 }

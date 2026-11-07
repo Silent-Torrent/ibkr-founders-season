@@ -1,3 +1,4 @@
+import {SeasonPoster} from '../components/SeasonPoster'
 import { englishNoun, sourceRowCount } from '../lib/countLabel'
 import {useContext} from 'react'
 import {Settings} from '../components/Preferences'
@@ -131,6 +132,7 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
         </div>
       </section>
 
+      <SeasonPoster report={report} locale={locale} roast={prefs.roast} />
       <TrustStatusPanel locale={locale} report={report} />
 
       <section className="metrics-grid">
