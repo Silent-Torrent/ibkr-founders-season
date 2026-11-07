@@ -46,3 +46,9 @@
   .season-poster .persona-identity > span {font-size:1.15rem; font-weight:700;}
   .poster-score {font-size:clamp(4.5rem,26vw,8rem);}
 }
+
+.private-ledger {margin-block:16px;}
+.private-ledger > summary {
+  width:fit-content; padding:12px 20px; border-radius:24px; cursor:pointer;
+  background:var(--poster-paper);color:var(--poster-ink);font-weight:700;
+}

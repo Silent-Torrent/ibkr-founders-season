@@ -131,6 +131,7 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
   const rows="Array.from(document.querySelectorAll('.data-table tbody tr td:first-child strong'),e=>e.textContent)"
   await check('D02 import search filter sort detail',async()=>{
     await wait(rows+'.length===4','full ledger')
+    await tap('.private-ledger > summary')
     const search='.table-toolbar input'
     await tap(search)
     await cdp.send('Input.insertText',{text:'FICTLOSS'})
@@ -258,6 +259,7 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
     })
   }
   await dialog('privacy','.site-footer button:last-child','.privacy-modal')
+  if(!await evaluate("document.querySelector('.private-ledger').open")) await tap('.private-ledger > summary')
   await dialog('details','.row-arrow','.symbol-drawer')
   await check('D08 navigation',async()=>{
     const results=[]

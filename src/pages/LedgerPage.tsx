@@ -1,3 +1,4 @@
+import {local} from '../data/medals'
 import {SeasonPoster} from '../components/SeasonPoster'
 import { englishNoun, sourceRowCount } from '../lib/countLabel'
 import {useContext} from 'react'
@@ -135,6 +136,8 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
       <SeasonPoster report={report} locale={locale} roast={prefs.roast} />
       <TrustStatusPanel locale={locale} report={report} />
 
+      <details className="private-ledger" key={report.importedAt + report.source}>
+        <summary>{local('账本金额与明细|帳本金額與明細|Ledger amounts and details', locale)}</summary>
       <section className="metrics-grid">
         <MetricCard
           explanation={t(locale, 'seasonPnlExplanation')}
@@ -413,6 +416,8 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
           </article>
         </aside>
       </section>
+
+      </details>
 
       <ShareCardPreview locale={locale} report={report} />
       <SymbolDrawer locale={locale} onClose={() => setSelected(null)} report={report} symbol={selected} />

@@ -14,3 +14,5 @@
 纹理只用静态几何。不要模拟系统状态栏、自动播放动画或使用全站百分位。截图取自内置 demo，手机 390 × 844，桌面 1440 × 900。
 
 Anton 与 Space Grotesk 来自 Fontsource 5.3.0 的 Latin WOFF2，随应用打包为二进制 FontFace，无需额外网络请求。许可证位于 public/fonts。中文沿用 src/assets/season-ui.woff 中的 Noto Sans CJK SC 子集及同目录 OFL 文件。
+
+本机账本将金额、逐标的明细与核对数据放在原生折叠区，进入成绩页及更换报告时默认收起。展开仅影响当前视图，不会开启分享卡金额或新增存储。
