@@ -7,16 +7,21 @@
 .arena-hero > div:first-child {position:relative;z-index:1;min-width:0;}
 .arena-hero h1 {max-width:13ch; font:400 clamp(2.6rem,6.5vw,6rem)/1.04 var(--poster-display); color:var(--poster-paper);}
 .arena-hero p {color:var(--poster-muted);}
-.arena-hero .season-orbit {position:relative; flex:none; color:var(--poster-ink); width:clamp(90px,13vw,160px); aspect-ratio:1;
+.arena-hero .season-orbit {position:relative; inset:auto; height:auto; align-self:center; flex:none; color:var(--poster-ink); width:clamp(90px,13vw,160px); aspect-ratio:1;
   background:var(--poster-red); border: 4px solid var(--poster-ink); transform:rotate(7deg); border-radius:50%;}
-.season-orbit > span {color:var(--poster-ink);font:400 clamp(28px,4vw,54px)/1 var(--poster-display);}
-.season-orbit i {border-color:var(--poster-ink);}
+.arena-hero .season-orbit > span {color:var(--poster-ink);font:400 clamp(28px,4vw,54px)/1 var(--poster-display);}
+.arena-hero .season-orbit i {display:none;}
+.arena-hero .season-orbit::before,.arena-hero .season-orbit::after {
+  inset:7%; width:auto; height:auto; border:1px solid #0b0b0b66;
+}
+.arena-hero .season-orbit::after {inset:12%;}
+
 .local-arena .podium {align-items:stretch; gap:8px;}
 .local-arena .podium li {border:1px solid #625d58;border-radius:16px;background:var(--poster-surface);min-width:0;padding:clamp(10px,2vw,24px);}
 .local-arena .podium li:first-child {border-top:5px solid var(--poster-red);}
 .local-arena .podium li > span,.leaderboard-list .rank-number {font:400 clamp(2rem,5vw,4.2rem)/1 var(--poster-display);color:var(--poster-paper);}
-.local-arena .podium small {color:var(--poster-muted);font-family:var(--poster-body);}
-.local-arena .league-standing {position:static;background:var(--poster-paper);color:var(--poster-ink);border-radius:14px;
+.local-arena .podium small {width:fit-content;background:#282828;color:var(--poster-muted);font-family:var(--poster-body);}
+.local-arena .league-standing {background:var(--poster-paper);color:var(--poster-ink);border-radius:14px;
   padding:14px 18px;border-inline-start:8px solid var(--poster-red);font-weight:700;}
 .league-standing .standing-rank {display:inline-block;vertical-align:middle;margin-inline-end:12px;font:400 2.3rem/1 var(--poster-display);}
 .local-arena .arena-controls select,.local-arena input {background:var(--poster-surface);border:1px solid #847d75;color:var(--poster-paper);}
@@ -42,7 +47,7 @@
   .arena-hero h1 {max-width:100%;}
   .page-content .arena-hero {padding:20px;}
   .arena-hero .season-orbit {width:76px;}
-  .local-arena .podium {grid-template-columns:1fr;}
+  .local-arena .podium {display:grid;grid-template-columns:minmax(0,1fr);}
   .local-arena .podium li {display:grid;grid-template-columns:3.2rem 1fr;align-items:center;text-align:start;gap:4px 12px;}
   .local-arena .podium li > span {grid-row:span 3;}
 }

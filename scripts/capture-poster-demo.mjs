@@ -81,6 +81,11 @@ try {
       await waitFor('.page-content[data-page="'+page+'"]')
       await capture(size+'-'+page,'main')
       if(section) await capture(size+'-'+page+'-detail',section)
+      if(page==='arena'){
+        await evaluate(`(()=>{const select=document.querySelector('option[value=league]').parentElement;select.value='league';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+        await capture(size+'-league-standing','.league-standing')
+        if(width===390) assert(await evaluate("document.querySelector('.podium li strong').getBoundingClientRect().width > 120"),'Narrow podium label')
+      }
     }
   }
 } finally {
