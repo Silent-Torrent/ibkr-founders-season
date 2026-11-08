@@ -44,7 +44,6 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
   }
   let other
   if(opponent)try{other=decodeBattle(opponent.trim())}catch{ /* user-visible error below */ }
-  const myRank=r.seasonReturn==null?null:1+league.filter(row=>row.returnValue>r.seasonReturn!).length
   return <section className="panel local-arena">
     <h2>{title}</h2>
     <div className="arena-controls">
@@ -58,18 +57,20 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
     {!rows.length&&<p>{tr('本季无可比数据。|本季無可比資料。|No comparable data this season.')}</p>}
     {tab==='symbols'&&<p>{tr('报表缺少逐标的收益率分母，按盈亏排序。|報表缺少逐標的報酬率分母，依損益排序。|Per-symbol return denominators are unavailable. Ranked by P&L.')}</p>}
     {rows.length>3&&<ol start={4}>{rows.slice(3).map(row=><li key={row.label}>{row.label} · {display(row.value)}</li>)}</ol>}
-    {tab==='league' && myRank!=null && (!group||group===div) && <p className="league-standing" data-current-player><span className="standing-rank">{String(myRank).padStart(2,'0')}</span>{tr('我|我|You')} · {tr('与虚构选手对比，仅供娱乐|與虛構選手比較，僅供娛樂|Against fictional players, for fun')}</p>}
+    {tab==='league' && r.seasonReturn!=null && (!group||group===div) && <p className="league-standing" data-current-player><span className="standing-rank">—</span>{tr('我|我|You')} · {tr('与虚构选手对比，仅供娱乐|與虛構選手比較，僅供娛樂|Against fictional players, for fun')}</p>}
     <button onClick={save} data-arena-export>{tr('导出榜单|匯出榜單|Save leaderboard PNG')}</button>
     <h3>{tr('你与基准|你與基準|You vs benchmark')}</h3>
     <label>{tr('自定义基准收益率（%）|自訂基準報酬率（%）|Custom benchmark (%)')} <input type="number" step="any" value={benchmark} onChange={e=>setBenchmark(e.target.value)} onBlur={()=>{
       const n=Number(benchmark);update({...p,benchmark:benchmark.trim() && Number.isFinite(n)?n:undefined})
     }}/></label>
     {r.seasonReturn!=null && p.benchmark!=null && <p>{formatPercent(r.seasonReturn,l)} vs {formatPercent(p.benchmark/100,l)}</p>}
+    <section className="battle-code">
     <h3>{tr('本地对战码|本機對戰碼|Local battle code')}</h3>
     <p>{tr('校验和只检查输入错误，任何人都可以伪造成绩。|校驗和只檢查輸入錯誤，任何人都可以偽造成績。|The checksum detects typing errors. Anyone can forge a result.')}</p>
     {mine&&<><p>{tr('复制内容：收益率、段位、勋章 ID|複製內容：報酬率、段位、勳章 ID|Included: return, division and medal IDs')} · {fieldList.join(' / ')}</p>
     <button onClick={async()=>{try{await navigator.clipboard.writeText(encodeBattle(mine));setFeedback(tr('已复制。|已複製。|Copied.'))}catch{setFeedback(encodeBattle(mine))}}}>{tr('复制对战码|複製對戰碼|Copy battle code')}</button><output>{feedback}</output></>}
     <label>{tr('粘贴对手的码|貼上對手的碼|Paste opponent code')} <input maxLength={100} value={opponent} onChange={e=>setOpponent(e.target.value)}/></label>
     <output aria-live="polite">{opponent && (other?[formatPercent(r.seasonReturn,l),'vs',formatPercent(other.percent/100,l),t(l,other.division),...other.medals.map(id=>local(medals[id][0],l))].join(' · '):tr('对战码无效。|對戰碼無效。|Invalid battle code.'))}</output>
+    </section>
   </section>
 }

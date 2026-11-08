@@ -72,3 +72,22 @@
   .local-arena .podium li {display:grid;grid-template-columns:3.2rem 1fr;align-items:center;text-align:start;gap:4px 12px;}
   .local-arena .podium li > span {grid-row:span 3;}
 }
+
+.leaderboard-list .current-player-row {
+  background:var(--poster-paper); color:var(--poster-ink); border-radius:16px;
+  border-top:2px solid var(--poster-paper); margin-top:14px;
+}
+.leaderboard-list .current-player-row :is(.rank-number,.division-label) {color:var(--poster-ink);}
+/* Keep theme gain/loss colors readable against the highlighted row. */
+.leaderboard-list .current-player-row :is(.positive,.negative) {
+  background:var(--poster-ink); border-radius:8px; padding:4px 8px; width:fit-content;
+}
+.page-content .local-arena .battle-code {
+  display:grid; gap:16px; margin-top:24px; padding-top:20px; border-top:1px solid var(--poster-graphite);
+  min-width:0; overflow-wrap:anywhere;
+}
+.local-arena .battle-code :is(h3,p) {margin:0;line-height:1.6;}
+.local-arena .battle-code button {justify-self:start;}
+.page-content .local-arena .battle-code label {display:grid;gap:12px;margin:0;min-width:0;}
+.page-content .local-arena .battle-code input {width:100%;min-width:0;}
+.local-arena .battle-code output:empty {display:none;}
