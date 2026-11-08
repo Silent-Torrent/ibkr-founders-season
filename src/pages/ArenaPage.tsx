@@ -27,6 +27,7 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
   const localDivision = report.source === 'local'
     ? getDivision(report.netLiquidationValue, report.baseCurrency)
     : undefined
+  const demoDivision = getDivision(report.netLiquidationValue, report.baseCurrency)
   const demoRows: LeaderboardRow[] = [
     { rank: 1, handle: 'ThetaRaccoon', division: 'retailLeague', returnValue: 0.674, pnl: 42780, badge: 'Θ' },
     { rank: 2, handle: 'BoringGreen', division: 'sixFigureLeague', returnValue: 0.418, pnl: 98210, badge: 'G' },
@@ -131,6 +132,16 @@ export function ArenaPage({ report, locale }: ArenaPageProps) {
               <span className="status-chip demo" role="cell">{t(locale, 'demoStatus')}</span>
             </article>
           ))}
+          {report.source === 'demo' && (
+            <article className="leaderboard-row current-player-row" role="row">
+              <span className="rank-number" role="cell" aria-label={t(locale, 'notRanked')}>—</span>
+              <div className="trader-cell" role="cell"><strong>{local('我|我|You', locale)}</strong></div>
+              <span className="division-label" role="cell">{demoDivision ? t(locale, demoDivision) : t(locale, 'divisionUnavailable')}</span>
+              <strong className={pnlClass(report.seasonReturn)} role="cell">{formatPercent(report.seasonReturn, locale)}</strong>
+              <strong className={prefs.amount ? pnlClass(report.seasonPnl) : undefined} role="cell">{prefs.amount ? formatCurrency(report.seasonPnl, report.baseCurrency, locale) : local('金额隐藏|金額隱藏|Amount hidden', locale)}</strong>
+              <span className="status-chip demo" role="cell">{t(locale, 'demoStatus')}</span>
+            </article>
+          )}
         </div>
       </section>
 

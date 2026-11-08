@@ -15,7 +15,7 @@
   font-weight: 700; padding: 4px 10px; text-transform: uppercase;}
 .poster-label {font-weight: 700; margin-top: 10px;}
 .poster-score {font: 400 clamp(4.2rem,12vw,11rem)/1 var(--poster-display); overflow-wrap: anywhere;
-  background: var(--poster-ink); max-width: 100%; letter-spacing: -.045em;}
+  background: var(--poster-ink); max-width: 100%; letter-spacing: normal;}
 .poster-score[data-available=false]{font-size:clamp(1.5rem,4vw,3rem);}
 /* Scoped above legacy component rules, independent of stylesheet load order. */
 .season-poster .persona-identity {
@@ -99,3 +99,6 @@
   width:fit-content; padding:12px 20px; border-radius:24px; cursor:pointer;
   background:var(--poster-paper);color:var(--poster-ink);font-weight:700;
 }
+
+/* Preserve the decimal point: compressed display type needs its natural spacing. */
+.share-card-preview .share-pnl {letter-spacing:normal;font-kerning:normal;}

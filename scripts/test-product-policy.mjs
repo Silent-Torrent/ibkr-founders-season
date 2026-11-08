@@ -241,6 +241,7 @@ try {
   const arenaDemoMarkup = renderToStaticMarkup(
     createElement(ArenaPage, { locale: 'en', report: demoReport }),
   )
+  assert.equal((arenaDemoMarkup.match(/current-player-row/g) ?? []).length, 1, 'Demo needs one unranked self comparison row.')
   assert.ok(!arenaDemoMarkup.includes('#17'), 'The demo Arena still contains a fictional personal rank.')
   assert.ok(!arenaDemoMarkup.includes('Self-reported'), 'Demo data is labelled Self-reported in the Arena.')
   assert.ok(!arenaDemoMarkup.includes('Your local snapshot'), 'Demo data created a personal local snapshot.')
@@ -343,6 +344,7 @@ try {
   }
   assert.ok(syntheticLedgerMarkup.includes('Fully synthetic test'))
   assert.ok(!syntheticArenaMarkup.includes('Your local snapshot'))
+  assert.ok(!syntheticArenaMarkup.includes('current-player-row'), 'Synthetic imports must not enter the demo table.')
   assert.ok(getTrophies(syntheticReport).every((trophy) => !trophy.unlocked))
   assert.match(
     syntheticTrophiesMarkup,
@@ -355,6 +357,7 @@ try {
   const arenaLocalMarkup = renderToStaticMarkup(
     createElement(ArenaPage, { locale: 'en', report: localReport }),
   )
+  assert.ok(!arenaLocalMarkup.includes('current-player-row'), 'Local reports must not enter the demo table.')
   assert.ok(arenaLocalMarkup.includes('Your local snapshot'), 'A local report lacks its local snapshot panel.')
   assert.ok(arenaLocalMarkup.includes('Not ranked'), 'A local report is not explicitly labelled unranked.')
   assert.ok(
@@ -753,6 +756,7 @@ try {
     translate() {}, scale() {},
     arc() {},
     beginPath() {},
+    closePath() {},
     createLinearGradient() { return gradient },
     fill() {},
     fillRect() {},

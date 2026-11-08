@@ -167,7 +167,15 @@ export async function downloadSeasonCard(
   context.fillRect(0,0,width,height)
   context.strokeStyle='#f4efe6'
   context.fillStyle='#ff2b2b'
-  context.fillRect(0,0,width,24)
+  // Same normalized diagonal as the preview's 3.2% strip / 25% trailing edge.
+  const stripeHeight=height*0.032
+  context.beginPath()
+  context.moveTo(0,0)
+  context.lineTo(width,0)
+  context.lineTo(width,stripeHeight*0.25)
+  context.lineTo(0,stripeHeight)
+  context.closePath()
+  context.fill()
   context.lineWidth=3
   roundedRect(context,50,50,width-100,height-100,36)
   context.stroke()
