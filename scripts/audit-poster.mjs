@@ -1,4 +1,4 @@
-// Only the built-in fictional demo, served on loopback. No file import or credentials.
+// Built-in demo and repository-owned fictional CSV only, served on loopback. No credentials.
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
@@ -117,9 +117,7 @@ try {
         await settle();await inspect(name+'-share','.share-card-preview')
         await evaluate("document.querySelector('.private-ledger').open=true")
         await inspect(name+'-ledger','.data-table')
-        await evaluate("document.querySelector('.private-ledger').open=false;document.querySelector('.wrapped-launch').click()")
-        await waitFor('.wrapped-panel');await inspect(name+'-wrapped','.wrapped-panel')
-        await evaluate("document.querySelector('.story-controls button:last-child').click();document.querySelector('.batch-settings').open=true")
+        await evaluate("document.querySelector('.private-ledger').open=false;document.querySelector('.batch-settings').open=true")
         await inspect(name+'-settings','.batch-settings')
         await evaluate("document.querySelector('.batch-settings').open=false")
         for(const page of ['import','trophies','arena']){
@@ -132,7 +130,14 @@ try {
         await inspect(name+'-battle','.battle-code')
         await evaluate("document.querySelector('.privacy-card-action').click()")
         await waitFor('.privacy-modal');await inspect(name+'-privacy','.privacy-modal')
-        await evaluate("document.querySelector('.privacy-modal .close-button').click()")
+        await evaluate("document.querySelector('.privacy-modal .close-button').click();document.querySelector('.side-nav [data-page=import]').click()")
+        await waitFor('input[type=file]')
+        const {root}=await send('DOM.getDocument')
+        const {nodeId}=await send('DOM.querySelector',{nodeId:root.nodeId,selector:'input[type=file]'})
+        await send('DOM.setFileInputFiles',{nodeId,files:[resolve('tests/fixtures/full-season-medals-fictional.csv')]})
+        await waitFor('.wrapped-launch')
+        await evaluate("document.querySelector('.wrapped-launch').click()")
+        await waitFor('.wrapped-panel');await inspect(name+'-wrapped','.wrapped-panel')
       }
     }
   }
