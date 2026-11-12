@@ -1,0 +1,45 @@
+name: Poster regression matrix
+on:
+  pull_request:
+    paths:
+      - 'scripts/audit-poster.mjs'
+      - 'scripts/test-ui-font.mjs'
+      - 'src/assets/season-ui.woff'
+      - 'src/design/shell.css'
+      - '.github/workflows/poster-regression.yml'
+permissions:
+  contents: read
+jobs:
+  poster-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .audit-before
+          persist-credentials: false
+      - run: cd .audit-before && npm ci && npm run build
+      - name: Inspect fictional views in three languages and three sizes
+        run: |
+          test "$(id -u)" -ne 0
+          node scripts/test-ui-font.mjs
+          node scripts/audit-poster.mjs .audit-before/dist
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/poster-audit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: poster-regression-matrix
+          path: ${{ runner.temp }}/poster-audit/
+          if-no-files-found: error
+          retention-days: 14
