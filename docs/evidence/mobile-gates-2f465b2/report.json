@@ -1,0 +1,803 @@
+{
+  "browser": "Chrome/157.0.8103.50",
+  "commit": "2f465b28f180319a672627bb75460ab8e69e827d",
+  "prHead": "",
+  "run": "43371787135",
+  "mode": "Linux Chrome touch emulation, loopback HTTP, fictional statements",
+  "checks": [
+    {
+      "name": "D01 full fictional",
+      "result": "PASS",
+      "evidence": {
+        "bytes": 12691,
+        "renderedRows": 4,
+        "importMs": 173.40000000000146,
+        "longTasksOver50ms": 0,
+        "longestMs": 0,
+        "mainSamples": 5,
+        "mainMaxBytes": 3949236,
+        "workerSamples": 3,
+        "workerRuntimeSamples": 2,
+        "workerMaxBytes": 782500,
+        "workerCoverage": "limited",
+        "trackerMemoryLimit": "unspecified; sampled JS heap only, not a true peak",
+        "regressionLimits": "import <10000 ms, longest main task <250 ms"
+      }
+    },
+    {
+      "name": "D01 maximum fictional 100000 rows 1000 events",
+      "result": "PASS",
+      "evidence": {
+        "bytes": 5242880,
+        "renderedRows": 500,
+        "importMs": 996.0999999999985,
+        "longTasksOver50ms": 0,
+        "longestMs": 0,
+        "mainSamples": 21,
+        "mainMaxBytes": 17953888,
+        "workerSamples": 15,
+        "workerRuntimeSamples": 14,
+        "workerMaxBytes": 18426812,
+        "workerCoverage": "limited",
+        "trackerMemoryLimit": "unspecified; sampled JS heap only, not a true peak",
+        "regressionLimits": "import <10000 ms, longest main task <250 ms"
+      }
+    },
+    {
+      "name": "D02 import search filter sort detail",
+      "result": "PASS",
+      "evidence": [
+        "AMD",
+        "FICTLOSS",
+        "GME",
+        "XTS.USD"
+      ]
+    },
+    {
+      "name": "D02 trophies PNG and clear",
+      "result": "PASS",
+      "evidence": [
+        [
+          "pnl-arena-2026-season.png",
+          1200,
+          1500
+        ],
+        [
+          "pnl-arena-2026-season-story.png",
+          1080,
+          1920
+        ],
+        [
+          "pnl-arena-2026-season-3x4.png",
+          1080,
+          1440
+        ]
+      ]
+    },
+    {
+      "name": "D07 AX live regions en",
+      "result": "PASS",
+      "evidence": {
+        "events": [
+          [
+            "alert",
+            "× × The CSV file is empty. The CSV file is empty."
+          ],
+          [
+            "status",
+            "Import cancelled. Import cancelled. Nothing was uploaded and the report already open in this tab was not changed. You can choose another CSV now. Nothing was uploaded and the report already open in this tab was not changed. You can choose another CSV now. Choose another CSV Choose another CSV Choose another CSV"
+          ],
+          [
+            "status",
+            "Statement imported locally. Review the data-source and internal-check statuses below. Statement imported locally. Review the data-source and internal-check statuses below. Dismiss Dismiss Dismiss"
+          ],
+          [
+            "status",
+            "Select all, then use your browser or device Copy command. Selecting text alone does not copy it. Select all, then use your browser or device Copy command. Selecting text alone does not copy it."
+          ]
+        ],
+        "controls": [
+          [
+            "link",
+            "Skip to main content"
+          ],
+          [
+            "button",
+            "Clear current statement"
+          ],
+          [
+            "button",
+            "Ledger"
+          ],
+          [
+            "button",
+            "Arena"
+          ],
+          [
+            "button",
+            "Trophies"
+          ],
+          [
+            "button",
+            "Import"
+          ],
+          [
+            "combobox",
+            "Interface language"
+          ],
+          [
+            "button",
+            "Dismiss"
+          ],
+          [
+            "DisclosureTriangle",
+            "Ledger amounts and details"
+          ],
+          [
+            "button",
+            "1200×1500"
+          ],
+          [
+            "button",
+            "1080×1920"
+          ],
+          [
+            "button",
+            "1080×1440"
+          ],
+          [
+            "button",
+            "Automatic"
+          ],
+          [
+            "button",
+            "Gain Day Feast"
+          ],
+          [
+            "button",
+            "Noodles in the Dark"
+          ],
+          [
+            "button",
+            "Copy summary"
+          ],
+          [
+            "button",
+            "Select text manually"
+          ],
+          [
+            "button",
+            "Download PNG"
+          ],
+          [
+            "DisclosureTriangle",
+            "Settings"
+          ],
+          [
+            "button",
+            "New user guide"
+          ],
+          [
+            "button",
+            "Privacy & data details"
+          ],
+          [
+            "DisclosureTriangle",
+            "Where the data came from and what was checked · Fully synthetic test · Internal checks passed"
+          ],
+          [
+            "button",
+            "Close"
+          ],
+          [
+            "textbox",
+            "Summary text for manual copying"
+          ],
+          [
+            "button",
+            "Select all text"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "D07 AX live regions zh-CN",
+      "result": "PASS",
+      "evidence": {
+        "events": [
+          [
+            "alert",
+            "× × CSV 文件为空。 CSV 文件为空。"
+          ],
+          [
+            "status",
+            "已取消导入。 已取消导入。 没有上传任何内容，当前标签页里原先打开的报表也没有改变。现在可以重新选择 CSV。 没有上传任何内容，当前标签页里原先打开的报表也 没有改变。现在可以重新选择 CSV。 重新选择 CSV 重新选择 CSV 重新选择 CSV"
+          ],
+          [
+            "status",
+            "报表已在本机导入。请查看下方相互独立的“数据来源”和“内部检查”状态。 报表已在本机导入。请查看下方相互独立的“数 据来源”和“内部检查”状态。 关闭提示 关闭提示 关闭提示"
+          ],
+          [
+            "status",
+            "全选文字后，请使用浏览器或设备的“复制”命令。仅选中文字不代表已经复制。 全选文字后，请使用浏览器或设备的“复制”命令。仅 选中文字不代表已经复制。"
+          ]
+        ],
+        "controls": [
+          [
+            "link",
+            "跳到主要内容"
+          ],
+          [
+            "button",
+            "清除当前报表"
+          ],
+          [
+            "button",
+            "盈亏账本"
+          ],
+          [
+            "button",
+            "竞技场"
+          ],
+          [
+            "button",
+            "勋章"
+          ],
+          [
+            "button",
+            "导入"
+          ],
+          [
+            "combobox",
+            "界面语言"
+          ],
+          [
+            "button",
+            "关闭提示"
+          ],
+          [
+            "DisclosureTriangle",
+            "账本金额与明细"
+          ],
+          [
+            "button",
+            "1200×1500"
+          ],
+          [
+            "button",
+            "1080×1920"
+          ],
+          [
+            "button",
+            "1080×1440"
+          ],
+          [
+            "button",
+            "自动"
+          ],
+          [
+            "button",
+            "吃肉"
+          ],
+          [
+            "button",
+            "关灯吃面"
+          ],
+          [
+            "button",
+            "复制摘要"
+          ],
+          [
+            "button",
+            "手动选择文字"
+          ],
+          [
+            "button",
+            "下载 PNG"
+          ],
+          [
+            "DisclosureTriangle",
+            "设置"
+          ],
+          [
+            "button",
+            "新手指南"
+          ],
+          [
+            "button",
+            "隐私与数据详情"
+          ],
+          [
+            "DisclosureTriangle",
+            "数据从哪里来，以及内部检查了什么 · 全虚构测试 · 内部检查通过"
+          ],
+          [
+            "button",
+            "关闭"
+          ],
+          [
+            "textbox",
+            "可手动复制的摘要文字"
+          ],
+          [
+            "button",
+            "全选文字"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "D07 AX live regions zh-TW",
+      "result": "PASS",
+      "evidence": {
+        "events": [
+          [
+            "alert",
+            "× × CSV 檔案為空。 CSV 檔案為空。"
+          ],
+          [
+            "status",
+            "已取消匯入。 已取消匯入。 沒有上傳任何內容，目前分頁裡原先開啟的報表也沒有改變。現在可以重新選擇 CSV。 沒有上傳任何內容，目前分頁裡原先開啟的報表也沒 有改變。現在可以重新選擇 CSV。 重新選擇 CSV 重新選擇 CSV 重新選擇 CSV"
+          ],
+          [
+            "status",
+            "報表已在本機匯入。請查看下方相互獨立的「資料來源」和「內部檢查」狀態。 報表已在本機匯入。請查看下方相互獨立的 「資料來源」和「內部檢查」狀態。 關閉提示 關閉提示 關閉提示"
+          ],
+          [
+            "status",
+            "全選文字後，請使用瀏覽器或裝置的「複製」命令。僅選取文字不代表已經複製。 全選文字後，請使用瀏覽器或裝置的「複製」命令。 僅選取文字不代表已經複製。"
+          ]
+        ],
+        "controls": [
+          [
+            "link",
+            "跳到主要內容"
+          ],
+          [
+            "button",
+            "清除目前報表"
+          ],
+          [
+            "button",
+            "損益帳本"
+          ],
+          [
+            "button",
+            "競技場"
+          ],
+          [
+            "button",
+            "勳章"
+          ],
+          [
+            "button",
+            "匯入"
+          ],
+          [
+            "combobox",
+            "介面語言"
+          ],
+          [
+            "button",
+            "關閉提示"
+          ],
+          [
+            "DisclosureTriangle",
+            "帳本金額與明細"
+          ],
+          [
+            "button",
+            "1200×1500"
+          ],
+          [
+            "button",
+            "1080×1920"
+          ],
+          [
+            "button",
+            "1080×1440"
+          ],
+          [
+            "button",
+            "自動"
+          ],
+          [
+            "button",
+            "吃肉"
+          ],
+          [
+            "button",
+            "關燈吃麵"
+          ],
+          [
+            "button",
+            "複製摘要"
+          ],
+          [
+            "button",
+            "手動選取文字"
+          ],
+          [
+            "button",
+            "下載 PNG"
+          ],
+          [
+            "DisclosureTriangle",
+            "設定"
+          ],
+          [
+            "button",
+            "新手指南"
+          ],
+          [
+            "button",
+            "隱私與資料詳情"
+          ],
+          [
+            "DisclosureTriangle",
+            "資料從哪裡來，以及內部檢查了什麼 · 全虛構測試 · 內部檢查通過"
+          ],
+          [
+            "button",
+            "關閉"
+          ],
+          [
+            "textbox",
+            "可手動複製的摘要文字"
+          ],
+          [
+            "button",
+            "全選文字"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "D07 page keyboard order ledger",
+      "result": "PASS",
+      "evidence": {
+        "order": [
+          "Interface language",
+          "Clear current statement",
+          "Where the data came from and what was checked · Fully synthetic test ·",
+          "Ledger amounts and details",
+          "1200×1500",
+          "1080×1920",
+          "1080×1440",
+          "Automatic",
+          "Gain Day Feast",
+          "Noodles in the Dark",
+          "INPUT",
+          "INPUT",
+          "Copy summary",
+          "Select text manually",
+          "Download PNG",
+          "Settings",
+          "New user guide",
+          "Privacy & data details",
+          "∑Ledger",
+          "⌁Arena",
+          "◇Trophies",
+          "⇧Import"
+        ],
+        "accessibleControlCount": 21
+      }
+    },
+    {
+      "name": "D07 page keyboard order arena",
+      "result": "PASS",
+      "evidence": {
+        "order": [
+          "Interface language",
+          "Clear current statement",
+          "SymbolsMonthsDemo league",
+          "Highest firstLowest first",
+          "Save leaderboard PNG",
+          "INPUT",
+          "Copy battle code",
+          "INPUT",
+          "Demo leaderboard",
+          "Settings",
+          "New user guide",
+          "Privacy & data details",
+          "∑Ledger",
+          "⌁Arena",
+          "◇Trophies",
+          "⇧Import"
+        ],
+        "accessibleControlCount": 16
+      }
+    },
+    {
+      "name": "D07 page keyboard order trophies",
+      "result": "PASS",
+      "evidence": {
+        "order": [
+          "Interface language",
+          "Clear current statement",
+          "Open Season Wrapped",
+          "Diamond HandsSilverLegendary",
+          "Stop-Loss SamuraiEarnedCommon",
+          "Average-Down AddictEarnedRare",
+          "Theta LandlordEarnedEpic",
+          "0DTE KnightEarnedRare",
+          "Assigned PassengerEarnedEpic",
+          "Dividend NapperGoldEpic",
+          "Broker's MVPEarnedCommon",
+          "Human Contrarian IndicatorLockedEpic",
+          "Steady WinnerLockedLegendary",
+          "Night OwlEarnedRare",
+          "Feast DayEarnedRare",
+          "Noodles-in-the-Dark DayEarnedRare",
+          "Founders Season 2026EarnedCommon",
+          "Meme Stock VeteranEarnedRare",
+          "Mars TicketLockedEpic",
+          "Semiconductor SurvivorEarnedRare",
+          "Old-School CertifiedLockedRare",
+          "Legacy achievement archive",
+          "Settings",
+          "New user guide",
+          "Privacy & data details",
+          "∑Ledger",
+          "⌁Arena",
+          "◇Trophies",
+          "⇧Import"
+        ],
+        "accessibleControlCount": 30
+      }
+    },
+    {
+      "name": "D07 page keyboard order import",
+      "result": "PASS",
+      "evidence": {
+        "order": [
+          "Interface language",
+          "Clear current statement",
+          "Choose CSV file",
+          "Use demo data",
+          "Download fully fictional sample CSV →",
+          "Settings",
+          "New user guide",
+          "Privacy & data details",
+          "∑Ledger",
+          "⌁Arena",
+          "◇Trophies",
+          "⇧Import"
+        ],
+        "accessibleControlCount": 13
+      }
+    },
+    {
+      "name": "D07 focus and names privacy",
+      "result": "PASS",
+      "evidence": {
+        "tabStops": 2,
+        "forwardWrap": true,
+        "reverseWrap": true,
+        "controls": [
+          [
+            "button",
+            "Close"
+          ],
+          [
+            "button",
+            "Got it"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "D08 rotate privacy",
+      "result": "PASS",
+      "evidence": [
+        {
+          "w": 390,
+          "h": 844,
+          "targets": 2,
+          "width": 390,
+          "doc": 390,
+          "panelWidth": 390,
+          "scroll": 390,
+          "client": 390
+        },
+        {
+          "w": 844,
+          "h": 390,
+          "targets": 2,
+          "width": 844,
+          "doc": 844,
+          "panelWidth": 780,
+          "scroll": 778,
+          "client": 778
+        },
+        {
+          "w": 667,
+          "h": 375,
+          "targets": 2,
+          "width": 667,
+          "doc": 667,
+          "panelWidth": 635,
+          "scroll": 633,
+          "client": 633
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "targets": 2,
+          "width": 390,
+          "doc": 390,
+          "panelWidth": 390,
+          "scroll": 390,
+          "client": 390
+        }
+      ]
+    },
+    {
+      "name": "D07 return privacy",
+      "result": "PASS",
+      "evidence": ".site-footer button:last-child"
+    },
+    {
+      "name": "D07 focus and names details",
+      "result": "PASS",
+      "evidence": {
+        "tabStops": 7,
+        "forwardWrap": true,
+        "reverseWrap": true,
+        "controls": [
+          [
+            "button",
+            "Close"
+          ],
+          [
+            "DisclosureTriangle",
+            "Source rows 3 source rows"
+          ],
+          [
+            "DisclosureTriangle",
+            "Source rows 1 source row"
+          ],
+          [
+            "DisclosureTriangle",
+            "Source rows 2 source rows"
+          ],
+          [
+            "DisclosureTriangle",
+            "Source rows 3 source rows"
+          ],
+          [
+            "DisclosureTriangle",
+            "Source rows 3 source rows"
+          ],
+          [
+            "DisclosureTriangle",
+            "Event source rows 4 source rows"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "D08 rotate details",
+      "result": "PASS",
+      "evidence": [
+        {
+          "w": 390,
+          "h": 844,
+          "targets": 7,
+          "width": 390,
+          "doc": 390,
+          "panelWidth": 390,
+          "scroll": 389,
+          "client": 389
+        },
+        {
+          "w": 844,
+          "h": 390,
+          "targets": 7,
+          "width": 844,
+          "doc": 844,
+          "panelWidth": 460,
+          "scroll": 459,
+          "client": 459
+        },
+        {
+          "w": 667,
+          "h": 375,
+          "targets": 7,
+          "width": 667,
+          "doc": 667,
+          "panelWidth": 460,
+          "scroll": 459,
+          "client": 459
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "targets": 7,
+          "width": 390,
+          "doc": 390,
+          "panelWidth": 390,
+          "scroll": 389,
+          "client": 389
+        }
+      ]
+    },
+    {
+      "name": "D07 return details",
+      "result": "PASS",
+      "evidence": ".row-arrow"
+    },
+    {
+      "name": "D08 navigation",
+      "result": "PASS",
+      "evidence": [
+        [
+          390,
+          844,
+          4
+        ],
+        [
+          844,
+          390,
+          4
+        ],
+        [
+          667,
+          375,
+          4
+        ],
+        [
+          390,
+          844,
+          4
+        ]
+      ]
+    },
+    {
+      "name": "D08 rotate open PNG preview",
+      "result": "PASS",
+      "evidence": [
+        {
+          "w": 390,
+          "h": 844,
+          "targets": 3,
+          "width": 390,
+          "doc": 390,
+          "panelWidth": 358,
+          "scroll": 356,
+          "client": 356
+        },
+        {
+          "w": 844,
+          "h": 390,
+          "targets": 3,
+          "width": 844,
+          "doc": 844,
+          "panelWidth": 516,
+          "scroll": 514,
+          "client": 514
+        },
+        {
+          "w": 667,
+          "h": 375,
+          "targets": 3,
+          "width": 667,
+          "doc": 667,
+          "panelWidth": 635,
+          "scroll": 633,
+          "client": 633
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "targets": 3,
+          "width": 390,
+          "doc": 390,
+          "panelWidth": 358,
+          "scroll": 356,
+          "client": 356
+        }
+      ]
+    }
+  ]
+}
