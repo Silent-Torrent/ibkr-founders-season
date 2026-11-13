@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import {createHash} from 'node:crypto'
 import {mkdirSync,readFileSync,statSync,writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {createWorkerHeapSampler} from './worker-heap-sampling.mjs'
@@ -159,8 +160,27 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
       for(let i=0;i<100&&!downloadProgress.some(e=>e.guid===downloadStarts[before]?.guid&&e.state==='completed');i++)await new Promise(r=>setTimeout(r,100))
       assert.equal(downloadStarts[before]?.suggestedFilename,name)
       assert(downloadProgress.some(e=>e.guid===downloadStarts[before].guid&&e.state==='completed'))
-      assert.deepEqual(inspectPng(readFileSync(join(directory,name))),{width:w,height:h})
-      files.push([name,w,h])
+      const bytes=readFileSync(join(directory,name))
+      assert.deepEqual(inspectPng(bytes),{width:w,height:h})
+      const reopened=await evaluate(`(async()=>{
+        const bytes=Uint8Array.from(atob(${JSON.stringify(bytes.toString('base64'))}),c=>c.charCodeAt(0))
+        const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}))
+        try {
+          const canvas=document.createElement('canvas')
+          canvas.width=bitmap.width;canvas.height=bitmap.height
+          const ctx=canvas.getContext('2d')
+          ctx.drawImage(bitmap,0,0)
+          const x=bitmap.width*.1,y=bitmap.height*.02
+          const left=[...ctx.getImageData(x,y,1,1).data]
+          const right=[...ctx.getImageData(bitmap.width*.9,y,1,1).data]
+          return {width:bitmap.width,height:bitmap.height,left,right}
+        } finally {bitmap.close()}
+      })()`)
+      assert.equal(reopened.width,w,'Reopened PNG width')
+      assert.equal(reopened.height,h,'Reopened PNG height')
+      assert.deepEqual(reopened.left,[255,43,43,255],'Reopened PNG missing left poster stripe')
+      assert.notDeepEqual(reopened.right,reopened.left,'Reopened PNG stripe must taper on the right')
+      files.push({name,width:w,height:h,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),decoded:true})
     }
     await point(action('clear-report'));await shot('mobile-clear')
     const off=cdp.on('Page.javascriptDialogOpening',async e=>{if(e.type==='confirm')await cdp.send('Page.handleJavaScriptDialog',{accept:true})})

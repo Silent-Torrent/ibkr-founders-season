@@ -245,6 +245,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [ ] Verify the actual supported floor on iOS 16.4 / Safari 16.4; the iOS 27.0 observation and production-target configuration do not establish this compatibility gate.
 - [x] Verify an imported-report local-HTTP PNG preview and save/reopen round trip through Photos to Files on “On My iPhone”; system Info reported PNG, approximately 2 MB, 1200×1500 and alpha. The resulting name was `pnl-arena-2026-season.png.PNG`, so exact requested-filename preservation did not pass.
 - [ ] Verify HTTPS native file sharing and exact preservation of `pnl-arena-2026-season.png` after deployment is explicitly reopened.
+  - Local automated checks reopen all three downloaded PNG sizes. The owner acceptance steps for approved HTTPS are in [R02 acceptance](docs/PNG_REOPEN_ACCEPTANCE.md).
 - [x] Verify visible real-iPhone cancellation after approximately 3.5 seconds and no late report during approximately 27 seconds of further observation. This does not claim Web Inspector evidence of Worker termination.
 - [x] Verify the real-iPhone natural 12-second timeout message and no late result during more than 12.25 seconds of further observation.
 - [x] Verify real-iPhone acceptance at the exact 5 MiB / 100,000-row / 500-underlying / 1,000-event caps; the report rendered within approximately 9.6 seconds and the final underlying and lifecycle drawer remained usable.

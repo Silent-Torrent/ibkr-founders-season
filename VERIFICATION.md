@@ -522,6 +522,10 @@ The baseline clipped two Ledger company names at both mobile widths in each loca
 
 The comparison takes the existing decoded PL1 fields and the current session's return, division and displayed medal IDs. The fictional browser checks paste a valid opponent code, verify the two values and both gain/loss color conventions in all three locales, then capture the actual 1080 × 1440 download and inspect its text. Invalid or emptied input removes the comparison. The original code and export contain no amounts or account details, even when extra properties are present on input objects. See the Ready PR for its exact CI results and two viewport comparisons.
 
+## PNG reopen evidence
+
+The mobile evidence run verifies all three downloaded filenames and dimensions, then reopens each PNG from its saved bytes using Chromium's image decoder. The report records the file size, SHA-256, decode result and the tapered stripe assertion. See [R02 acceptance](docs/PNG_REOPEN_ACCEPTANCE.md) for the separate approved-HTTPS review. R02 remains OPEN.
+
 ## Local browser smoke check
 
 - `npm run check` now builds the production bundle and drives a fresh isolated system Chrome profile through the DevTools protocol; it does not substitute the Vite development server for the browser regression.
