@@ -105,3 +105,15 @@ h1, .brand strong, .welcome-brand strong, .season-medal-fraction, .step-label {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+.privacy-modal,
+.privacy-modal-header,
+.privacy-modal-footer { background: var(--poster-ink); }
+.privacy-modal-section,
+.privacy-modal-clear-section { background: var(--poster-surface); border-color: var(--border); }
+.page-content .notice-banner { background: var(--poster-surface); border-color: var(--border); }
+.page-content .notice-banner > span {
+  color: var(--poster-paper);
+  background: var(--poster-ink);
+  border-color: var(--poster-muted);
+}

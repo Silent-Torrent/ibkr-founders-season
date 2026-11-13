@@ -103,6 +103,7 @@ try {
   for (const [phase,server] of [['before',servers[1]],['after',servers[0]]]) {
     for (const [size,width,height] of [['390',390,844],['393',393,852],['1440',1440,900]]) {
       await send('Emulation.setDeviceMetricsOverride',{width,height,mobile:width<500,deviceScaleFactor:1})
+      await send('Emulation.setTouchEmulationEnabled',{enabled:width<500,maxTouchPoints:1})
       for(const locale of ['zh-CN','zh-TW','en']) {
         const name=phase+'-'+size+'-'+locale
         await send('Page.navigate',{url:server.resolvedUrls.local[0]})
@@ -111,6 +112,13 @@ try {
         await waitFor('[data-action=welcome-primary]')
         await evaluate(`(()=>{const s=document.querySelector('.language-select');s.value=${JSON.stringify(locale)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`)
         await settle();await inspect(name+'-welcome','main')
+        if(phase==='after'){
+          assert(await evaluate(`(()=>{
+            const score=document.querySelector('.welcome-hero .poster-score')
+            const range=document.createRange();range.selectNodeContents(score)
+            return range.getClientRects().length===1
+          })()`),name+' wraps the welcome score')
+        }
         await evaluate("document.querySelector('[data-action=welcome-primary]').click()")
         await waitFor('.season-poster');await inspect(name+'-report','.season-poster')
         await evaluate("document.querySelector('[data-card-template=feast]').click()")
@@ -146,8 +154,8 @@ try {
     }
   }
   assert.equal(findings.length,2*3*3*14,'Every surface must be captured for both builds')
-  const regressions=findings.filter(f=>f.name.startsWith('after-')&&f.overflow)
-  assert.deepEqual(regressions.map(f=>f.name),[],'Page must fit the viewport')
+  const regressions=findings.filter(f=>f.name.startsWith('after-')&&(f.overflow||f.clipped.length||f.contrast.length))
+  assert.deepEqual(regressions.map(f=>f.name),[],'Check viewport overflow, clipped labels and solid-background contrast')
   console.log('Poster matrix:',findings.length,'views; contrast/clipping candidates require visual review.')
 } finally {
   socket?.close()
