@@ -1,6 +1,7 @@
 // Only the built-in fictional demo, served on loopback. No file import or credentials.
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -120,6 +121,71 @@ try {
       await capture(name+'-arena','.league-standing')
       await capture(name+'-leaderboard','.leaderboard-list')
       await capture(name+'-battle','.local-arena input[maxlength]')
+      // Exercise the existing code format with a fully fictional opponent.
+      const payload='PL1~-825~1~1,4'
+      const code=payload+'~'+createHash('sha256').update(payload).digest('hex').slice(0,12)
+      async function enterOpponent(value) {
+        await evaluate(`(()=>{
+          const input=document.querySelector('.local-arena input[maxlength]')
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)})
+          input.dispatchEvent(new Event('input',{bubbles:true}))
+        })()`)
+        await settle()
+      }
+      await enterOpponent(code)
+      const comparison=await evaluate("Boolean(document.querySelector('.battle-comparison'))")
+      await capture(name+'-battle-result',comparison?'.battle-poster':'.battle-code')
+      if(phase==='after') {
+        assert(comparison,'Valid fictional opponent must open the comparison')
+        for(const locale of ['zh-CN','zh-TW','en']) {
+          await evaluate(`(()=>{const s=document.querySelector('.language-select');s.value=${JSON.stringify(locale)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+          await settle()
+          const details=await evaluate(`(()=>{
+            const sides=[...document.querySelectorAll('.battle-side')]
+            return {scores:sides.map(s=>s.querySelector('.battle-return').textContent.trim()),
+              colors:sides.map(s=>getComputedStyle(s.querySelector('.battle-return')).color),
+              medals:sides[1].querySelectorAll('li').length,
+              overflow:document.documentElement.scrollWidth>innerWidth,
+              wide:sides.every(s=>s.scrollWidth<=s.clientWidth+1),
+              text:document.querySelector('.battle-poster').textContent}
+          })()`)
+          assert.deepEqual(details.scores,['+21.3%','-8.25%'])
+          assert.deepEqual(details.colors,locale==='zh-CN'?['rgb(255, 133, 141)','rgb(104, 227, 173)']:['rgb(104, 227, 173)','rgb(255, 126, 136)'])
+          assert.equal(details.medals,2)
+          assert(details.wide&&!details.overflow,locale+' comparison overflow')
+          assert.doesNotMatch(details.text,/PL1~|US\\$|FICTLOSS/)
+        }
+        await evaluate("(()=>{const s=document.querySelector('.language-select');s.value='zh-CN';s.dispatchEvent(new Event('change',{bubbles:true}))})()")
+        await waitFor('[data-battle-export]:not(:disabled)')
+        const battle=await evaluate(`(async()=>{
+          const originalClick=HTMLAnchorElement.prototype.click
+          const originalText=CanvasRenderingContext2D.prototype.fillText
+          const lines=[]
+          let download
+          try {
+            HTMLAnchorElement.prototype.click=function(){download={name:this.download,data:this.href}}
+          CanvasRenderingContext2D.prototype.fillText=function(text,...args){lines.push({text,color:this.fillStyle});return originalText.call(this,text,...args)}
+            document.querySelector('[data-battle-export]').click()
+            if(!download)throw Error('No battle download')
+            const img=new Image();img.src=download.data;await img.decode()
+            return {...download,width:img.naturalWidth,height:img.naturalHeight,lines}
+          } finally {
+            HTMLAnchorElement.prototype.click=originalClick
+            CanvasRenderingContext2D.prototype.fillText=originalText
+          }
+        })()`)
+        assert.deepEqual([battle.name,battle.width,battle.height],['pnl-arena-battle.png',1080,1440])
+        for(const line of ['+21.3%','-8.25%','用户自报 · 非券商验证','非投资建议'])assert(battle.lines.some(x=>x.text===line),line)
+        assert.equal(battle.lines.find(x=>x.text==='+21.3%').color,'#ff858d')
+        assert.equal(battle.lines.find(x=>x.text==='-8.25%').color,'#68e3ad')
+        assert.doesNotMatch(battle.lines.map(x=>x.text).join(' '),/PL1~|US\$|FICTLOSS/)
+        await writeFile(join(destination,name+'-battle-export.png'),Buffer.from(battle.data.split(',')[1],'base64'))
+        await enterOpponent(code+'!')
+        assert(await evaluate("!document.querySelector('.battle-comparison') && document.querySelector('.battle-code output[aria-live]').textContent.includes('无效')"))
+        await enterOpponent('')
+        assert(await evaluate("!document.querySelector('.battle-comparison')"))
+      }
+
       if(phase==='after') {
         assert(await evaluate(`(()=>{
           const self=document.querySelector('.current-player-row'), s=getComputedStyle(self)

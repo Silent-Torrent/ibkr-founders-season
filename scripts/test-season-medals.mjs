@@ -22,6 +22,18 @@ try {
   assert.throws(()=>decodeBattle(code.replace('-125','125')))
   assert.throws(()=>decodeBattle(code+'!'))
   assert.throws(()=>encodeBattle({...payload,medals:[1,2,3,4]}))
+  const { battlePoster } = await vite.ssrLoadModule('/src/lib/battlePoster.ts')
+  for (const locale of ['zh-CN', 'zh-TW', 'en']) {
+    const mine = { percent: 0, division: undefined, medals: [], source: 'Fictional demo', amount: 987654, account: 'PRIVATE-FICTIONAL' }
+    const poster = battlePoster(mine, decodeBattle(code), locale)
+    assert.equal(poster.sides[0].returnLabel, '0%')
+    assert.equal(poster.sides[0].sign, '')
+    assert.equal(poster.sides[1].returnLabel, '-1.25%')
+    assert.equal(poster.sides[1].sign, 'negative')
+    assert.deepEqual(poster.sides[1].medals.map(medal => medal.id), [6, 2])
+    assert.doesNotMatch(JSON.stringify(poster), /987654|PRIVATE-FICTIONAL|PL1~/)
+    assert.notEqual(battlePoster({ ...mine, percent: undefined }, decodeBattle(code), locale).sides[0].returnLabel, '0%')
+  }
   assert.deepEqual(rankRows([{label:'B',value:-2},{label:'A',value:-2},{label:'C',value:-3}]).map(r=>[r.label,r.rank]),[['A',1],['B',1],['C',3]])
   assert.equal(rankRows([{label:'A',value:-3}])[0].rank,1)
   const samples=readFileSync(new URL('../tests/fixtures/personas-fictional.csv',import.meta.url),'utf8').trim().split('\n').slice(1)

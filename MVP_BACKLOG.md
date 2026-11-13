@@ -284,6 +284,8 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 
 ## P1 — after first testers
 
+- [x] Build a local battle poster from the existing PL1 fields, with side-by-side results and an explicit PNG export. See [battle code](docs/BATTLE_CODE.md).
+
 - [ ] Persist optional report history locally.
 - [ ] Add more badge triggers supported by YTD data.
 - [ ] Create original badge illustrations.

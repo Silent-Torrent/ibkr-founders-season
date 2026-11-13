@@ -1,0 +1,65 @@
+.battle-comparison, .battle-poster, .battle-share-actions {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.battle-poster {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(14px, 3vw, 32px);
+  border: 1px solid var(--poster-paper);
+  border-radius: 18px;
+  background: var(--poster-ink);
+  color: var(--poster-paper);
+}
+.battle-poster::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 12px;
+  background: var(--poster-red);
+  clip-path: polygon(0 0, 100% 0, 100% 25%, 0 100%);
+  content: '';
+}
+.battle-poster h4 {
+  margin: 4px 0 0;
+  font: 400 clamp(2rem, 6vw, 4.5rem)/1.1 var(--poster-display);
+}
+.battle-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 2vw, 18px);
+}
+.battle-side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: clamp(10px, 2vw, 22px);
+  border-radius: 12px;
+  background: var(--poster-surface);
+}
+.battle-side h5 { margin: 0; font-size: 1rem; }
+.battle-side small, .battle-poster footer, .battle-share-actions p { color: var(--poster-muted); }
+.battle-side .battle-return {
+  margin-top: auto;
+  font: 400 clamp(1.5rem, 5.5vw, 4rem)/1.1 var(--poster-display);
+  overflow-wrap: anywhere;
+}
+.battle-side ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--poster-graphite);
+  list-style: none;
+}
+.battle-side li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: max(var(--reading-floor, 0px), .85rem);
+}
+.battle-side svg { width: 18px; flex: none; color: #e3b960; }
+.battle-share-actions p { font-size: .875rem; }
+.battle-share-actions button:disabled { opacity: .55; }
