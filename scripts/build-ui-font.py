@@ -18,6 +18,12 @@ missing = codepoints - set(font.getBestCmap())
 assert not {c for c in missing if 0x3000 <= c <= 0x9fff}, missing
 options = subset.Options()
 options.flavor = 'woff'
+# Match the original subset's unhinted outlines and retain OFL name records.
+options.hinting = False
+options.desubroutinize = True
+options.name_IDs = ['*']
+options.name_legacy = True
+options.name_languages = ['*']
 subsetter = subset.Subsetter(options=options)
 subsetter.populate(unicodes=codepoints)
 subsetter.subset(font)

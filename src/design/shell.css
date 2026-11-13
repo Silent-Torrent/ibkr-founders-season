@@ -65,3 +65,43 @@ h1, .brand strong, .welcome-brand strong, .season-medal-fraction, .step-label {
 :root :is(.source-pill.demo, .status-chip.demo, .demo-chip) {
   background:var(--poster-ink); color:var(--poster-paper); border-color:var(--poster-paper);
 }
+
+.batch-settings {
+  color-scheme: dark;
+  border-color: var(--border);
+}
+.batch-settings :is(select, input[type=number]) {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 12px;
+  color: var(--poster-paper);
+  background: var(--poster-ink);
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  font: inherit;
+}
+.batch-settings input[type=checkbox] { accent-color: var(--poster-paper); }
+
+.card-options fieldset { background: var(--poster-surface); }
+.card-options button[aria-pressed=true] {
+  color: var(--poster-ink);
+  background: var(--poster-paper);
+  border-color: var(--poster-paper);
+}
+.card-switch input { background: var(--poster-graphite); border-color: var(--border-strong); }
+.card-switch input::before { background: var(--poster-paper); }
+.card-switch input:checked { background: var(--poster-paper); border-color: var(--poster-paper); }
+.card-switch input:checked::before { background: var(--poster-ink); }
+
+.story-controls button, .medal-tools button {
+  color: var(--poster-paper);
+  background: var(--poster-surface);
+  border-color: var(--border-strong);
+  border-radius: 24px;
+}
+.story-controls button:disabled, .medal-tools button:disabled { opacity: .55; }
+
+.data-table td:first-child small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

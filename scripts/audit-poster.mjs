@@ -79,7 +79,7 @@ try {
       const rows=[], clipped=[], gradients=[]
       const label=e=>e.tagName.toLowerCase()+(e.className&&typeof e.className==='string'?'.'+e.className.trim().split(/\\s+/).join('.'):'')
       for(const e of document.querySelectorAll('body *')){
-        if(!(e instanceof HTMLElement)||!e.checkVisibility()||e.closest('[inert],script,style,svg')||e.matches(':disabled'))continue
+        if(!(e instanceof HTMLElement)||!e.checkVisibility()||e.closest('[inert],.sr-only,script,style,svg')||e.matches(':disabled'))continue
         const text=[...e.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()
         if(!text)continue
         const s=getComputedStyle(e), b=e.getBoundingClientRect()
@@ -115,6 +115,7 @@ try {
         await waitFor('.season-poster');await inspect(name+'-report','.season-poster')
         await evaluate("document.querySelector('[data-card-template=feast]').click()")
         await settle();await inspect(name+'-share','.share-card-preview')
+        await inspect(name+'-share-options','.card-options')
         await evaluate("document.querySelector('.private-ledger').open=true")
         await inspect(name+'-ledger','.data-table')
         await evaluate("document.querySelector('.private-ledger').open=false;document.querySelector('.batch-settings').open=true")
@@ -128,19 +129,25 @@ try {
         await evaluate("(()=>{const s=document.querySelector('option[value=league]').parentElement;s.value='league';s.dispatchEvent(new Event('change',{bubbles:true}))})()")
         await settle();await inspect(name+'-leaderboard','.leaderboard-list')
         await inspect(name+'-battle','.battle-code')
-        await evaluate("document.querySelector('.privacy-card-action').click()")
+        await evaluate("document.querySelector('.footer-privacy-button:not([data-action])').click()")
         await waitFor('.privacy-modal');await inspect(name+'-privacy','.privacy-modal')
         await evaluate("document.querySelector('.privacy-modal .close-button').click();document.querySelector('.side-nav [data-page=import]').click()")
         await waitFor('input[type=file]')
         const {root}=await send('DOM.getDocument')
         const {nodeId}=await send('DOM.querySelector',{nodeId:root.nodeId,selector:'input[type=file]'})
         await send('DOM.setFileInputFiles',{nodeId,files:[resolve('tests/fixtures/full-season-medals-fictional.csv')]})
+        await waitFor('.page-content[data-page=ledger] [data-card-template]')
+        await evaluate("document.querySelector('.side-nav [data-page=trophies]').click()")
         await waitFor('.wrapped-launch')
         await evaluate("document.querySelector('.wrapped-launch').click()")
         await waitFor('.wrapped-panel');await inspect(name+'-wrapped','.wrapped-panel')
+        await inspect(name+'-wrapped-controls','.story-controls')
       }
     }
   }
+  assert.equal(findings.length,2*3*3*14,'Every surface must be captured for both builds')
+  const regressions=findings.filter(f=>f.name.startsWith('after-')&&f.overflow)
+  assert.deepEqual(regressions.map(f=>f.name),[],'Page must fit the viewport')
   console.log('Poster matrix:',findings.length,'views; contrast/clipping candidates require visual review.')
 } finally {
   socket?.close()
