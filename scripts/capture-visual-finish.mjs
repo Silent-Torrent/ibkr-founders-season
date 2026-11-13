@@ -135,17 +135,9 @@ try {
         const export3x4 = await evaluate(`(async () => {
           const img = document.querySelector('.png-fallback-panel img');
           await img.decode();
-          const blob = await (await fetch(img.src)).blob();
-          const data = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsDataURL(blob);
-          });
-          return { width: img.naturalWidth, height: img.naturalHeight, data };
+          return [img.naturalWidth, img.naturalHeight];
         })()`)
-        assert.deepEqual([export3x4.width, export3x4.height], [1080, 1440])
-        await writeFile(join(destination, name+'-3x4-export.png'), Buffer.from(export3x4.data.split(',')[1], 'base64'))
+        assert.deepEqual(export3x4, [1080, 1440])
         await capture(name+'-3x4-preview', '.png-fallback-panel img')
       } finally {
         await evaluate(`(() => {
