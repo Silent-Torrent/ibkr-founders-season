@@ -196,6 +196,8 @@
 
 在非 root Chrome 上设置 `RELEASE_GATE_QA_DIR` 后运行完整 `npm run check`。GitHub Actions 的同名检查上传 `release-gate-evidence`，含逐项结果、测量样本和视口截图。D01/D02/D07/D08 均 OPEN。D01 没有经批准的内存数值上限；报告单独对照现有浏览器回归耗时与停顿阈值。抽样可能遗漏短峰，Chrome 可访问性树不证明 VoiceOver 实际出声。
 
+main `2f465b2` 的新一轮 D01/D02/D07/D08 已采集 19 项自动化证据并通过完整套件。现有性能阈值均满足，四项继续 `OPEN`，由 Philip 验收。 [复跑证据与逐项数据](evidence/mobile-gates-2f465b2/README.md)
+
 ## 每次 session 结束的固定通报
 
 每次结束都用下面的普通中文结构报告，无实质变更也照实写“未减少”；不将计划、测试开始或生成文件当成完成。

@@ -1,0 +1,764 @@
+{
+  "pageHeap": {
+    "method": "Runtime.getHeapUsage",
+    "units": "bytes",
+    "clock": "host-monotonic-ms",
+    "intervalMs": 50,
+    "requestTimeoutMs": 2000,
+    "releaseMarker": "host-after-release-acknowledgement",
+    "coverage": "limited",
+    "coverageIncomplete": true,
+    "truePeakMeasured": false,
+    "finalReclamationProven": false,
+    "sampleCount": 21,
+    "runtimeSampleCount": 20,
+    "baseline": {
+      "requestAtMs": 29248.97983,
+      "responseAtMs": 29249.328587,
+      "latencyMs": 0.3487569999997504,
+      "usedSize": 5354892,
+      "totalSize": 8650752,
+      "embedderHeapUsedSize": 10824400,
+      "backingStorageSize": 609518,
+      "phase": "baseline"
+    },
+    "samples": [
+      {
+        "requestAtMs": 29248.97983,
+        "responseAtMs": 29249.328587,
+        "latencyMs": 0.3487569999997504,
+        "usedSize": 5354892,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10824400,
+        "backingStorageSize": 609518,
+        "phase": "baseline"
+      },
+      {
+        "requestAtMs": 29299.205452,
+        "responseAtMs": 29300.248282,
+        "latencyMs": 1.0428300000021409,
+        "usedSize": 5395052,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10805144,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29349.858044,
+        "responseAtMs": 29350.590035,
+        "latencyMs": 0.731991000000562,
+        "usedSize": 5395136,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10805144,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29400.687594,
+        "responseAtMs": 29401.388763,
+        "latencyMs": 0.7011689999999362,
+        "usedSize": 5395764,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10805648,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29450.967178,
+        "responseAtMs": 29451.548436,
+        "latencyMs": 0.5812580000019807,
+        "usedSize": 5397804,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10806288,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29501.594768,
+        "responseAtMs": 29501.94701,
+        "latencyMs": 0.3522420000008424,
+        "usedSize": 5398324,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10931888,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29552.560689,
+        "responseAtMs": 29553.041325,
+        "latencyMs": 0.48063599999659345,
+        "usedSize": 5398408,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10931888,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29602.097029,
+        "responseAtMs": 29602.796436,
+        "latencyMs": 0.6994070000000647,
+        "usedSize": 5398928,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10931888,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29652.343132,
+        "responseAtMs": 29653.020726,
+        "latencyMs": 0.6775939999970433,
+        "usedSize": 5399012,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10931888,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29702.283103,
+        "responseAtMs": 29702.937261,
+        "latencyMs": 0.6541579999975511,
+        "usedSize": 5399532,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10931888,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29752.455264,
+        "responseAtMs": 29753.06115,
+        "latencyMs": 0.6058860000011919,
+        "usedSize": 5399616,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10934832,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29802.07741,
+        "responseAtMs": 29802.642955,
+        "latencyMs": 0.5655449999976554,
+        "usedSize": 5400136,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10934832,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29852.153697,
+        "responseAtMs": 29852.610156,
+        "latencyMs": 0.4564589999972668,
+        "usedSize": 5400220,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10934832,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29902.642692,
+        "responseAtMs": 29903.188176,
+        "latencyMs": 0.545483999998396,
+        "usedSize": 5400740,
+        "totalSize": 8650752,
+        "embedderHeapUsedSize": 10934832,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29952.736991,
+        "responseAtMs": 29967.597287,
+        "latencyMs": 14.860295999998925,
+        "usedSize": 8961820,
+        "totalSize": 15466496,
+        "embedderHeapUsedSize": 10934832,
+        "backingStorageSize": 609550,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 30003.341021,
+        "responseAtMs": 30009.031408,
+        "latencyMs": 5.690386999998736,
+        "usedSize": 10493260,
+        "totalSize": 17039360,
+        "embedderHeapUsedSize": 15152264,
+        "backingStorageSize": 646572,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 30053.577113,
+        "responseAtMs": 30055.918491,
+        "latencyMs": 2.3413780000009865,
+        "usedSize": 12138528,
+        "totalSize": 21757952,
+        "embedderHeapUsedSize": 15668152,
+        "backingStorageSize": 649932,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 30103.624476,
+        "responseAtMs": 30104.220071,
+        "latencyMs": 0.5955949999988661,
+        "usedSize": 15724256,
+        "totalSize": 23592960,
+        "embedderHeapUsedSize": 20731904,
+        "backingStorageSize": 653292,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 30153.308475,
+        "responseAtMs": 30153.796232,
+        "latencyMs": 0.4877569999989646,
+        "usedSize": 15386760,
+        "totalSize": 25952256,
+        "embedderHeapUsedSize": 21112896,
+        "backingStorageSize": 656652,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 30203.395929,
+        "responseAtMs": 30203.776714,
+        "latencyMs": 0.38078500000119675,
+        "usedSize": 14769040,
+        "totalSize": 27787264,
+        "embedderHeapUsedSize": 21628464,
+        "backingStorageSize": 660012,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 30253.862024,
+        "responseAtMs": 30254.272635,
+        "latencyMs": 0.410611000002973,
+        "usedSize": 17953888,
+        "totalSize": 27787264,
+        "embedderHeapUsedSize": 22015216,
+        "backingStorageSize": 661832,
+        "phase": "after-release"
+      }
+    ],
+    "requests": [
+      {
+        "requestAtMs": 29248.97983,
+        "responseAtMs": 29249.328587,
+        "settledAtMs": 29249.328587,
+        "latencyMs": 0.3487569999997504,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29299.205452,
+        "responseAtMs": 29300.248282,
+        "settledAtMs": 29300.248282,
+        "latencyMs": 1.0428300000021409,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29349.858044,
+        "responseAtMs": 29350.590035,
+        "settledAtMs": 29350.590035,
+        "latencyMs": 0.731991000000562,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29400.687594,
+        "responseAtMs": 29401.388763,
+        "settledAtMs": 29401.388763,
+        "latencyMs": 0.7011689999999362,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29450.967178,
+        "responseAtMs": 29451.548436,
+        "settledAtMs": 29451.548436,
+        "latencyMs": 0.5812580000019807,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29501.594768,
+        "responseAtMs": 29501.94701,
+        "settledAtMs": 29501.94701,
+        "latencyMs": 0.3522420000008424,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29552.560689,
+        "responseAtMs": 29553.041325,
+        "settledAtMs": 29553.041325,
+        "latencyMs": 0.48063599999659345,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29602.097029,
+        "responseAtMs": 29602.796436,
+        "settledAtMs": 29602.796436,
+        "latencyMs": 0.6994070000000647,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29652.343132,
+        "responseAtMs": 29653.020726,
+        "settledAtMs": 29653.020726,
+        "latencyMs": 0.6775939999970433,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29702.283103,
+        "responseAtMs": 29702.937261,
+        "settledAtMs": 29702.937261,
+        "latencyMs": 0.6541579999975511,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29752.455264,
+        "responseAtMs": 29753.06115,
+        "settledAtMs": 29753.06115,
+        "latencyMs": 0.6058860000011919,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29802.07741,
+        "responseAtMs": 29802.642955,
+        "settledAtMs": 29802.642955,
+        "latencyMs": 0.5655449999976554,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29852.153697,
+        "responseAtMs": 29852.610156,
+        "settledAtMs": 29852.610156,
+        "latencyMs": 0.4564589999972668,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29902.642692,
+        "responseAtMs": 29903.188176,
+        "settledAtMs": 29903.188176,
+        "latencyMs": 0.545483999998396,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29952.736991,
+        "responseAtMs": 29967.597287,
+        "settledAtMs": 29967.597287,
+        "latencyMs": 14.860295999998925,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30003.341021,
+        "responseAtMs": 30009.031408,
+        "settledAtMs": 30009.031408,
+        "latencyMs": 5.690386999998736,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30053.577113,
+        "responseAtMs": 30055.918491,
+        "settledAtMs": 30055.918491,
+        "latencyMs": 2.3413780000009865,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30103.624476,
+        "responseAtMs": 30104.220071,
+        "settledAtMs": 30104.220071,
+        "latencyMs": 0.5955949999988661,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30153.308475,
+        "responseAtMs": 30153.796232,
+        "settledAtMs": 30153.796232,
+        "latencyMs": 0.4877569999989646,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30203.395929,
+        "responseAtMs": 30203.776714,
+        "settledAtMs": 30203.776714,
+        "latencyMs": 0.38078500000119675,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30253.862024,
+        "responseAtMs": 30254.272635,
+        "settledAtMs": 30254.272635,
+        "latencyMs": 0.410611000002973,
+        "outcome": "success"
+      }
+    ],
+    "observedSampledMaxima": {
+      "usedSize": 17953888,
+      "totalSize": 27787264,
+      "embedderHeapUsedSize": 22015216,
+      "backingStorageSize": 661832
+    },
+    "runtimeObservedSampledMaxima": {
+      "usedSize": 17953888,
+      "totalSize": 27787264,
+      "embedderHeapUsedSize": 22015216,
+      "backingStorageSize": 661832
+    },
+    "fieldSampleCounts": {
+      "usedSize": 21,
+      "totalSize": 21,
+      "embedderHeapUsedSize": 21,
+      "backingStorageSize": 21
+    },
+    "maxObservationGapMs": 64.40911100000085,
+    "runtimeMaxObservationGapMs": 64.40911100000085,
+    "requestLatencyMs": {
+      "min": 0.3487569999997504,
+      "max": 14.860295999998925,
+      "mean": 1.5814392857138868
+    },
+    "requestLatencyScope": "host request-to-response; no-response timeouts excluded",
+    "startedAtMs": 29248.977377,
+    "executionReleasedAtMs": 29249.857156,
+    "stopRequestedAtMs": 30280.264384,
+    "endedAtMs": 30280.267418,
+    "firstResponseAtMs": 29249.328587,
+    "lastResponseAtMs": 30254.272635,
+    "observedTimeSpanMs": 1004.9440480000012,
+    "releaseToFirstRuntimeResponseMs": 50.39112600000226,
+    "lastResponseToStopMs": 25.99174899999707,
+    "lastResponseAfterStopMs": 0,
+    "lastResponseToEndMs": 25.99478299999828,
+    "endReason": {
+      "kind": "stopped",
+      "message": "ledger-rendered"
+    },
+    "stopReason": "ledger-rendered",
+    "skippedInFlightTicks": 0
+  },
+  "workerHeap": {
+    "method": "Runtime.getHeapUsage",
+    "units": "bytes",
+    "clock": "host-monotonic-ms",
+    "intervalMs": 50,
+    "requestTimeoutMs": 2000,
+    "releaseMarker": "host-after-release-acknowledgement",
+    "coverage": "limited",
+    "coverageIncomplete": true,
+    "truePeakMeasured": false,
+    "finalReclamationProven": false,
+    "sampleCount": 15,
+    "runtimeSampleCount": 14,
+    "baseline": {
+      "requestAtMs": 29256.140329,
+      "responseAtMs": 29256.406101,
+      "latencyMs": 0.26577199999883305,
+      "usedSize": 310696,
+      "totalSize": 786432,
+      "embedderHeapUsedSize": 773712,
+      "backingStorageSize": 0,
+      "phase": "baseline"
+    },
+    "samples": [
+      {
+        "requestAtMs": 29256.140329,
+        "responseAtMs": 29256.406101,
+        "latencyMs": 0.26577199999883305,
+        "usedSize": 310696,
+        "totalSize": 786432,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 0,
+        "phase": "baseline"
+      },
+      {
+        "requestAtMs": 29306.337492,
+        "responseAtMs": 29306.72711,
+        "latencyMs": 0.3896180000010645,
+        "usedSize": 5098412,
+        "totalSize": 12320768,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 3235397,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29356.235714,
+        "responseAtMs": 29356.56386,
+        "latencyMs": 0.3281459999998333,
+        "usedSize": 4513612,
+        "totalSize": 20709376,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 4808261,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29406.467036,
+        "responseAtMs": 29406.856955,
+        "latencyMs": 0.38991900000110036,
+        "usedSize": 3263816,
+        "totalSize": 20709376,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 8609349,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29456.128305,
+        "responseAtMs": 29456.51513,
+        "latencyMs": 0.3868250000014086,
+        "usedSize": 7517624,
+        "totalSize": 20709376,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 10444357,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29506.014766,
+        "responseAtMs": 29535.468355,
+        "latencyMs": 29.453589000000648,
+        "usedSize": 2294664,
+        "totalSize": 20709376,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 10575429,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29556.628474,
+        "responseAtMs": 29556.971772,
+        "latencyMs": 0.34329799999977695,
+        "usedSize": 3117896,
+        "totalSize": 29097984,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 11230789,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29606.868848,
+        "responseAtMs": 29607.242403,
+        "latencyMs": 0.37355500000194297,
+        "usedSize": 3253100,
+        "totalSize": 37486592,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 14114373,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29657.647646,
+        "responseAtMs": 29658.1396,
+        "latencyMs": 0.49195399999734946,
+        "usedSize": 5338864,
+        "totalSize": 37486592,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 15883869,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29707.012278,
+        "responseAtMs": 29707.343719,
+        "latencyMs": 0.3314410000020871,
+        "usedSize": 5980136,
+        "totalSize": 38273024,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 17915485,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29757.646182,
+        "responseAtMs": 29757.965485,
+        "latencyMs": 0.31930300000021816,
+        "usedSize": 5190632,
+        "totalSize": 38273024,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 21061213,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29807.713766,
+        "responseAtMs": 29808.064425,
+        "latencyMs": 0.35065899999972316,
+        "usedSize": 18426812,
+        "totalSize": 39059456,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 21061213,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29857.194998,
+        "responseAtMs": 29857.540791,
+        "latencyMs": 0.3457930000004126,
+        "usedSize": 17111728,
+        "totalSize": 39321600,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 21061213,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29907.260719,
+        "responseAtMs": 29907.593988,
+        "latencyMs": 0.3332689999988361,
+        "usedSize": 13579736,
+        "totalSize": 40108032,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 21061213,
+        "phase": "after-release"
+      },
+      {
+        "requestAtMs": 29957.256644,
+        "responseAtMs": 29957.842199,
+        "latencyMs": 0.5855549999978393,
+        "usedSize": 12730528,
+        "totalSize": 40894464,
+        "embedderHeapUsedSize": 773712,
+        "backingStorageSize": 21061688,
+        "phase": "after-release"
+      }
+    ],
+    "requests": [
+      {
+        "requestAtMs": 29256.140329,
+        "responseAtMs": 29256.406101,
+        "settledAtMs": 29256.406101,
+        "latencyMs": 0.26577199999883305,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29306.337492,
+        "responseAtMs": 29306.72711,
+        "settledAtMs": 29306.72711,
+        "latencyMs": 0.3896180000010645,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29356.235714,
+        "responseAtMs": 29356.56386,
+        "settledAtMs": 29356.56386,
+        "latencyMs": 0.3281459999998333,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29406.467036,
+        "responseAtMs": 29406.856955,
+        "settledAtMs": 29406.856955,
+        "latencyMs": 0.38991900000110036,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29456.128305,
+        "responseAtMs": 29456.51513,
+        "settledAtMs": 29456.51513,
+        "latencyMs": 0.3868250000014086,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29506.014766,
+        "responseAtMs": 29535.468355,
+        "settledAtMs": 29535.468355,
+        "latencyMs": 29.453589000000648,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29556.628474,
+        "responseAtMs": 29556.971772,
+        "settledAtMs": 29556.971772,
+        "latencyMs": 0.34329799999977695,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29606.868848,
+        "responseAtMs": 29607.242403,
+        "settledAtMs": 29607.242403,
+        "latencyMs": 0.37355500000194297,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29657.647646,
+        "responseAtMs": 29658.1396,
+        "settledAtMs": 29658.1396,
+        "latencyMs": 0.49195399999734946,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29707.012278,
+        "responseAtMs": 29707.343719,
+        "settledAtMs": 29707.343719,
+        "latencyMs": 0.3314410000020871,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29757.646182,
+        "responseAtMs": 29757.965485,
+        "settledAtMs": 29757.965485,
+        "latencyMs": 0.31930300000021816,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29807.713766,
+        "responseAtMs": 29808.064425,
+        "settledAtMs": 29808.064425,
+        "latencyMs": 0.35065899999972316,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29857.194998,
+        "responseAtMs": 29857.540791,
+        "settledAtMs": 29857.540791,
+        "latencyMs": 0.3457930000004126,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29907.260719,
+        "responseAtMs": 29907.593988,
+        "settledAtMs": 29907.593988,
+        "latencyMs": 0.3332689999988361,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 29957.256644,
+        "responseAtMs": 29957.842199,
+        "settledAtMs": 29957.842199,
+        "latencyMs": 0.5855549999978393,
+        "outcome": "success"
+      },
+      {
+        "requestAtMs": 30007.673366,
+        "responseAtMs": 30008.493545,
+        "settledAtMs": 30008.493545,
+        "latencyMs": 0.8201790000020992,
+        "outcome": "session-closed"
+      }
+    ],
+    "observedSampledMaxima": {
+      "usedSize": 18426812,
+      "totalSize": 40894464,
+      "embedderHeapUsedSize": 773712,
+      "backingStorageSize": 21061688
+    },
+    "runtimeObservedSampledMaxima": {
+      "usedSize": 18426812,
+      "totalSize": 40894464,
+      "embedderHeapUsedSize": 773712,
+      "backingStorageSize": 21061688
+    },
+    "fieldSampleCounts": {
+      "usedSize": 15,
+      "totalSize": 15,
+      "embedderHeapUsedSize": 15,
+      "backingStorageSize": 15
+    },
+    "maxObservationGapMs": 78.95322500000111,
+    "runtimeMaxObservationGapMs": 78.95322500000111,
+    "requestLatencyMs": {
+      "min": 0.26577199999883305,
+      "max": 29.453589000000648,
+      "mean": 2.2193046875001983
+    },
+    "requestLatencyScope": "host request-to-response; no-response timeouts excluded",
+    "startedAtMs": 29256.139488,
+    "executionReleasedAtMs": 29256.720855,
+    "stopRequestedAtMs": 30280.454711,
+    "endedAtMs": 30008.493545,
+    "firstResponseAtMs": 29256.406101,
+    "lastResponseAtMs": 29957.842199,
+    "observedTimeSpanMs": 701.4360979999983,
+    "releaseToFirstRuntimeResponseMs": 50.00625500000024,
+    "lastResponseToStopMs": 322.6125119999997,
+    "lastResponseAfterStopMs": 0,
+    "lastResponseToEndMs": 50.65134600000238,
+    "endReason": {
+      "kind": "session-closed",
+      "message": "Runtime.getHeapUsage: Session with given id not found."
+    },
+    "stopReason": "ledger-rendered",
+    "skippedInFlightTicks": 0
+  },
+  "longTasksMs": []
+}

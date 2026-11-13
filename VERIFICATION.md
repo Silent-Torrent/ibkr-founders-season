@@ -551,6 +551,10 @@ The earlier checkpoint descriptions below keep their original scope. Their then-
 - Closing the Safari tab containing the imported report and reopening the same site produced Demo data, confirming that the normalized report was not restored across the closed tab.
 - With VoiceOver enabled, a visible cancel at about 3.1 seconds returned the page to idle and no late report appeared over more than 29 seconds. The test tool could not capture device audio, and the complete navigation/dialog focus and spoken-reading order was not exercised; no claim is made that the cancellation announcement was heard. VoiceOver was turned off and the off state was visually rechecked after the test.
 
+## D01 / D02 / D07 / D08 main rerun
+
+Main `2f465b2` passed 19 simulated mobile checks and the full product suite in the second attempt of Actions run `43371787135`. The exact commit, browser version, measured values, existing thresholds and sample coverage are preserved in [the rerun evidence](docs/evidence/mobile-gates-2f465b2/README.md). Gate status remains 9 OPEN / 3 CLOSED.
+
 ## Not yet verified
 
 Checkpoint 0.23 D05 geometry, D04's user-confirmed Simplified Chinese native-touch path and D03's directly observed three-language Mirroring-forwarded keyboard close/Return path are now closed within separate evidence scopes. The D04 result is not an independent green comparison witnessed by the main agent; D03 does not establish VoiceOver or directly connected hardware-keyboard behavior. Controlled phone callback races, complete VoiceOver and the minimum supported version remain unverified. The older `7b61ab5` session retains its historical keyboard-copy and cleanup evidence. Each 2026-09-09 session has completed its own bounded cleanup; no system-clipboard clearing is claimed. Remaining counts are 9 (5 device/cleanup, 1 financial source, 3 deployment).

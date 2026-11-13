@@ -226,6 +226,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Run the real TypeScript/parser checks and production build locally.
 - [x] Add CSP/security-header configuration and confirm the local page has no resulting console errors.
 - [x] Verify with a synthetic import that refresh returns to Demo instead of restoring the report.
+- [x] Rerun the D01/D02/D07/D08 automated evidence on main `2f465b2` and compare the recorded metrics with the existing regression limits. [Evidence](docs/evidence/mobile-gates-2f465b2/README.md)
 - [ ] Verify the complete deployed browser Network/Storage boundary.
 - [x] Reject unterminated fields, payloads over 10 million characters, fields over 250,000 characters, rows above 4,096 fields, and files over 100,000 rows in regression tests; retain the exact accepted 4,096-field boundary.
 - [x] Add a production-Chrome main-thread responsiveness/time gate for a fully fictional file at the exact byte/row/symbol/event caps.
