@@ -37,7 +37,7 @@ export function SeasonWrapped({report,locale}:{report:PortfolioReport,locale:Loc
   const move=(n:number)=>{setPlaying(false);setIndex(Math.max(0,Math.min(pages.length-1,i+n)))}
   const label=(s:string)=>local(s,locale)
   if(!open)return <button className="wrapped-launch" ref={launch} onClick={()=>{setOpen(true);setIndex(0)}}>{label('打开赛季回顾|開啟賽季回顧|Open Season Wrapped')}</button>
-  return <section className="wrapped-panel panel" ref={panel} tabIndex={-1} aria-label="Season Wrapped"
+  return <section className="wrapped-panel panel" ref={panel} tabIndex={-1} aria-label={label('赛季回顾|賽季回顧|Season Wrapped')}
     onKeyDown={e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();move(e.key==='ArrowRight'?1:-1)}}}>
     <div className="story-ticks" aria-hidden="true">{pages.map((_,n)=><i key={n} className={n<=i ? 'read' : undefined}/>)}</div>
     <h2 aria-live="polite">{i+1} / {pages.length} · {page.title}</h2>

@@ -92,6 +92,7 @@
   .season-poster .persona-identity > span {font-size:1.15rem; font-weight:700;}
   .medal-wall .medal-grid {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
   .poster-score {font-size:clamp(4.5rem,26vw,8rem);}
+  .welcome-hero .poster-score[data-available=true] {font-size:clamp(3rem,18vw,5.75rem);}
 }
 
 .private-ledger {margin-block:16px;}

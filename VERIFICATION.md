@@ -406,6 +406,12 @@ The earlier checkpoint descriptions below keep their original scope. Their then-
 - `VERIFY_MAC.command` completed under Node 22.23.2 / npm 10.9.8 after the checkpoint 0.17 changes: clean locked installation, two vulnerability checks with zero reported vulnerabilities, every parser/streaming/materialization/Worker/i18n/accessibility/compatibility/policy/launcher/iPhone-pack/browser suite, and the final production build all passed.
 - Exact scope and non-claims are recorded in `docs/RELEASE_CANDIDATE_REFINEMENT_EVIDENCE_2026-09-05.md`.
 
+### Poster regression after PR #15
+
+The review builds the actual PR base (`dc75b7c` for PR #17) and the candidate separately, with a fresh profile for each language and viewport. The matrix covers 390 × 844, 393 × 852 and 1440 × 900 in Simplified Chinese, Traditional Chinese and English. Fourteen surfaces per configuration produce 126 views per build. The app uses the built-in demo and the repository-owned fictional medal CSV for Wrapped. The browser checks page overflow, clipped visible labels, solid-background text contrast and the localized Wrapped region name. Gradients and canvas output require visual review. The bundled WOFF cmap check verifies the CJK codepoints in application source.
+
+The baseline clipped two Ledger company names at both mobile widths in each locale and split the percent sign from the welcome score. The candidate fixes these, restores three missing glyphs and applies poster tokens to remaining form and dialog controls. The [PR #17 description](https://github.com/Silent-Torrent/ibkr-founders-season/pull/17) links the exact checked runs and representative original screenshots. This Chrome review leaves release-gate status at 9 OPEN / 3 CLOSED.
+
 ### Checkpoint 0.16 first-user and recovery gate
 
 - The first-use screen renders explicit Demo and Import choices in English, Simplified Chinese and Traditional Chinese. The seen-guide key is absent before a path is chosen, becomes `seen` only after that choice, survives refresh, and the guide can be reopened without replacing the report already open in memory.

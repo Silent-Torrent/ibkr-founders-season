@@ -206,6 +206,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Product-policy regression suite for trust labels, rankings, achievements, share-card privacy, currency safety, and snapshot replacement.
 - [x] Beginner launcher and project engine pinned to maintained Node.js 22 LTS; daily startup skips repeat audit/tests/build when the locked dependencies are already prepared, while the separate verification launcher retains the complete gate.
 - [x] Import errors and warnings use readable 14 px / 1.5-line-height text, safe wrapping, and a real desktop-Chrome check at a simulated 320 px viewport.
+- [x] Audit the poster UI across three locales and 390 / 393 / 1440 px viewports. Correct missing CJK glyphs, mobile score wrapping, clipped Ledger names, legacy controls and the Wrapped region label. See [PR #17](https://github.com/Silent-Torrent/ibkr-founders-season/pull/17).
 
 ## P0 — before public deployment
 
