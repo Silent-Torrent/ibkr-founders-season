@@ -114,34 +114,68 @@ try {
           return score.textContent.trim()==='+21.3%' && s.letterSpacing==='normal' && settings[0].checked && !settings[1].checked && !document.querySelector('.private-ledger').open && pill.borderTopColor==='rgb(244, 239, 230)'
         })()`),'Decimal spacing, poster badge or preference defaults regressed')
       }
-      // Show the actual 3:4 export in the existing local PNG fallback at both widths.
-      await evaluate(`(() => {
-        const language = document.querySelector('.language-select');
-        language.value = 'en';
-        language.dispatchEvent(new Event('change', { bubbles: true }));
-      })()`)
-      await settle()
+      // Use the actual PNG fallback to inspect the export with a Demo persona.
       await evaluate(`(() => {
         Object.defineProperties(navigator, {
           userAgent: { configurable: true, value: 'iPhone' },
           canShare: { configurable: true, value: undefined },
         });
+        const draw = CanvasRenderingContext2D.prototype.fillText;
+        const lines = [];
+        window.__seasonExport = { draw, lines };
+        CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
+          const metrics = this.measureText(text);
+          lines.push({ text, top: y - metrics.actualBoundingBoxAscent,
+            bottom: y + metrics.actualBoundingBoxDescent });
+          return draw.call(this, text, x, y, ...rest);
+        };
         document.querySelector('[data-card-size="3x4"]').click();
       })()`)
-      await settle()
       try {
-        await evaluate("document.querySelector('[data-action=download-card]').click()")
-        await waitFor('.png-fallback-panel img')
-        const export3x4 = await evaluate(`(async () => {
-          const img = document.querySelector('.png-fallback-panel img');
-          await img.decode();
-          return [img.naturalWidth, img.naturalHeight];
-        })()`)
-        assert.deepEqual(export3x4, [1080, 1440])
-        await capture(name+'-3x4-preview', '.png-fallback-panel img')
+        const allVariants = phase === 'after' && size === 'mobile'
+        for (const locale of allVariants ? ['en', 'zh-CN', 'zh-TW'] : ['en']) {
+          await evaluate(`(() => {
+            const language = document.querySelector('.language-select');
+            language.value = ${JSON.stringify(locale)};
+            language.dispatchEvent(new Event('change', { bubbles: true }));
+          })()`)
+          for (const template of allVariants ? ['feast', 'noodles'] : ['feast']) {
+            await evaluate(`document.querySelector('[data-card-template="${template}"]').click()`)
+            await settle()
+            await evaluate(`(() => {
+              window.__seasonExport.lines.length = 0;
+              document.querySelector('[data-action=download-card]').click();
+            })()`)
+            await waitFor('.png-fallback-panel img')
+            const exported = await evaluate(`(async () => {
+              const img = document.querySelector('.png-fallback-panel img');
+              await img.decode();
+              const card = document.querySelector('.share-card-preview');
+              const boxes = ['.persona-identity > span', '.face-title', '.share-pnl', '.face-caption']
+                .map(selector => window.__seasonExport.lines.find(
+                  line => line.text === card.querySelector(selector).textContent.trim()));
+              return { dimensions: [img.naturalWidth, img.naturalHeight], boxes };
+            })()`)
+            assert.deepEqual(exported.dimensions, [1080, 1440])
+            assert(exported.boxes.every(Boolean), name+' '+locale+' '+template+' missing PNG text')
+            const [persona, title, score, caption] = exported.boxes
+            const titleGap = title.top - persona.bottom
+            const captionGap = caption.top - Math.max(title.bottom, score.bottom)
+            console.log(name, locale, template, '3:4 PNG title/caption gap:', titleGap, captionGap, 'px')
+            if (phase === 'after') {
+              assert(titleGap >= 8 && captionGap >= 8, locale+' '+template+' 3:4 PNG rows overlap')
+            }
+            if (locale === 'en' && template === 'feast') {
+              await capture(name+'-3x4-preview', '.png-fallback-panel img')
+            }
+            await evaluate("document.querySelector('.png-fallback-heading button').click()")
+          }
+        }
       } finally {
         await evaluate(`(() => {
           document.querySelector('.png-fallback-heading button')?.click();
+          CanvasRenderingContext2D.prototype.fillText = window.__seasonExport.draw;
+          delete window.__seasonExport;
           delete navigator.userAgent;
           delete navigator.canShare;
           const language = document.querySelector('.language-select');
