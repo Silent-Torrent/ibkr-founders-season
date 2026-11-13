@@ -1999,11 +1999,14 @@ async function runBrowserChecks() {
     };
     CanvasRenderingContext2D.prototype.fillText = function (text, ...args) {
       const normalizedText = String(text);
+      const metrics = this.measureText(normalizedText);
       captured.fillText.push(normalizedText);
       captured.fillTextCalls.push({
         align: this.textAlign,
         text: normalizedText,
-        width: this.measureText(normalizedText).width,
+        width: metrics.width,
+        top: args[1] - metrics.actualBoundingBoxAscent,
+        bottom: args[1] + metrics.actualBoundingBoxDescent,
         x: args[0],
         y: args[1],
       });

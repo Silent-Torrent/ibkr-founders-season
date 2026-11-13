@@ -114,6 +114,50 @@ try {
           return score.textContent.trim()==='+21.3%' && s.letterSpacing==='normal' && settings[0].checked && !settings[1].checked && !document.querySelector('.private-ledger').open && pill.borderTopColor==='rgb(244, 239, 230)'
         })()`),'Decimal spacing, poster badge or preference defaults regressed')
       }
+      // Show the actual 3:4 export in the existing local PNG fallback at both widths.
+      await evaluate(`(() => {
+        const language = document.querySelector('.language-select');
+        language.value = 'en';
+        language.dispatchEvent(new Event('change', { bubbles: true }));
+      })()`)
+      await settle()
+      await evaluate(`(() => {
+        Object.defineProperties(navigator, {
+          userAgent: { configurable: true, value: 'iPhone' },
+          canShare: { configurable: true, value: undefined },
+        });
+        document.querySelector('[data-card-size="3x4"]').click();
+      })()`)
+      await settle()
+      try {
+        await evaluate("document.querySelector('[data-action=download-card]').click()")
+        await waitFor('.png-fallback-panel img')
+        const export3x4 = await evaluate(`(async () => {
+          const img = document.querySelector('.png-fallback-panel img');
+          await img.decode();
+          const blob = await (await fetch(img.src)).blob();
+          const data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          });
+          return { width: img.naturalWidth, height: img.naturalHeight, data };
+        })()`)
+        assert.deepEqual([export3x4.width, export3x4.height], [1080, 1440])
+        await writeFile(join(destination, name+'-3x4-export.png'), Buffer.from(export3x4.data.split(',')[1], 'base64'))
+        await capture(name+'-3x4-preview', '.png-fallback-panel img')
+      } finally {
+        await evaluate(`(() => {
+          document.querySelector('.png-fallback-heading button')?.click();
+          delete navigator.userAgent;
+          delete navigator.canShare;
+          const language = document.querySelector('.language-select');
+          language.value = 'zh-CN';
+          language.dispatchEvent(new Event('change', { bubbles: true }));
+        })()`)
+        await settle()
+      }
       await evaluate("document.querySelector('.side-nav [data-page=arena]').click()")
       await waitFor('.local-arena')
       await evaluate("(()=>{const s=document.querySelector('option[value=league]').parentElement;s.value='league';s.dispatchEvent(new Event('change',{bubbles:true}))})()")

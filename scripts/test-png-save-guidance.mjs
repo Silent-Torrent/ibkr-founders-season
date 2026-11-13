@@ -336,14 +336,41 @@ export async function testPngSaveGuidance({
         }
       }
     }
-    await evaluate(`(() => {
-      for(const [selector,value] of [['[data-card-size]','portrait'],['[data-card-template]','auto']]){
-        document.querySelector(selector.slice(0,-1)+'="'+value+'"]').click();
+    await evaluate("document.querySelector('[data-card-amount]:checked')?.click()")
+    for (const { locale } of locales) {
+      await setLocale(locale)
+      for (const template of ['feast', 'noodles']) {
+        await evaluate(`(() => {
+          document.querySelector('[data-card-size="3x4"]').click();
+          document.querySelector('[data-card-template="${template}"]').click();
+          const capture=globalThis.__pnlArenaCanvasCapture;
+          capture.fillTextCalls.length=0;
+        })()`)
+        const { persona, title } = await evaluate(`(() => {
+          const card=document.querySelector('.share-card-preview');
+          const labels={persona:card.querySelector('.persona-identity > span').textContent,
+            title:card.querySelector('.face-title').textContent};
+          document.querySelector('[data-action="download-card"]').click();
+          return labels;
+        })()`)
+        await waitForPageValue("document.querySelector('.png-fallback-panel img')?.naturalWidth", value => value === 1080, '3:4 persona PNG')
+        const lines = await evaluate('globalThis.__pnlArenaCanvasCapture.fillTextCalls')
+        const personaLine = lines.find(line => line.text === persona)
+        const titleLine = lines.find(line => line.text === title)
+        assert(personaLine && titleLine, `${locale} ${template}: missing persona or title in PNG`)
+        assert(titleLine.top >= personaLine.bottom + 8, `${locale} ${template}: 3:4 PNG title overlaps the persona`)
+        await evaluate("document.querySelector('.png-fallback-heading button').click()")
+        await waitForPageValue("!document.querySelector('.png-fallback-panel')", Boolean, 'close 3:4 persona PNG')
       }
-      const box=document.querySelector('[data-card-amount]');if(box.checked)box.click();
+    }
+    await setLocale('en')
+    await evaluate(`(() => {
+      document.querySelector('[data-card-size="portrait"]').click();
+      document.querySelector('[data-card-template="auto"]').click();
     })()`)
     await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:false})
     console.log('All 12 PNG size/template/amount combinations passed.')
+    console.log('3:4 PNG persona and title clearance passed in three locales and both templates.')
     assert.equal(await evaluate(`document.querySelector('.data-table tbody')?.textContent ?? ''`), initialReport)
     return { locales: checkedLocales, width: 320, realLocalPreviews: blobs.length, namedDownload }
   } finally {
