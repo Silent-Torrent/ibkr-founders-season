@@ -17,14 +17,16 @@ const browser = spawn(process.env.CHROME_PATH || 'google-chrome', [
   '--headless=new', '--disable-background-networking', '--remote-debugging-port=0',
   '--user-data-dir=' + profile, 'about:blank',
 ])
+let browserError = ''
+browser.stderr.on('data',chunk=>{browserError=(browserError+chunk.toString()).slice(-3000)})
 let socket
 try {
   let port
-  for (let i=0; i<100 && !port; i++) {
+  for (let i=0; i<200 && !port && browser.exitCode===null && browser.signalCode===null; i++) {
     try { port = (await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0] }
     catch { await delay(100) }
   }
-  assert(port, 'Chrome did not open DevTools')
+  assert(port, 'Chrome did not open DevTools\n'+browserError)
   const tabs = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json()
   socket = new WebSocket(tabs.find(tab => tab.type === 'page').webSocketDebuggerUrl)
   await new Promise((resolve,reject) => { socket.onopen = resolve; socket.onerror = reject })
@@ -58,6 +60,7 @@ try {
     await waitFor(selector)
     await evaluate(`(async()=>{
       await document.fonts.ready
+      await Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations===1).map(a=>a.finished.catch(()=>{})))
       if (${JSON.stringify(selector)}==='main') window.scrollTo(0,0)
       else if (${JSON.stringify(selector)}==='.medal-wall') {
         const y=document.querySelector('.medal-grid').getBoundingClientRect().top+scrollY
@@ -149,6 +152,10 @@ try {
         await waitFor('.wrapped-launch')
         await evaluate("document.querySelector('.wrapped-launch').click()")
         await waitFor('.wrapped-panel');await inspect(name+'-wrapped','.wrapped-panel')
+        if(phase==='after'){
+          const expected={'zh-CN':'赛季回顾','zh-TW':'賽季回顧',en:'Season Wrapped'}[locale]
+          assert.equal(await evaluate("document.querySelector('.wrapped-panel').getAttribute('aria-label')"),expected)
+        }
         await inspect(name+'-wrapped-controls','.story-controls')
       }
     }
