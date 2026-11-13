@@ -2,7 +2,7 @@ name: Product checks
 on:
   pull_request:
   push:
-    branches: [main, docs/gpt-cloud-work-verification-2026-10-29]
+    branches: [main, docs/gpt-cloud-work-verification-2026-10-29, 'review/**']
 permissions:
   contents: read
 jobs:
@@ -35,21 +35,23 @@ jobs:
       - run: npm run check
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
+          PRIVACY_EVIDENCE_DIR: ${{ runner.temp }}/local-privacy-evidence
+          PRIVACY_EVIDENCE_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       - name: Capture fictional poster layouts
         run: npm run build && node scripts/capture-poster-demo.mjs
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
       - name: Check out visual comparison baseline
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/review/')
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
           path: .visual-before
           persist-credentials: false
       - name: Capture fictional before and after
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/review/')
         run: |
-          (cd .visual-before && npm ci && npm run build)
+          (cd .visual-before && git rev-parse HEAD && npm ci && npm run build)
           node scripts/capture-visual-finish.mjs .visual-before/dist
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
@@ -65,5 +67,12 @@ jobs:
         with:
           name: release-gate-evidence
           path: ${{ runner.temp }}/release-gate-evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: local-privacy-evidence
+          path: ${{ runner.temp }}/local-privacy-evidence/local-privacy-report.json
           if-no-files-found: error
           retention-days: 14
