@@ -90,7 +90,8 @@ export function paintBattlePoster(
     ctx.fill()
     text(side.name, x + 30, 458, 47, 396)
     text(side.source, x + 30, 506, 24, 396, muted)
-    const scoreColor = side.sign === '' ? paper : (side.sign === 'positive') === redGains ? '#ff858d' : '#68e3ad'
+    const red = redGains ? '#ff858d' : '#ff7e88'
+    const scoreColor = side.sign === '' ? paper : (side.sign === 'positive') === redGains ? red : '#68e3ad'
     text(side.returnLabel, x + 30, 670, 106, 396, scoreColor, true)
     text(side.division, x + 30, 741, 33, 396)
     ctx.fillStyle = '#3a3a3a'

@@ -150,7 +150,7 @@ try {
               text:document.querySelector('.battle-poster').textContent}
           })()`)
           assert.deepEqual(details.scores,['+21.3%','-8.25%'])
-          assert.deepEqual(details.colors,locale==='zh-CN'?['rgb(255, 133, 141)','rgb(104, 227, 173)']:['rgb(104, 227, 173)','rgb(255, 133, 141)'])
+          assert.deepEqual(details.colors,locale==='zh-CN'?['rgb(255, 133, 141)','rgb(104, 227, 173)']:['rgb(104, 227, 173)','rgb(255, 126, 136)'])
           assert.equal(details.medals,2)
           assert(details.wide&&!details.overflow,locale+' comparison overflow')
           assert.doesNotMatch(details.text,/PL1~|US\\$|FICTLOSS/)
@@ -164,7 +164,7 @@ try {
           let download
           try {
             HTMLAnchorElement.prototype.click=function(){download={name:this.download,data:this.href}}
-            CanvasRenderingContext2D.prototype.fillText=function(text,...args){lines.push(text);return originalText.call(this,text,...args)}
+          CanvasRenderingContext2D.prototype.fillText=function(text,...args){lines.push({text,color:this.fillStyle});return originalText.call(this,text,...args)}
             document.querySelector('[data-battle-export]').click()
             if(!download)throw Error('No battle download')
             const img=new Image();img.src=download.data;await img.decode()
@@ -175,8 +175,10 @@ try {
           }
         })()`)
         assert.deepEqual([battle.name,battle.width,battle.height],['pnl-arena-battle.png',1080,1440])
-        for(const line of ['+21.3%','-8.25%','用户自报 · 非券商验证','非投资建议'])assert(battle.lines.includes(line),line)
-        assert.doesNotMatch(battle.lines.join(' '),/PL1~|US\$|FICTLOSS/)
+        for(const line of ['+21.3%','-8.25%','用户自报 · 非券商验证','非投资建议'])assert(battle.lines.some(x=>x.text===line),line)
+        assert.equal(battle.lines.find(x=>x.text==='+21.3%').color,'#ff858d')
+        assert.equal(battle.lines.find(x=>x.text==='-8.25%').color,'#68e3ad')
+        assert.doesNotMatch(battle.lines.map(x=>x.text).join(' '),/PL1~|US\$|FICTLOSS/)
         await writeFile(join(destination,name+'-battle-export.png'),Buffer.from(battle.data.split(',')[1],'base64'))
         await enterOpponent(code+'!')
         assert(await evaluate("!document.querySelector('.battle-comparison') && document.querySelector('.battle-code output[aria-live]').textContent.includes('无效')"))
