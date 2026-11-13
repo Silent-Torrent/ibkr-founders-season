@@ -512,6 +512,10 @@ The earlier checkpoint descriptions below keep their original scope. Their then-
 - A SHA-256 comparison before and after the final parser run confirmed that the private source file was unchanged.
 - The full normalized report is no longer written to persistent browser storage by default.
 
+## Local battle poster
+
+The comparison takes the existing decoded PL1 fields and the current session's return, division and displayed medal IDs. The fictional browser checks paste a valid opponent code, verify the two values and both gain/loss color conventions in all three locales, then capture the actual 1080 × 1440 download and inspect its text. Invalid or emptied input removes the comparison. The original code and export contain no amounts or account details, even when extra properties are present on input objects. See the Ready PR for its exact CI results and two viewport comparisons.
+
 ## Local browser smoke check
 
 - `npm run check` now builds the production bundle and drives a fresh isolated system Chrome profile through the DevTools protocol; it does not substitute the Vite development server for the browser regression.

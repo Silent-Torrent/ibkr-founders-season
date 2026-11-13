@@ -1,5 +1,6 @@
 import {useContext,useState} from 'react'
 import {Settings} from './Preferences'
+import { BattleComparison } from './BattleComparison'
 import {local,medals} from '../data/medals'
 import {getDivision,type DivisionKey} from '../lib/season'
 import {displayedMedals} from '../lib/medalCollection'
@@ -69,8 +70,15 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
     <p>{tr('校验和只检查输入错误，任何人都可以伪造成绩。|校驗和只檢查輸入錯誤，任何人都可以偽造成績。|The checksum detects typing errors. Anyone can forge a result.')}</p>
     {mine&&<><p>{tr('复制内容：收益率、段位、勋章 ID|複製內容：報酬率、段位、勳章 ID|Included: return, division and medal IDs')} · {fieldList.join(' / ')}</p>
     <button onClick={async()=>{try{await navigator.clipboard.writeText(encodeBattle(mine));setFeedback(tr('已复制。|已複製。|Copied.'))}catch{setFeedback(encodeBattle(mine))}}}>{tr('复制对战码|複製對戰碼|Copy battle code')}</button><output>{feedback}</output></>}
-    <label>{tr('粘贴对手的码|貼上對手的碼|Paste opponent code')} <input maxLength={100} value={opponent} onChange={e=>setOpponent(e.target.value)}/></label>
-    <output aria-live="polite">{opponent && (other?[formatPercent(r.seasonReturn,l),'vs',formatPercent(other.percent/100,l),t(l,other.division),...other.medals.map(id=>local(medals[id][0],l))].join(' · '):tr('对战码无效。|對戰碼無效。|Invalid battle code.'))}</output>
+    <label>{tr('粘贴对手的码|貼上對手的碼|Paste opponent code')} <input maxLength={100} value={opponent} autoComplete="off" autoCapitalize="off" spellCheck={false} onChange={e=>setOpponent(e.target.value)}/></label>
+    <output aria-live="polite">{opponent.trim() && !other && tr('对战码无效。|對戰碼無效。|Invalid battle code.')}</output>
+    {other && <BattleComparison
+      key={opponent.trim() + l}
+      mine={{ percent: r.seasonReturn == null ? undefined : r.seasonReturn * 100, division: div, medals: worn, source: getShareSourceLabel(r, l) }}
+      opponent={other}
+      locale={l}
+      colors={p.colors}
+    />}
     </section>
   </section>
 }

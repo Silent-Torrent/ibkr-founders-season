@@ -53,6 +53,7 @@ jobs:
           node scripts/capture-visual-finish.mjs .visual-before/dist
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
+          EXPECT_BATTLE_POSTER: '1'
       - uses: actions/upload-artifact@v4
         with:
           name: fictional-share-card-layouts
