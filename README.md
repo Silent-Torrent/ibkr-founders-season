@@ -2,13 +2,13 @@
 
 Privacy-first Web App MVP for analyzing an Interactive Brokers Year-to-Date Activity Statement and presenting annual stock-and-options performance as a season.
 
-## GPT 内跨设备云端开发：尚未完成
+## 当前开发与验证状态
 
-用户已明确：目标是在 **ChatGPT/OpenAI 内整体进行云端开发**。现有 IBKR ChatGPT 项目中的纯云端 Work 对话已完成仓库读取、Node 22 安装、依赖安装、文件编辑保存、构建及 GitHub 分支/提交/草稿 PR 回写；[公开验收草稿 PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1) 已独立回读。依赖审计、类型检查与全部 11 项非浏览器检查通过；下一回合也确认原目录、Node、依赖及验收文档保留。Chrome 156 已安装，但完整检查在浏览器就绪前失败；另有短检查确认运行权限限制，也观察到跨调用的大文件截断，不能将长检查失败只归于单一原因。未降低浏览器安全设置绕过。用户可视的私有预览及第二台设备仍未验收。重要修改须保存到 GitHub，不能把一次跨回合保留视为云虚拟机永久保留的保证。
+当前功能基线为合并 PR #15 后的 main `dc75b7c`：赛季报告与 Wrapped、人格与勋章、海报风分享卡、本地竞技场和对战码已经实现。金额默认隐藏，吐槽默认开启，收益颜色遵循三语言主题。Arena 的示例联赛仍只使用虚构选手；本人的对照行不占示例名次。
 
-独立的 Codex Cloud 环境创建路径仍未成功：初始化及重试均在建立设置对话前失败，相关请求返回 HTTP 403；根因尚未确认。这与上述 Work 路径的实测结果分别记录。
+日常修改通过 ChatGPT Work 和 GitHub 保存、审阅；[PR #1](https://github.com/Silent-Torrent/ibkr-founders-season/pull/1) 已合并。GitHub Actions 的非 root Linux Chrome 已通过完整 `npm run check`，最近的 [PR #15 检查](https://github.com/Silent-Torrent/ibkr-founders-season/actions/runs/42472168600) 包含生产浏览器、Worker 与虚构数据截图。2026-10-29 Work 运行环境中的浏览器失败仍是该环境的历史结果，不能把 Actions 通过写成那个环境限制已消失。
 
-后续从 [GPT 云端交接说明](docs/GPT_CLOUD_HANDOFF.md) 继续。此前 [Codespaces 操作说明](docs/CLOUD_DEVELOPMENT.md) 和 [验收记录](docs/CLOUD_MIGRATION_2026-10-29.md) 保留为可选备用；其中的编辑、构建和推送成功不等于 GPT 迁移完成。代码仍由 GitHub 保存，真实报表与凭据不随迁移上传，公开应用发布仍需单独决定。
+独立 Codex Cloud 环境创建、用户可视的认证私有预览及第二台设备继续工作仍未验收。源码保存成功不证明临时工作目录永久保留；以 GitHub 为持久来源。详见 [云端交接](docs/GPT_CLOUD_HANDOFF.md)。发布门禁仍为 **9 OPEN / 3 CLOSED**，仅由负责人验收关闭；公开应用部署未获授权。
 
 ## Open source
 
@@ -18,7 +18,7 @@ The reusable core includes local TypeScript statement parsing, underlying-level 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution and test-data guidance. Public source publication was authorized on 2026-10-21; [publication status](docs/OPEN_SOURCE_RELEASE.md) records verified GitHub public visibility. Hosted application deployment remains frozen.
 
-## Current project state — checkpoint 0.42 local maintenance
+## Historical checkpoint 0.42 — local maintenance
 
 On 2026-09-29, Arena's five USD capital-division ranges were made explicit at every threshold without changing the calculation: each lower bound is included and each upper bound excluded. Boundary tests cover USD 25K, 100K, 500K and 1M and their neighbors. The full Node 22 check, including production Chrome with the real Worker, and the high-severity dependency audit passed. `VERIFY_MAC.command` now clears inherited browser-build overrides and keeps the bundle actually tested by Chrome as its final `dist`, instead of rebuilding afterward. The current handoff and phone checklist were aligned with their dated evidence; no 0.42 phone, 16.4, broker-authenticity or deployed-host check occurred. Fixed gates remain **9 OPEN / 3 CLOSED**, with **L frozen**. See [verification](VERIFICATION.md) and the [gate tracker](docs/RELEASE_GATE_TRACKER.md).
 
@@ -364,12 +364,14 @@ docs/
 - No server, account login, social feed, payment, automatic IBKR connection, or historical season archive yet.
 - Badge art is currently a geometric placeholder system; original meme character artwork and a complete brand/trademark package are later visual workstreams. The checkpoint 0.17 code-native mark is the first consistent product identifier, not a completed brand delivery.
 
-## Immediate next workstream
+## Current work queue
 
-1. Keep the interrupted 0.39 old-iPhone cleanup open: on 2026-09-29 the user said that iPhone 15 Plus is no longer at hand, so its last-observed VoiceOver On and open project tab cannot be read back now. Do not mark them restored or transfer that state to the replacement phone. For a new-device session, first confirm that its mirror is accessible, identify its actual model/iOS and original settings, and obtain confirmation before temporarily changing VoiceOver. No project file was selected in the old interrupted run. See [0.39 evidence](docs/EMPTY_FILE_RECOVERY_039_EVIDENCE_2026-09-25.md) and the [current handoff](WORK_HANDOFF.md#immediate-next-milestone).
-2. Independently test D07's actual VoiceOver speech/focus sequence and D08's physical rotation on the replacement phone with the verified production build, recording the tested build, device, steps and results separately and restoring its own settings. Older 0.24/0.30 audio confirmations and 0.33/0.38 visual results do not establish a pass for the current build or device. D03 keyboard focus, D04 Simplified Chinese native touch copying and D05 copy-action geometry remain closed only within their recorded 2026-09-09 paths; D07 remains open. D01 Worker peak/phone threshold, D02 real iOS/Safari 16.4 and D06 old Photos-card identification also remain open in the [fixed gate tracker](docs/RELEASE_GATE_TRACKER.md).
-3. Keep F01 open until a qualified completed-Exercise Activity Statement CSV shape is independently established; only then extend parser compatibility from that evidence. R03 requires the user's explicit deployment decision before R01 deployed Network/Storage/header checks and R02 HTTPS native file sharing/exact-name acceptance can run. L currently freezes deployment.
-4. Keep original trophy artwork and complete brand/trademark work as a later visual stream. The code-native checkpoint 0.17 mark is sufficient for a consistent local prototype, not a claim of finished branding.
+1. 清理工作流及明显过时的文档；三语言、390/393/1440 三尺寸检查全部页面。
+2. 对照 [BATCH2_SPEC](docs/BATCH2_SPEC.md) 和 [设计系统](docs/DESIGN_SYSTEM.md) 补齐不依赖排行榜后端的传播功能。
+3. 在当前 main 重跑 D01/D02/D07/D08 自动化证据。2026-11-01 负责人已改为云端 Chrome 移动模拟验收并接受 Safari 特有风险，仍须负责人验收，不能由自动化结果关闭门禁。
+4. F01 的真实完成行权 CSV 格式证据、D06 的旧设备文件收尾和 R01–R03 的发布事项继续按 [门禁追踪](docs/RELEASE_GATE_TRACKER.md) 处理；不以新增界面功能替代这些证据。
+
+每项独立 Ready PR，完整检查与 CI 通过后交负责人审阅；不自动合并、不公开部署。历史设备记录保持其原版本和设备边界。
 
 ### 手机体验用虚构对账单
 

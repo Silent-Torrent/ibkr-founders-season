@@ -1,5 +1,13 @@
 # MVP backlog
 
+## CI 与当前文档清理
+
+- [x] 移除已合并 fix/visual-finish 的 push 特判；PR 截图使用实际 base SHA。
+- [x] README/云端交接区分当前实现与 2026-10-29 历史失败，明确 PR #1 已合并。
+- [ ] 本清理 PR 完整 CI 结果见 PR Checks；不以文档编辑替代验证。
+
+当前门禁仍为 **9 OPEN / 3 CLOSED**，关闭须由 Philip 验收。下面各日期记录保持历史范围。
+
 2026-11-01 batch 1：18 条勋章规则和本地分享设置开发于独立草稿分支。D01、D02、D07、D08、R02 改为负责人执行云端 Linux Chrome 移动模拟验收，接受 Safari 特有风险。五项仍 OPEN，固定 9 OPEN / 3 CLOSED。具体验收条件见 [门禁追踪](docs/RELEASE_GATE_TRACKER.md)。
 
 ## 2026-10-29 GPT cloud development — corrected target

@@ -1,5 +1,11 @@
 # Verification record — checkpoint 0.42 local maintenance
 
+## CI 与文档清理范围
+
+基线 main `dc75b7c`。本次仅修改工作流和状态文档：去掉一次性分支触发，保留完整 npm run check、非 root 浏览器及 release-gate-evidence，截图基线使用 PR base SHA。既有 PR #15 的完整通过证据见 [Actions](https://github.com/Silent-Torrent/ibkr-founders-season/actions/runs/42472168600)；本次提交的结果以对应 PR Checks 为准。无产品代码、真实账户数据、发布配置或门禁状态变更。
+
+当前门禁仍为 **9 OPEN / 3 CLOSED**，关闭须由 Philip 验收。下面各日期记录保持历史范围。
+
 2026-11-01 batch 1：18 条勋章规则和本地分享设置开发于独立草稿分支。D01、D02、D07、D08、R02 改为负责人执行云端 Linux Chrome 移动模拟验收，接受 Safari 特有风险。五项仍 OPEN，固定 9 OPEN / 3 CLOSED。具体验收条件见 [门禁追踪](docs/RELEASE_GATE_TRACKER.md)。
 
 Last updated: 2026-10-29
