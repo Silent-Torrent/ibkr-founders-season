@@ -258,13 +258,13 @@ export async function downloadSeasonCard(
     textAt(cost,86,badges.length>1?1620:1524,36)
     textAt(advice(locale),86,1750,38)
   } else {
-    // A compact two-column scorecard; the medal and cost panels anchor its lower half.
+    // Keep the score row below the persona and above the caption.
     textAt(season,82,139,37)
     textAt(division,82,223,41,435,accent)
     textAt(sourceLabel,550,223,30,443)
-    textAt(theme.title,82,394,70,480)
-    textAt(value,595,395,104,403,returnColor)
-    textAt(theme.line,82,505,39)
+    textAt(theme.title,82,453,70,480)
+    textAt(value,595,453,104,403,returnColor)
+    textAt(theme.line,82,525,39)
     if(prefs.amount) textAt(amount,82,580,44)
     panel(65,632,950,191)
     textAt(t(locale,'trustCalculationCheck'),98,697,29)
