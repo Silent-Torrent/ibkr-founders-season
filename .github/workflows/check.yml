@@ -2,7 +2,7 @@ name: Product checks
 on:
   pull_request:
   push:
-    branches: [main, docs/gpt-cloud-work-verification-2026-10-29]
+    branches: [main, docs/gpt-cloud-work-verification-2026-10-29, 'review/**']
 permissions:
   contents: read
 jobs:
@@ -40,20 +40,19 @@ jobs:
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
       - name: Check out visual comparison baseline
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/review/')
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
           path: .visual-before
           persist-credentials: false
       - name: Capture fictional before and after
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/review/')
         run: |
-          (cd .visual-before && npm ci && npm run build)
+          (cd .visual-before && git rev-parse HEAD && npm ci && npm run build)
           node scripts/capture-visual-finish.mjs .visual-before/dist
         env:
           CARD_LAYOUT_QA_DIR: ${{ runner.temp }}/fictional-layouts
-          EXPECT_BATTLE_POSTER: '1'
       - uses: actions/upload-artifact@v4
         with:
           name: fictional-share-card-layouts

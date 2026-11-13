@@ -135,8 +135,8 @@ try {
       await enterOpponent(code)
       const comparison=await evaluate("Boolean(document.querySelector('.battle-comparison'))")
       await capture(name+'-battle-result',comparison?'.battle-poster':'.battle-code')
-      if(phase==='after' && process.env.EXPECT_BATTLE_POSTER==='1') assert(comparison,'Valid fictional opponent must open the comparison')
-      if(phase==='after' && comparison) {
+      if(phase==='after') {
+        assert(comparison,'Valid fictional opponent must open the comparison')
         for(const locale of ['zh-CN','zh-TW','en']) {
           await evaluate(`(()=>{const s=document.querySelector('.language-select');s.value=${JSON.stringify(locale)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`)
           await settle()
