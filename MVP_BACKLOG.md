@@ -229,6 +229,7 @@ Later developer-only follow-up, 2026-09-14: the standalone fictional instrument 
 - [x] Verify with a synthetic import that refresh returns to Demo instead of restoring the report.
 - [x] Rerun the D01/D02/D07/D08 automated evidence on main `2f465b2` and compare the recorded metrics with the existing regression limits. [Evidence](docs/evidence/mobile-gates-2f465b2/README.md)
 - [ ] Verify the complete deployed browser Network/Storage boundary.
+  - The local production build now emits a redacted Network/Storage comparison report. See [R01 local evidence](docs/LOCAL_PRIVACY_EVIDENCE.md).
 - [x] Reject unterminated fields, payloads over 10 million characters, fields over 250,000 characters, rows above 4,096 fields, and files over 100,000 rows in regression tests; retain the exact accepted 4,096-field boundary.
 - [x] Add a production-Chrome main-thread responsiveness/time gate for a fully fictional file at the exact byte/row/symbol/event caps.
 - [x] Add parser-stage report-capacity exits for adversarial files at or below the byte/row ceilings, including separate known-code smoke coverage, direct post-mapping 256/257 exact-section boundaries, parser/Worker alignment for actual aggregate item/string budgets, and exact-5-MiB/100,000-row 501-symbol and 1,001-event production-Worker cases that preserve the prior report.

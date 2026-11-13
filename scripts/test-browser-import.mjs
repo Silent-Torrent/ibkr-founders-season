@@ -20,6 +20,7 @@ import { testShareInteractions } from './test-share-interactions.mjs'
 import { testImportRecovery } from './test-import-recovery.mjs'
 import { testPngSaveGuidance } from './test-png-save-guidance.mjs'
 import { runReleaseGateEvidence } from './release-gate-evidence.mjs'
+import { observeLocalStorage, writeLocalPrivacyEvidence } from './local-privacy-evidence.mjs'
 import { testMobilePolish } from './test-mobile-polish.mjs'
 import { testManualCopy } from './test-manual-copy.mjs'
 import { testShortLandscape } from './test-short-landscape.mjs'
@@ -690,6 +691,8 @@ const runtimeErrors = []
 const consoleErrors = []
 const logErrors = []
 const requests = []
+const workerRequests = []
+const privacyStorage = []
 const webSockets = []
 const responseErrors = []
 const workerTargets = []
@@ -1057,12 +1060,14 @@ async function runBrowserChecks() {
       url: params.entry.url,
     })
   })
-  cdp.on('Network.requestWillBeSent', (params) => {
-    requests.push({
+  cdp.on('Network.requestWillBeSent', (params, sessionId) => {
+    const request = {
       method: params.request?.method,
       type: params.type,
       url: params.request?.url,
-    })
+    }
+    requests.push(request)
+    if (sessionId) workerRequests.push(request)
   })
   cdp.on('Network.webSocketCreated', (params) => {
     webSockets.push({ url: params.url })
@@ -1106,6 +1111,7 @@ async function runBrowserChecks() {
           url: targetInfo.url,
         })
         await cdp.send('Runtime.enable', {}, sessionId)
+        await cdp.send('Network.enable', {}, sessionId)
         const result = await cdp.send('Runtime.evaluate', {
           expression: fixedDateSource,
           returnByValue: true,
@@ -1465,6 +1471,7 @@ async function runBrowserChecks() {
     'Synthetic Worker-backed import',
     20_000,
   )
+  privacyStorage.push(await observeLocalStorage(evaluate, 'fictional report in memory'))
   assert.equal(ledgerState.quality, 'Internal checks passed')
   assert(!ledgerState.text.includes('Self-reported'), 'The known synthetic fixture was labelled Self-reported.')
   const importedNoticeAx = await accessibleNodeForSelector('.app-notice.success', 'Successful import notice')
@@ -2511,6 +2518,7 @@ async function runBrowserChecks() {
     (value) => value?.heading === 'Ledger' && value?.source === 'Demo data',
     'Refresh reset to Demo',
   )
+  privacyStorage.push(await observeLocalStorage(evaluate, 'after reload'))
   assert(!refreshState.text.includes('Fully synthetic test'), 'The imported report survived a full refresh.')
   assert.equal(refreshState.seenGuide, 'seen', 'The explicit first-use choice was not remembered after refresh.')
   assert.deepEqual(
@@ -3406,6 +3414,9 @@ async function runBrowserChecks() {
     [],
     `Worker DevTools setup errors were observed: ${JSON.stringify(asynchronousProtocolErrors)}`,
   )
+  const ordinaryWorkerRequests = workerRequests.slice()
+  const workerRequestSet = new Set(ordinaryWorkerRequests)
+  const ordinaryRequests = requests.filter(request => !workerRequestSet.has(request))
   // Run the deliberate CSP violation after the ordinary no-error assertions.
   // A separate loopback port is cross-origin, so a production page must not
   // connect even though the development page allows Vite's HMR WebSocket.
@@ -3553,6 +3564,11 @@ async function runBrowserChecks() {
     assert.equal(await evaluate(`localStorage.getItem('${medalStorageKey}')`), null)
   } finally {stopConfirm()}
 
+  privacyStorage.push(await observeLocalStorage(evaluate, 'after trusted clear'))
+  writeLocalPrivacyEvidence(process.env.PRIVACY_EVIDENCE_DIR, {
+    browser: (await cdp.send('Browser.getVersion')).product, storage: privacyStorage,
+    requests: ordinaryRequests, workerRequests: ordinaryWorkerRequests, previewOrigin: new URL(previewUrl).origin,
+  })
   if (process.env.RELEASE_GATE_QA_DIR) await collectEvidence()
   console.log('Browser import, cancellation, capacity, and PNG download regression passed.')
   console.log({
