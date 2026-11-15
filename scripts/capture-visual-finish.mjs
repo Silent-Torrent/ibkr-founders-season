@@ -84,13 +84,31 @@ try {
       await settle()
       await evaluate("document.querySelector('[data-action=welcome-primary]').click()")
       await waitFor('.share-card-preview')
+      await evaluate("document.querySelector('.side-nav [data-page=trophies]').click()")
+      const roundTrip = '.medal:nth-child(19)'
+      await capture(name+'-medals', phase === 'after' ? roundTrip : '.medal:nth-last-child(3)')
+      if (phase === 'after') {
+        const mag7 = '.medal:nth-child(21).earned'
+        assert.deepEqual(await evaluate("[...document.querySelectorAll('.medal:nth-child(n+19) summary strong')].map(title=>title.textContent)"),
+          ['日内回转', '单一信仰', '七巨头巡礼', '中概船票'])
+        await evaluate(`document.querySelector('${mag7} summary').click()`)
+        await waitFor(mag7+' button[aria-pressed="false"]')
+        await evaluate(`document.querySelector('${mag7} button[aria-pressed="false"]').click()`)
+        await settle()
+        assert.equal(await evaluate("localStorage.getItem('pnl-arena.medals.v1')"), '[20]')
+      }
+      await evaluate("document.querySelector('.side-nav [data-page=ledger]').click()")
+      await waitFor('.share-card-preview')
       await evaluate("document.querySelector('[data-card-template=feast]').click()")
       await settle()
       await capture(name+'-share','.share-card-preview')
       // Intercept only the synthetic browser download, not production delivery code.
       const png=await evaluate(`(async()=>{
         const original=HTMLAnchorElement.prototype.click
+        const draw=CanvasRenderingContext2D.prototype.fillText
+        const lines=[]
         try {
+          CanvasRenderingContext2D.prototype.fillText=function(text,...args){lines.push(text);return draw.call(this,text,...args)}
           const data=await new Promise((resolve,reject)=>{
             const timer=setTimeout(()=>reject(Error('Missing demo PNG')),10000)
             HTMLAnchorElement.prototype.click=function(){clearTimeout(timer);resolve(this.href)}
@@ -100,11 +118,18 @@ try {
           const c=document.createElement('canvas');c.width=img.width;c.height=img.height
           const ctx=c.getContext('2d');ctx.drawImage(img,0,0)
           const pixel=(x,y)=>[...ctx.getImageData(x,y,1,1).data].slice(0,3)
-          return {data,left:pixel(c.width*.1,c.height*.02),right:pixel(c.width*.9,c.height*.02)}
-        } finally {HTMLAnchorElement.prototype.click=original}
+          return {data,lines,left:pixel(c.width*.1,c.height*.02),right:pixel(c.width*.9,c.height*.02)}
+        } finally {
+          HTMLAnchorElement.prototype.click=original
+          CanvasRenderingContext2D.prototype.fillText=draw
+        }
       })()`)
       await writeFile(join(destination,name+'-export.png'),Buffer.from(png.data.split(',')[1],'base64'))
       if(phase==='after') {
+        const badges=await evaluate("[...document.querySelectorAll('.share-card-preview .face-medals span')].map(badge=>badge.textContent.trim())")
+        assert.deepEqual(badges,['七巨头巡礼'])
+        assert(png.lines.includes(badges[0]), 'Season PNG should show the new pinned medal')
+        assert(!png.lines.some(line=>line.includes('NVDA')), 'Season PNG keeps tickers private by default')
         assert.deepEqual(png.left,[255,43,43],'PNG diagonal must extend lower on the left')
         assert.notDeepEqual(png.right,[255,43,43],'PNG diagonal must taper on the right')
         assert(await evaluate(`(()=>{
@@ -306,6 +331,20 @@ try {
         assert(await evaluate("!document.querySelector('.battle-comparison') && document.querySelector('.battle-code output[aria-live]').textContent.includes('无效')"))
         await enterOpponent(code)
         assert.deepEqual((await readBattle()).checked, [true, true], 'Changing opponent input must retain hiding choices')
+        const newPayload = 'PL1~-825~1~18,19,21'
+        await enterOpponent(newPayload+'~'+createHash('sha256').update(newPayload).digest('hex').slice(0,12))
+        await waitFor('.battle-comparison')
+        await evaluate("document.querySelectorAll('[data-battle-hide]:checked').forEach(input=>input.click())")
+        await settle()
+        const medals = await readBattle()
+        assert.deepEqual(medals.medals, [['七巨头巡礼'], ['日内回转', '单一信仰', '中概船票']])
+        assert(medals.hitTargets && medals.fits, name+' new medal layout')
+        assert.doesNotMatch(medals.lines.join(' '), /PL1~|US\$|NVDA/)
+        await waitFor('[data-battle-export]:not(:disabled)')
+        const newPng = await exportBattle(true)
+        assert.deepEqual(newPng.lines.map(({text})=>text).sort(), ['P&L ARENA', ...medals.lines].sort())
+        await writeFile(join(destination, name+'-battle-new-medals-export.png'), Buffer.from(newPng.data.split(',')[1], 'base64'))
+        await capture(name+'-battle-new-medals', '.battle-comparison')
         await enterOpponent('')
         assert(await evaluate("!document.querySelector('.battle-comparison')"))
       }

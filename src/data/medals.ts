@@ -114,6 +114,30 @@ export const medals = [
     '这张成交单，配黑胶唱片刚刚好。|這張成交單，配黑膠唱片剛剛好。|Your trade confirmation looks like it came with liner notes.',
     '给你的赛季相册添了一张复古照。|替你的賽季相簿添了一張復古照。|A vintage print for your season album.',
   ],
+  [
+    '日内回转|日内回轉|Same-Day Round Trip',
+    '在同一报表日对同一标的有开仓和平仓，期权按标的归并。|在同一報表日對同一標的有開倉和平倉，選擇權按標的歸併。|Open and close trades in the same ticker on one statement date count. Options are grouped by underlying.',
+    '开盘打卡，收盘前就打了下班卡。|開盤打卡，收盤前就打了下班卡。|Clocked in at the open and clocked out before the bell.',
+    '一张报表，两枚同日邮戳。|一張報表，兩枚同日郵戳。|Two stamps on the same date in your season ledger.',
+  ],
+  [
+    '单一信仰|單一信仰|One-Ticker Faith',
+    '本季至少成交 10 笔，同一标的占成交笔数的一半或更多，期权按标的归并。|本季至少成交 10 筆，同一標的佔成交筆數的一半或更多，選擇權按標的歸併。|With at least 10 orders this season, one ticker accounts for half or more of them. Options are grouped by underlying.',
+    '自选股一长串，成交单还是那个老面孔。|自選股一長串，成交單還是那個老面孔。|A long watchlist and one very familiar face on the trade confirmations.',
+    '赛季账本里有一个反复出现的名字。|賽季帳本裡有一個反覆出現的名字。|One name kept coming up in your season ledger.',
+  ],
+  [
+    '七巨头巡礼|七巨頭巡禮|Mag7 Stamp',
+    '本季成交过 AAPL、MSFT、GOOGL、GOOG、AMZN、META、TSLA 或 NVDA 的股票或期权。|本季成交過 AAPL、MSFT、GOOGL、GOOG、AMZN、META、TSLA 或 NVDA 的股票或選擇權。|A share or option trade in AAPL, MSFT, GOOGL, GOOG, AMZN, META, TSLA or NVDA earns this stamp.',
+    '巨头新闻刷了一屏，成交单也来凑热闹。|巨頭新聞刷了一整頁，成交單也來湊熱鬧。|The giants took over the headlines and made an appearance on your statement.',
+    '赛季相册里多了一枚七巨头邮戳。|賽季相簿裡多了一枚七巨頭郵戳。|A Mag7 postmark for your season album.',
+  ],
+  [
+    '中概船票|中概船票|China ADR Stamp',
+    '本季成交过 BABA、PDD、JD、BIDU、NIO、LI、XPEV 或 BILI 的股票或期权。|本季成交過 BABA、PDD、JD、BIDU、NIO、LI、XPEV 或 BILI 的股票或選擇權。|A share or option trade in BABA, PDD, JD, BIDU, NIO, LI, XPEV or BILI earns this stamp.',
+    '船票盖了章，海况照样看天。|船票蓋了章，海況照樣看天。|Ticket stamped. Sea conditions still up to the weather.',
+    '你的赛季手账添了一张跨洋船票。|你的賽季手帳添了一張跨洋船票。|A transoceanic ticket stub for your season scrapbook.',
+  ],
 ]
 export function local(s: string, l: Locale) {
   return s.split('|')[l === 'en' ? 2 : l === 'zh-TW' ? 1 : 0]

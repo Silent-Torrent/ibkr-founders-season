@@ -1,6 +1,7 @@
 import { classify } from './persona'
 import { parseNumber, sumExactNumbers } from './csv'
-import { hotTickers } from '../data/hotStocks'
+import { hotStockGroup, hotStockMedalIds, hotTickers } from '../data/hotStocks'
+import { medals } from '../data/medals'
 export { hotTickers }
 // null = insufficient evidence; zero = rule evaluated, not earned.
 export type MedalValues = (number | null)[]
@@ -70,7 +71,7 @@ export function medalIndex() {
       for(const row of rows) {
         const date=row['Date/Time'].slice(0,10)
         if(date<start || date>end) continue
-        const symbol=row.Symbol.match(option)?.[1] ?? row.Symbol
+        const symbol=underlying(row.Symbol)
         if(symbol.length>128) return undefined
         counts.set(symbol,(counts.get(symbol)??0)+1)
         if(!row.Code) complete=false
@@ -120,6 +121,9 @@ export function medalIndex() {
 }
 const option =
   /^(\S+)\s+(\d\d)(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d\d)\s+[\d.]+\s+[CP]$/i
+function underlying(symbol: string) {
+  return symbol.match(option)?.[1] ?? symbol
+}
 const months = 'JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC'.split(' ')
 const dayMs = 86400000
 function dateMs(s: string) {
@@ -141,7 +145,7 @@ export function evaluateMedals(
   end: string,
   currency: string,
 ): MedalValues {
-  const result: MedalValues = Array(18).fill(null)
+  const result: MedalValues = Array(medals.length).fill(null)
   const year = Number(end.slice(0, 4))
   result[13] = +(year === 2026)
   const complete = (rs: Row[] | undefined, ...keys: string[]) =>
@@ -343,25 +347,47 @@ export function evaluateMedals(
       }
     }
   }
-  if (complete(trades, 'Symbol') && hotTickers[year]) {
-    const symbols = new Set(
-      trades.map((r) => r.Symbol.match(option)?.[1] ?? r.Symbol),
-    )
-    hotTickers[year].forEach((group, i) => {
-      result[14 + i] = group.reduce(
+  if (complete(trades, 'Symbol')) {
+    const tickers = trades.map((r) => underlying(r.Symbol))
+    const symbols = new Set(tickers)
+    hotTickers[year]?.forEach((group, i) => {
+      result[hotStockMedalIds[i]] = group.reduce(
         (mask, s, j) => (symbols.has(s) ? mask | (1 << j) : mask),
         0,
       )
     })
+    if (trades.every(timed)) {
+      if (complete(trades, 'Code')) {
+        const dailyFlags = new Map<string, number>()
+        result[18] = +trades.some((r, i) => {
+          const key = r['Date/Time'].slice(0, 10) + ' ' + tickers[i]
+          const open = code(r, 'O') ? 1 : 0
+          const close = code(r, 'C') ? 2 : 0
+          const flags = (dailyFlags.get(key) ?? 0) | open | close
+          dailyFlags.set(key, flags)
+          return flags === 3
+        })
+      }
+      result[19] = 0
+      if (tickers.length >= 10) {
+        const counts = new Map<string, number>()
+        result[19] = +tickers.some((symbol) => {
+          const count = (counts.get(symbol) ?? 0) + 1
+          counts.set(symbol, count)
+          return count * 2 >= tickers.length
+        })
+      }
+    }
   }
   return result
 }
 export function validMedalValues(v: unknown): v is MedalValues {
   return (
     Array.isArray(v) &&
-    v.length === 18 &&
-    v.every(
-      (n, i) =>
+    v.length === medals.length &&
+    v.every((n, i) => {
+      const group = hotStockGroup(2026, i)
+      return (
         n === null ||
         (typeof n === 'number' &&
           Number.isFinite(n) &&
@@ -385,11 +411,12 @@ export function validMedalValues(v: unknown): v is MedalValues {
                             ),
                           ),
                         ))
-                    : i >= 14
+                    : group
                       ? Number.isInteger(n) &&
                         n >= 0 &&
-                        n < 2 ** hotTickers[2026][i - 14].length
-                      : n === 0 || n === 1)),
-    )
+                        n < 2 ** group.length
+                      : n === 0 || n === 1))
+      )
+    })
   )
 }

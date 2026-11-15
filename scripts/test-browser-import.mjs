@@ -3273,7 +3273,7 @@ async function runBrowserChecks() {
   const exampleCount=await evaluate("document.querySelectorAll('.medal.earned').length")
   assert.equal(await evaluate("document.querySelector('.medal.earned[data-tier=gold] summary strong')?.textContent"), 'Dividend Napper')
   assert(exampleCount>=12,'The complete fictional CSV did not light most medals.')
-  console.log('UI file picker import: '+exampleCount+'/18 fictional medals')
+  console.log('UI file picker import: '+exampleCount+'/22 fictional medals')
   await clickPrimaryNavigation('Import')
   await evaluate(`(() => {
     const confirm=window.confirm
@@ -3286,11 +3286,13 @@ async function runBrowserChecks() {
     const gold=document.querySelector('.medal.earned[data-tier="gold"]')
     gold?.querySelector('summary').click()
     return {count:document.querySelectorAll('.medal.earned').length,
+      mag7:[...document.querySelectorAll('.medal.earned summary strong')].some(title=>title.textContent==='Mag7 Stamp'),
       detail:gold?.innerText,open:gold?.open,silver:!!document.querySelector('.medal.earned[data-tier="silver"]')}
   })()`)
-  assert.equal(demoWall.count,7)
+  assert.equal(demoWall.count,8)
+  assert(demoWall.mag7)
   assert(demoWall.open && demoWall.silver && demoWall.detail.includes('Tier · Gold') && demoWall.detail.includes('Fictional sample'))
-  console.log('Use demo data: 7/18, silver and gold, fictional detail, 12 ramen bowls.')
+  console.log('Use demo data: 8/22, silver and gold, fictional detail, 12 ramen bowls.')
   // Real UI downloads of the built-in fictional demo. Keep original PNG bytes for inspection.
   await clickPrimaryNavigation('Ledger')
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
@@ -3564,14 +3566,18 @@ async function runBrowserChecks() {
   )
 
   const medalStorageKey = 'pnl-arena.medals.v1'
-  for (const invalid of ['{', '[0,1,2,3]', '[0,18]', '[0,"GME"]']) {
+  for (const invalid of ['{', '[0,1,2,3]', '[0,22]', '[0,"GME"]']) {
     await evaluate(`localStorage.setItem('pnl-arena.medals.v1', ${JSON.stringify(invalid)})`)
     await navigateAndWait(previewUrl)
     await waitForPageValue("document.querySelector('main h1') && localStorage.getItem('pnl-arena.medals.v1') === null", Boolean, 'discard invalid medal storage')
   }
-  await evaluate("localStorage.setItem('pnl-arena.medals.v1', '[0,1,17]')")
+  for (const selection of [[18,19,21], [0,1,17]]) {
+    await evaluate(`localStorage.setItem('${medalStorageKey}', '${JSON.stringify(selection)}')`)
+    await navigateAndWait(previewUrl)
+    await waitForPageValue("Boolean(document.querySelector('main h1'))", Boolean, 'load saved medal selection')
+    assert.equal(await evaluate(`localStorage.getItem('${medalStorageKey}')`), JSON.stringify(selection))
+  }
   // Always exercise the imported-report action, including when no QA artifact is requested.
-  await navigateAndWait(previewUrl)
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
   await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1})
   await clickPrimaryNavigation('Import')

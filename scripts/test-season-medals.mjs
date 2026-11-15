@@ -10,18 +10,28 @@ try {
     '/src/lib/medalRules.ts',
   )
   const { parseCsvRows } = await vite.ssrLoadModule('/src/lib/csv.ts')
-  const { medalOutcome, defaults, ramen } = await vite.ssrLoadModule(
+  const { medals, local } = await vite.ssrLoadModule('/src/data/medals.ts')
+  const { hotStockMedalIds } = await vite.ssrLoadModule('/src/data/hotStocks.ts')
+  const { sealLines } = await vite.ssrLoadModule('/src/lib/medalArt.ts')
+  const { cardMedals, medalOutcome, defaults, ramen } = await vite.ssrLoadModule(
     '/src/lib/cardOptions.ts',
   )
   const {classify,personaCopy,mascot}=await vite.ssrLoadModule('/src/lib/persona.ts')
   const {encodeBattle,decodeBattle,rankRows}=await vite.ssrLoadModule('/src/lib/battleCode.ts')
   const payload={percent:-1.25,division:'retailLeague',medals:[6,2]}
   const code=encodeBattle(payload)
+  assert.equal(code,'PL1~-125~1~6,2~ba3be9f08ff8')
   assert.deepEqual(decodeBattle(code),payload)
   assert.equal(encodeBattle({...payload,amount:987654,account:'FICTIONAL',ticker:'FICT'}),code)
   assert.throws(()=>decodeBattle(code.replace('-125','125')))
   assert.throws(()=>decodeBattle(code+'!'))
   assert.throws(()=>encodeBattle({...payload,medals:[1,2,3,4]}))
+  const newPayload = { ...payload, medals: [18, 20, 21] }
+  const newCode = encodeBattle(newPayload)
+  assert.match(newCode, /^PL1~-125~1~18,20,21~[a-f0-9]{12}$/)
+  assert.deepEqual(decodeBattle(newCode), newPayload)
+  assert.equal(encodeBattle({ ...newPayload, amount: 123, account: 'FICTIONAL', ticker: 'FICT' }), newCode)
+  assert.throws(() => encodeBattle({ ...payload, medals: [22] }))
   const { battlePoster } = await vite.ssrLoadModule('/src/lib/battlePoster.ts')
   for (const locale of ['zh-CN', 'zh-TW', 'en']) {
     const mine = { percent: 0, division: undefined, medals: [], source: 'Fictional demo', amount: 987654, account: 'PRIVATE-FICTIONAL' }
@@ -31,6 +41,8 @@ try {
     assert.equal(poster.sides[1].returnLabel, '-1.25%')
     assert.equal(poster.sides[1].sign, 'negative')
     assert.deepEqual(poster.sides[1].medals.map(medal => medal.id), [6, 2])
+    const newPoster = battlePoster(mine, decodeBattle(newCode), locale)
+    assert.deepEqual(newPoster.sides[1].medals.map(medal => medal.name), newPayload.medals.map(id => local(medals[id][0], locale)))
     assert.doesNotMatch(JSON.stringify(poster), /987654|PRIVATE-FICTIONAL|PL1~/)
     assert.notEqual(battlePoster({ ...mine, percent: undefined }, decodeBattle(code), locale).sides[0].returnLabel, '0%')
     assert.deepEqual(poster.sides[0].medals, [], 'Showing an empty medal section is distinct from hiding it.')
@@ -60,14 +72,30 @@ try {
     assert.deepEqual(personaCopy(r,locale,false).tags,[])
   }
   assert.equal(new Set([24999,25000,100000,500000,1000000].map(netLiquidationValue=>mascot({baseCurrency:'USD',netLiquidationValue}))).size,5)
-  const {validSelection,displayedMedals,bagholder,nextTarget}=await vite.ssrLoadModule('/src/lib/medalCollection.ts')
-  const {isMedalSelection} = await vite.ssrLoadModule('/src/lib/medalCollection.ts')
-  for (const invalid of [null, {}, '0', [0,1,2,3], [-1], [18], [1,1], [0,'GME'], [{amount:2}], [0.5]]) {
+  const {validSelection,displayedMedals,bagholder,nextTarget,isMedalSelection,rarity,medalKey}=await vite.ssrLoadModule('/src/lib/medalCollection.ts')
+  assert.equal(medalKey,'pnl-arena.medals.v1')
+  assert.equal(medals.length,22)
+  assert.equal(rarity.length,medals.length)
+  assert.deepEqual(rarity.slice(0,18),[3,0,1,2,1,2,2,0,2,3,1,1,1,0,1,2,1,1])
+  for (const invalid of [null, {}, '0', [0,1,2,3], [-1], [22], [1,1], [0,'GME'], [{amount:2}], [0.5]]) {
     assert.equal(isMedalSelection(invalid), false)
   }
-  for (const allowed of [[], [0], [0,1,17]]) assert.equal(isMedalSelection(allowed), true)
+  for (const allowed of [[], [0], [0,1,17], [17,19,21]]) assert.equal(isMedalSelection(allowed), true)
   assert.deepEqual(validSelection([1,2,3,4]),[1,2,3])
-  assert.deepEqual(validSelection([null,true,-1,18,1,1]),[1])
+  assert.deepEqual(validSelection([null,true,-1,22,1,1]),[1])
+  assert.deepEqual(validSelection([17,19,21]),[17,19,21])
+  assert(!validMedalValues(Array(medals.length - 1).fill(null)))
+  for (const id of [18, 19, 20, 21]) {
+    const mask = hotStockMedalIds.includes(id)
+    const values = Array(medals.length).fill(null)
+    values[id] = mask ? 255 : 1
+    assert(validMedalValues(values))
+    for (const invalid of [-1, 0.5, mask ? 256 : 2]) {
+      values[id] = invalid
+      assert(!validMedalValues(values))
+    }
+    assert.doesNotMatch(sealLines(id), /undefined/)
+  }
   assert.deepEqual(displayedMedals([120,-1,1], [2,1]),[2,1])
   assert.deepEqual(displayedMedals([0,0,1], [1]),[2])
   assert.deepEqual(displayedMedals([], [2]),[])
@@ -96,13 +124,11 @@ try {
     const [, , id, scenario, expected, end] = current
     const result = idx.finish(end, 'USD')
     assert(validMedalValues(result))
-    assert.equal(
-      result[Number(id) - 1],
-      Number(expected),
-      id + ' / ' + scenario,
-    )
     const i = Number(id) - 1,
-      n = Number(expected)
+      n = expected === 'null' ? null : Number(expected)
+    assert.equal(result[i], n, id + ' / ' + scenario)
+    if (scenario === 'NVDA option also earns chip stamp') assert.equal(result[16], 1)
+    const hot = hotStockMedalIds.includes(i)
     const report = {
       source: 'local',
       baseCurrency: 'USD',
@@ -110,10 +136,10 @@ try {
       medalValues: result,
     }
     const badge = medalOutcome(i, report, 'en', defaults)
-    assert.equal(badge.earned, n !== 0)
+    assert.equal(badge.earned, Boolean(n))
     assert.equal(
       badge.tier,
-      n === 0
+      !n
         ? null
         : i === 0
           ? n >= 270
@@ -129,13 +155,13 @@ try {
                 : 0
             : null,
     )
-    if (i === 1 || i >= 14) assert.equal(badge.detail, '')
+    if (i === 1 || i >= 18 || hot) assert.equal(badge.detail, '')
     if (i === 1 && n < 0)
       assert.match(
         medalOutcome(i, report, 'en', { ...defaults, amount: true }).detail,
         /\$/,
       )
-    if (i >= 14 && n)
+    if (hot && n)
       assert(
         medalOutcome(i, report, 'en', { ...defaults, hideTickers: false })
           .detail,
@@ -157,7 +183,7 @@ try {
     } else idx?.visit(row)
   }
   check()
-  assert.equal(counts.size, 18)
+  assert.equal(counts.size, medals.length)
   assert([...counts.values()].every((n) => n >= 3))
   assert.equal(medalIndex().finish('2026-10-01', 'USD')[7], null)
   // Feed a fictional order block through both production parser entry points and
@@ -218,6 +244,10 @@ try {
   }
   assert.equal(imported.report.source,'synthetic')
   assert(isWorkerParseResultWithinLimits(imported,options.currentDate.getTime()))
+  assert.equal(imported.report.medalValues[19],1)
+  const wrongMask = [...imported.report.medalValues]
+  wrongMask[20] = 256
+  assert(!isWorkerParseResultWithinLimits({ ...imported, report: { ...imported.report, medalValues: wrongMask } }, options.currentDate.getTime()))
   assert(imported.report.reconciliations.every(r=>r.status==='PASS_EXACT'))
   const lossSymbol = imported.report.symbols.find(s => s.symbol === 'FICTLOSS')
   assert(lossSymbol.totalYtdMtm < 0 && lossSymbol.totalRealizedYtd < 0)
@@ -226,12 +256,15 @@ try {
   assert(lit>=12)
   assert(imported.report.events.length>=2)
   const {demoReport}=await vite.ssrLoadModule('/src/data/demo.ts')
-  assert.equal(demoReport.medalValues.filter(Boolean).length,7)
+  assert.equal(demoReport.medalValues.filter(Boolean).length,8)
+  assert.deepEqual(demoReport.medalValues.slice(18), [0, 0, 128, 0])
+  assert.deepEqual(cardMedals(demoReport, 'en', { ...defaults, worn: [20] }), [{ id: 20, label: 'Mag7 Stamp' }])
+  assert.deepEqual(cardMedals(demoReport, 'en', { ...defaults, worn: [20], hideTickers: false }), [{ id: 20, label: 'Mag7 Stamp · NVDA' }])
   assert.equal(medalOutcome(6,demoReport,'en',defaults).tier,2)
   assert.equal(medalOutcome(0,demoReport,'en',defaults).tier,1)
   assert(demoReport.medalValues[4]&&demoReport.medalValues[16])
   assert.match(ramen(demoReport,'en',defaults),/12 bowls/)
-  console.log('Fictional Activity Statement: '+lit+'/18 medals. Built-in demo: 7/18.')
+  console.log(`Fictional Activity Statement: ${lit}/${medals.length} medals. Built-in demo: 8/${medals.length}.`)
   for (const n of [0, 1, 2]) {
     const report = {...demoReport, medalValues: [...demoReport.medalValues]}
     report.medalValues[7] = n * 12
@@ -245,11 +278,11 @@ try {
   const {MedalWall}=await vite.ssrLoadModule('/src/components/MedalWall.tsx')
   for(const [locale,tiers,earned] of [['en',['Bronze','Silver','Gold'],'Earned'],['zh-CN',['铜','银','金'],'已获得'],['zh-TW',['銅','銀','金'],'已獲得']]){
     for(let tier=0;tier<3;tier++){
-      const values=Array(18).fill(1)
+      const values=Array(medals.length).fill(1)
       values[0]=[120,180,270][tier]; values[6]=[1,5,10][tier]
       const html=renderToStaticMarkup(createElement(MedalWall,{report:{...demoReport,medalValues:values},locale}))
       const cards=[...html.matchAll(/<details\b[^>]*>([\s\S]*?)<\/details>/g)]
-      assert.equal(cards.length,18)
+      assert.equal(cards.length,medals.length)
       for(const [i,card] of cards.entries()){
         const ranked=i===0||i===6
         assert(card[1].split('</summary>')[0].includes('<small>'+(ranked?tiers[tier]:earned)+'</small>'))
@@ -257,7 +290,6 @@ try {
       }
     }
   }
-  const {medals,local} = await vite.ssrLoadModule('/src/data/medals.ts')
   assert.equal(local(medals[4][0],'zh-CN'),'末日轮骑士')
   assert.equal(defaults.roast,true)
   assert.equal(defaults.amount,false)
@@ -283,19 +315,19 @@ try {
       const html = renderToStaticMarkup(createElement(Settings.Provider, {value:{prefs:{...defaults,roast}}},
         createElement(MedalWall,{report:imported.report,locale})))
       const cards = [...html.matchAll(/<details\b[^>]*>([\s\S]*?)<\/details>/g)]
-      assert.equal(cards.length, 18)
+      assert.equal(cards.length, medals.length)
       const hotRules = new Set(), hotQuips = new Set()
       for (const [index,card] of cards.entries()) {
         const paragraphs = [...card[1].matchAll(/<p(?: [^>]*)?>(.*?)<\/p>/g)].map(m=>m[1])
         const clauses = paragraphs.flatMap(p=>p.split(/[，。！？,.!?]+/u)).map(s=>s.trim().toLowerCase()).filter(Boolean)
         clauses.forEach((s,i)=>assert.notEqual(s,clauses[i-1],locale+' duplicate in medal '+index))
-        if (index >= 14) {
+        if (hotStockMedalIds.includes(index)) {
           hotRules.add(paragraphs[0])
           hotQuips.add(paragraphs.at(-1))
         }
       }
-      assert.equal(hotRules.size, 4)
-      assert.equal(hotQuips.size, 4)
+      assert.equal(hotRules.size, hotStockMedalIds.length)
+      assert.equal(hotQuips.size, hotStockMedalIds.length)
     }
   }
   const {englishNoun,sourceRowCount}=await vite.ssrLoadModule('/src/lib/countLabel.ts')
@@ -307,7 +339,7 @@ try {
     assert.equal(medalOutcome(6,report,'en',defaults).detail,n===1?'1 payer':'2 payers')
     assert.equal(sourceRowCount('en',n),n===1?'1 source row':'2 source rows')
   }
-  console.log(count + ' fictional medal cases passed across all 18 rules.')
+  console.log(`${count} fictional medal cases passed across all ${medals.length} rules.`)
 } finally {
   await vite.close()
 }

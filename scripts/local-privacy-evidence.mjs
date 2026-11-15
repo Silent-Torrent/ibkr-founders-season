@@ -33,7 +33,7 @@ function validLocalEntry(key, value) {
   try { parsed = JSON.parse(value) } catch { return false }
   if (key === preferencesKey) return isRecord(parsed) && Object.entries(parsed).every(validPreference)
   return Array.isArray(parsed) && parsed.length <= 3 && new Set(parsed).size === parsed.length &&
-    parsed.every(id => Number.isInteger(id) && id >= 0 && id < 18)
+    parsed.every(id => Number.isInteger(id) && id >= 0 && id < 22)
 }
 
 export async function observeLocalStorage(evaluate, stage) {
