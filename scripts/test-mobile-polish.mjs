@@ -48,15 +48,15 @@ export async function testMobilePolish({cdp,evaluate,accessibleNodeForSelector,o
       })()`)
       gaps.push(gap)
       if(locale==='en'){
-        assert.equal(await evaluate("document.querySelector('.trophy-hero').innerText.split('14/18').length-1"),1)
+        assert.equal(await evaluate("document.querySelector('.trophy-hero').innerText.split('15/22').length-1"),1)
         const ax=await accessibleNodeForSelector('.trophy-hero','trophy count')
         const count=await evaluate("document.querySelector('.trophy-hero .sr-only').textContent")
-        assert.equal(count,'14 of 18 medals earned')
+        assert.equal(count,'15 of 22 medals earned')
         assert(ax.text.includes(count))
         const {nodes}=await cdp.send('Accessibility.getFullAXTree')
         const spoken=nodes.filter(n=>!n.ignored && n.role.value==='StaticText')
         assert.equal(spoken.filter(n=>n.name.value===count).length,1)
-        assert(!spoken.some(n=>n.name.value.includes('14/18')))
+        assert(!spoken.some(n=>n.name.value.includes('15/22')))
       }
       const poster = await evaluate(`(async()=>{
         const medal=document.querySelector('.medal.earned')

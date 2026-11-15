@@ -1,4 +1,5 @@
 import { validMedalValues } from './medalRules'
+import { medals } from '../data/medals'
 import type {
   OptionEvent,
   ParseResult,
@@ -677,7 +678,7 @@ function validateReport(
         !(f.worst===null || (isFiniteNumber(f.worst)&&f.worst<0))) return false
   }
   if (value.persona !== undefined && !(typeof value.persona === 'number' && Number.isInteger(value.persona) && value.persona >= 0 && value.persona < 6)) return false
-  if (value.medalValues !== undefined && (!isDenseArray(value.medalValues,18,budget) || !validMedalValues(value.medalValues))) return false
+  if (value.medalValues !== undefined && (!isDenseArray(value.medalValues,medals.length,budget) || !validMedalValues(value.medalValues))) return false
 
   if (
     (value.source !== 'local' && value.source !== 'synthetic') ||

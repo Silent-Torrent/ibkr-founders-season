@@ -1,6 +1,6 @@
 import { displayedMedals } from './medalCollection'
 import { englishNoun } from './countLabel'
-import { hotTickers } from './medalRules'
+import { hotStockGroup } from '../data/hotStocks'
 import { formatCurrency } from './format'
 import type { Locale, PortfolioReport } from '../types'
 import { medals, lines, local, tr, insufficient } from '../data/medals'
@@ -129,9 +129,9 @@ export function medalOutcome(
         detail = report.source === 'local' ? prefs.firstMonth ?? '' : ''
         break
       default:
-        if (index >= 14 && !prefs.hideTickers)
+        if (!prefs.hideTickers)
           detail =
-            hotTickers[report.seasonYear]?.[index - 14]
+            hotStockGroup(report.seasonYear, index)
               ?.filter((_, j) => value & (1 << j))
               .join(', ') ?? ''
     }
@@ -157,7 +157,7 @@ export function cardMedals(
           label:
             local(m[0], locale) +
             (badge.tier == null ? '' : ' · ' + tierName(badge.tier, locale)) +
-            (i >= 14 && badge.detail ? ' · ' + badge.detail : ''),
+            (hotStockGroup(report.seasonYear, i) && badge.detail ? ' · ' + badge.detail : ''),
         },
       ]
     })

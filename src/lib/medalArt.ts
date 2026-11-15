@@ -8,7 +8,7 @@ export function sealLines(id: number) {
     const a = (j * 2 * Math.PI) / sides - Math.PI / 2
     return [32 + Math.cos(a) * 15, 28 + Math.sin(a) * 15].join(' ')
   })
-  const emblem = ['M22 29h20', 'M24 32l8-10 8 10', 'M23 24l9 10 9-10'][
+  const emblem = ['M22 29h20', 'M24 32l8-10 8 10', 'M23 24l9 10 9-10', 'M22 28h20M32 18v20'][
     Math.floor(id / 6)
   ]
   return 'M' + points.join(' L') + 'Z ' + emblem

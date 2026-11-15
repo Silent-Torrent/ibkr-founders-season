@@ -1108,3 +1108,85 @@ Dividends,Total,99999
 Fees,Header,Amount
 Fees,Data,0
 Fees,Total,99999
+Scenario,Data,19,Share and option on the same statement date,1,2026-08-27
+Trades,Header,DataDiscriminator,Asset Category,Symbol,Date/Time,Code
+Trades,Data,Order,Stocks,FICTDAY,2026-07-07 09:30:00,O
+Trades,Data,Order,Equity and Index Options,FICTDAY 18DEC26 20 C,"2026-07-07, 15:30:00",IA; C
+Scenario,Data,19,Open and close across calendar dates,0,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time,Code
+Trades,Data,Order,FICTDAY,2026-07-07 23:55:00,O
+Trades,Data,Order,FICTDAY,2026-07-08 00:05:00,C
+Scenario,Data,19,Other ticker and substring flags cannot close the open,0,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time,Code
+Trades,Data,Order,FICTDAY,2026-07-07 09:30:00,O
+Trades,Data,Order,FICTDAY,2026-07-07 12:00:00,CO
+Trades,Data,Order,FICTELSE,2026-07-07 15:30:00,C
+Scenario,Data,19,Missing Symbol,null,2026-08-27
+Trades,Header,DataDiscriminator,Date/Time,Code
+Trades,Data,Order,2026-07-07 09:30:00,O
+Scenario,Data,19,Missing Code,null,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,FICTDAY,2026-07-07 09:30:00
+Scenario,Data,19,Missing Date/Time,null,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Code
+Trades,Data,Order,FICTDAY,O
+Scenario,Data,20,Five of ten grouped orders independent of amount,1,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time,Quantity
+Trades,Data,Order,FICTFAITH,2026-07-07 09:30:00,1
+Trades,Data,Order,FICTFAITH,2026-07-07 09:31:00,1
+Trades,Data,Order,FICTFAITH 18DEC26 20 C,2026-07-07 09:32:00,1
+Trades,Data,Order,FICTFAITH 18DEC26 22 P,2026-07-07 09:33:00,1
+Trades,Data,Order,FICTFAITH,2026-07-07 09:34:00,1
+Trades,Data,Order,FICTA,2026-07-07 09:35:00,100
+Trades,Data,Order,FICTB,2026-07-07 09:36:00,100
+Trades,Data,Order,FICTC,2026-07-07 09:37:00,100
+Trades,Data,Order,FICTD,2026-07-07 09:38:00,100
+Trades,Data,Order,FICTE,2026-07-07 09:39:00,100
+Trades,Data,Execution,FICTE,2026-07-07 09:39:00,100
+Trades,Data,Order,FICTA,2025-12-31 09:40:00,1
+Trades,Data,Order,FICTA,2026-08-28 09:41:00,1
+Scenario,Data,20,Four of ten falls short,0,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,FICTFAITH,2026-07-07 09:30:00
+Trades,Data,Order,FICTFAITH,2026-07-07 09:31:00
+Trades,Data,Order,FICTFAITH,2026-07-07 09:32:00
+Trades,Data,Order,FICTFAITH,2026-07-07 09:33:00
+Trades,Data,Order,FICTA,2026-07-07 09:34:00
+Trades,Data,Order,FICTA,2026-07-07 09:35:00
+Trades,Data,Order,FICTB,2026-07-07 09:36:00
+Trades,Data,Order,FICTC,2026-07-07 09:37:00
+Trades,Data,Order,FICTD,2026-07-07 09:38:00
+Trades,Data,Order,FICTE,2026-07-07 09:39:00
+Scenario,Data,20,One hundred percent but only one order,0,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,FICTFAITH,2026-07-07 09:30:00
+Scenario,Data,20,Missing order ticker,null,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,,2026-07-07 09:30:00
+Scenario,Data,20,Missing order date,null,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,FICTFAITH,
+Scenario,Data,21,NVDA option also earns chip stamp,128,2026-08-27
+Trades,Header,DataDiscriminator,Asset Category,Symbol,Date/Time,Code
+Trades,Data,Order,Equity and Index Options,NVDA 18DEC26 20 C,2026-07-07 09:30:00,O
+Scenario,Data,21,Each Alphabet share class has a bit,12,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,GOOGL,2026-07-07 09:30:00
+Trades,Data,Order,GOOG,2026-07-07 09:31:00
+Scenario,Data,21,Outside the group,0,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,FICTELSE,2026-07-07 09:30:00
+Scenario,Data,21,Missing trade symbol,null,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,,2026-07-07 09:30:00
+Scenario,Data,22,Distinct stock and option tickers,131,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,BABA,2026-07-07 09:30:00
+Trades,Data,Order,PDD,2026-07-07 09:31:00
+Trades,Data,Order,BILI 18DEC26 8 C,2026-07-07 09:32:00
+Scenario,Data,22,Outside the group,0,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,FICTELSE,2026-07-07 09:30:00
+Scenario,Data,22,Missing trade symbol,null,2026-08-27
+Trades,Header,DataDiscriminator,Symbol,Date/Time
+Trades,Data,Order,,2026-07-07 09:30:00
