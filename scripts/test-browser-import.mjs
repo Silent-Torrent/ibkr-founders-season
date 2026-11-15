@@ -3194,18 +3194,24 @@ async function runBrowserChecks() {
       await cdp.send('Emulation.setDeviceMetricsOverride', {
         width, height, deviceScaleFactor: 1, mobile: width === 390,
       })
-      await evaluate(`(async () => {
+      const framing = await evaluate(`(async () => {
         await document.fonts.ready;
         const checks = [...document.querySelectorAll('.reconciliation-item')];
         checks.forEach((check, index) => { check.open = index === 2 });
-        const title = document.querySelector('#reconciliation-title');
+        document.activeElement?.blur();
+        const anchor = innerWidth < 600 ? checks[0] : document.querySelector('#reconciliation-title');
         const topbarBottom = document.querySelector('.topbar').getBoundingClientRect().bottom;
         window.scrollTo({
-          top: scrollY + title.getBoundingClientRect().top - Math.max(0, topbarBottom) - 16,
+          top: scrollY + anchor.getBoundingClientRect().top - Math.max(0, topbarBottom) - 16,
           behavior: 'instant',
         });
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const bottomNav = document.querySelector('.bottom-nav').getBoundingClientRect();
+        const visibleBottom = bottomNav.height > 0 ? bottomNav.top : innerHeight;
+        const equation = checks[2].querySelector('.reconciliation-equation').getBoundingClientRect();
+        return { equationBottom: equation.bottom, visibleBottom };
       })()`)
+      assert(framing.equationBottom <= framing.visibleBottom, `NAV evidence is clipped at ${width}px.`)
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
       writeFileSync(join(layoutQaDirectory, `nav-rounding-${width}.png`), Buffer.from(data, 'base64'))
     }
