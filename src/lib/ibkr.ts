@@ -2884,10 +2884,18 @@ function findStatementPeriod(
 function inferEventType(value: string | undefined, section?: string): OptionEvent['type'] | 'conflict' | undefined {
   if (!value) return undefined
 
-  // An Order may carry the close flag alongside a single lifecycle code.
-  if (section && normalizeKey(section) === TRADES_SECTION_KEY) {
-    if (value === 'C;Ep') return 'expiration'
-    if (value === 'C;A') return 'assignment'
+  // Trades can pair C (close) with A or Ep. Normalize only these pairs,
+  // regardless of order, ASCII space padding, or repeated copies of a flag.
+  if (
+    value.includes(';') &&
+    section && normalizeKey(section) === TRADES_SECTION_KEY &&
+    !/[^\x20-\x7E]/.test(value)
+  ) {
+    const codes = new Set(value.split(';').map((code) => code.trim().toLowerCase()))
+    if (codes.size === 2 && codes.has('c')) {
+      if (codes.has('a')) return 'assignment'
+      if (codes.has('ep')) return 'expiration'
+    }
   }
 
   // Match complete event words and code tokens. Substring matching would
