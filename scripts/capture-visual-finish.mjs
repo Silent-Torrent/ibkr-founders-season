@@ -82,6 +82,7 @@ try {
       await waitFor('[data-action="welcome-primary"]')
       await evaluate("(()=>{const s=document.querySelector('.language-select');s.value='zh-CN';s.dispatchEvent(new Event('change',{bubbles:true}))})()")
       await settle()
+      if(phase==='after') await capture(name+'-scope-welcome','#welcome-exercise-scope')
       await evaluate("document.querySelector('[data-action=welcome-primary]').click()")
       await waitFor('.share-card-preview')
       await evaluate("document.querySelector('.side-nav [data-page=trophies]').click()")
@@ -365,6 +366,29 @@ try {
           assert(!details.overflow && details.gap>=16 && details.inputWidth<=details.labelWidth+1,'Battle layout overflows '+locale)
           assert.equal(details.gain,locale==='zh-CN'?'rgb(255, 133, 141)':'rgb(104, 227, 173)')
         }
+        await evaluate("(()=>{const s=document.querySelector('.language-select');s.value='zh-CN';s.dispatchEvent(new Event('change',{bubbles:true}))})()")
+        await settle()
+        await evaluate("document.querySelector('.side-nav [data-page=import]').click()")
+        await capture(name+'-scope-import','#import-exercise-scope')
+
+        // Use the repository-owned synthetic statement with no events for XTS.USD
+        // and insufficient data for the fee medal.
+        const {root} = await send('DOM.getDocument')
+        const {nodeId} = await send('DOM.querySelector',{nodeId:root.nodeId,selector:'input[type=file]'})
+        await send('DOM.setFileInputFiles',{
+          nodeId,files:[resolve('tests/fixtures/ibkr-current-schema-synthetic.csv')],
+        })
+        await waitFor('.private-ledger > summary')
+        await evaluate("document.querySelector('.private-ledger > summary').click()")
+        await evaluate(`[...document.querySelectorAll('.data-table tbody tr')]
+          .find(row=>row.querySelector('strong')?.textContent==='XTS.USD').querySelector('.row-arrow').click()`)
+        await capture(name+'-scope-events','.symbol-drawer .drawer-section')
+        await evaluate("document.querySelector('.symbol-drawer .close-button').click()")
+        await settle()
+        await evaluate("document.querySelector('.side-nav [data-page=trophies]').click()")
+        await waitFor('.fee-medal-scope')
+        await evaluate("document.querySelector('.fee-medal-scope').closest('details').querySelector('summary').click()")
+        await capture(name+'-scope-fees','.fee-medal-scope')
       }
     }
   }

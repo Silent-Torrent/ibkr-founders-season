@@ -2870,7 +2870,7 @@ async function runBrowserChecks() {
     (value) => value?.title === 'CAP499',
     'Capacity option lifecycle drawer',
   )
-  assert.deepEqual(capacityDrawer.counts, ['1', '0', '1'])
+  assert.deepEqual(capacityDrawer.counts, ['1', '—', '1'])
   assert.equal(capacityDrawer.events, 2)
 
   const drawerClosed = await evaluate(`(() => {
@@ -3227,7 +3227,11 @@ async function runBrowserChecks() {
   await waitForPageValue("document.querySelector('.trust-badge')?.textContent?.trim()",v=>v==='Fully synthetic test','UI import of complete fictional medal statement')
   await cdp.send('Emulation.setDeviceMetricsOverride',{width:393,height:852,deviceScaleFactor:1,mobile:true})
   await openLedgerAmounts()
-  for(const locale of ['zh-CN','zh-TW','en']){
+  for(const [locale, exercise, unverified, noEvents] of [
+    ['zh-CN', '未检测到本账户行权', '未检测到行权不代表已确认无行权。', '在支持的 CSV 记录中未检测到期权事件。'],
+    ['zh-TW', '未偵測到本帳戶行權', '未偵測到行權不代表已確認無行權。', '在支援的 CSV 紀錄中未偵測到期權事件。'],
+    ['en', 'No exercise detected', 'An empty exercise result does not confirm that no exercise occurred.', 'No option events detected in supported CSV rows.'],
+  ]){
     await evaluate(`(() => {
       const el=document.querySelector('select.language-select')
       el.value=${JSON.stringify(locale)};el.dispatchEvent(new Event('change',{bubbles:true}))
@@ -3260,6 +3264,27 @@ async function runBrowserChecks() {
       assert(loss?.width > 0 && loss.text.includes('41') && loss.color === 'rgb(255, 126, 136)',
         'Traditional Chinese fictional loss row: '+JSON.stringify(loss))
     }
+    await evaluate(`[...document.querySelectorAll('.data-table tbody tr')]
+      .find(row => row.querySelector('strong')?.textContent === 'FICTLOSS').querySelector('.row-arrow').click()`)
+    const emptyEvents = await waitForPageValue(`(() => {
+      const section = document.querySelector('.symbol-drawer .drawer-section');
+      if (!section) return null;
+      return {
+        counts: [...section.querySelectorAll('.event-summary strong')].map(value => value.textContent),
+        exercise: section.querySelector('.event-summary div:nth-child(2) span').textContent,
+        notes: [...section.querySelectorAll('p')].map(note => note.textContent),
+        rows: section.querySelectorAll('.event-list article').length,
+        width: section.scrollWidth,
+        available: section.clientWidth,
+      };
+    })()`, Boolean, locale + ' no-event drawer')
+    assert.deepEqual(emptyEvents.counts, ['0', '—', '0'], locale)
+    assert.equal(emptyEvents.exercise, exercise, locale)
+    assert(emptyEvents.notes.includes(unverified) && emptyEvents.notes.includes(noEvents), locale)
+    assert.equal(emptyEvents.rows, 0, locale)
+    assert(emptyEvents.width <= emptyEvents.available + 1, locale + ' event scope overflows')
+    await evaluate("document.querySelector('.symbol-drawer .close-button').click()")
+    await waitForPageValue("!document.querySelector('.symbol-drawer')", Boolean, 'Close the no-event drawer')
   }
   await clickPrimaryNavigation('Trophies')
   await testMobilePolish({cdp,evaluate,accessibleNodeForSelector,outputDirectory:process.env.CARD_LAYOUT_QA_DIR})

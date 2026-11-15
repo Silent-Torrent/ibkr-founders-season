@@ -149,6 +149,7 @@ export function ImportPage({
         <span className="eyebrow">{t(locale, 'localFirstImportEyebrow')}</span>
         <h1>{t(locale, 'importTitle')}</h1>
         <p className="lead-copy">{t(locale, 'importSubtitle')}</p>
+        <p className="lead-copy" id="import-exercise-scope">{t(locale, 'exerciseScope')}</p>
 
         <div
           aria-busy={busy}
@@ -184,6 +185,7 @@ export function ImportPage({
             </button>
           ) : (
             <button
+              aria-describedby="import-exercise-scope"
               className="primary-button"
               data-action="choose-file"
               onClick={chooseFile}

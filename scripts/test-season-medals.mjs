@@ -276,6 +276,33 @@ try {
   const {createElement}=await import('react')
   const {renderToStaticMarkup}=await import('react-dom/server')
   const {MedalWall}=await vite.ssrLoadModule('/src/components/MedalWall.tsx')
+  const feeBoundaryReports = [
+    full.toString('utf8').replace('Fees,Data,Other Fees,USD,', 'Fees,Data,Other Fees,EUR,'),
+    full.toString('utf8').replace(/^(Fees,Data,Other Fees,[^\n]+,)-2\.220002$/m, '$1'),
+  ].map(csv => {
+    const result = parseIbkrActivityStatement(csv, options)
+    assert.deepEqual(result.errors, [])
+    assert.equal(result.report.medalValues[7], null)
+    return result.report
+  })
+  const feeBoundaries = {
+    en: /No fee total is estimated.*non-base currency.*fields are incomplete/,
+    'zh-CN': /非账户本币.*费用字段不完整.*不估算/,
+    'zh-TW': /非帳戶本幣.*費用欄位不完整.*不估算/,
+  }
+  const zeroFees = { ...imported.report, medalValues: [...imported.report.medalValues] }
+  zeroFees.medalValues[7] = 0
+  for (const [locale, copy] of Object.entries(feeBoundaries)) {
+    for (const report of feeBoundaryReports) {
+      const html = renderToStaticMarkup(createElement(MedalWall, { report, locale }))
+      const unavailable = html.match(/<p class="fee-medal-scope">([^<]+)<\/p>/)
+      assert(unavailable, locale)
+      assert.match(unavailable[1], copy)
+    }
+    for (const report of [imported.report, zeroFees]) {
+      assert.doesNotMatch(renderToStaticMarkup(createElement(MedalWall, { report, locale })), /fee-medal-scope/)
+    }
+  }
   for(const [locale,tiers,earned] of [['en',['Bronze','Silver','Gold'],'Earned'],['zh-CN',['铜','银','金'],'已获得'],['zh-TW',['銅','銀','金'],'已獲得']]){
     for(let tier=0;tier<3;tier++){
       const values=Array(medals.length).fill(1)

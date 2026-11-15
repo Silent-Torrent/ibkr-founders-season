@@ -113,6 +113,10 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
 
   if (!symbol) return null
   const events = report.events.filter((event) => event.symbol === symbol.symbol)
+  const exerciseDetected = symbol.exerciseCount > 0
+  const exerciseLabel = exerciseDetected
+    ? (locale === 'en' ? englishNoun(symbol.exerciseCount, 'Exercise') : t(locale, 'exercises'))
+    : t(locale, 'exerciseNotDetected')
   const isDemo = report.source === 'demo'
   const realizedAvailable = hasRealizedExplanation(report, symbol)
   const currentUnrealizedAvailable = hasCurrentUnrealizedExplanation(report)
@@ -252,16 +256,17 @@ export function SymbolDrawer({ symbol, report, locale, onClose }: SymbolDrawerPr
           />
         </div>
 
-        <div className="event-summary">
-          <div><strong>{symbol.assignmentCount}</strong><span>{locale==='en'?englishNoun(symbol.assignmentCount,'Assignment'):t(locale, 'assignments')}</span></div>
-          <div><strong>{symbol.exerciseCount}</strong><span>{locale==='en'?englishNoun(symbol.exerciseCount,'Exercise'):t(locale, 'exercises')}</span></div>
-          <div><strong>{symbol.expirationCount}</strong><span>{locale==='en'?englishNoun(symbol.expirationCount,'Expiration'):t(locale, 'expirations')}</span></div>
-        </div>
-
-        <section className="drawer-section">
-          <h3>{t(locale, 'eventHistory')}</h3>
+        <section aria-describedby="symbol-exercise-scope" aria-labelledby="symbol-event-history" className="drawer-section">
+          <h3 id="symbol-event-history">{t(locale, 'eventHistory')}</h3>
+          <p className="lead-copy" id="symbol-exercise-scope">{t(locale, 'exerciseScope')}</p>
+          <div className="event-summary">
+            <div><strong>{symbol.assignmentCount}</strong><span>{locale==='en'?englishNoun(symbol.assignmentCount,'Assignment'):t(locale, 'assignments')}</span></div>
+            <div><strong>{exerciseDetected ? symbol.exerciseCount : '—'}</strong><span>{exerciseLabel}</span></div>
+            <div><strong>{symbol.expirationCount}</strong><span>{locale==='en'?englishNoun(symbol.expirationCount,'Expiration'):t(locale, 'expirations')}</span></div>
+          </div>
+          {!exerciseDetected && <p className="lead-copy">{t(locale, 'exerciseAbsenceUnverified')}</p>}
           {events.length === 0 ? (
-            <p className="muted-copy">{t(locale, 'noEvents')}</p>
+            <p className="lead-copy">{t(locale, 'noEvents')}</p>
           ) : (
             <div className="event-list">
               {events.map((event, index) => (

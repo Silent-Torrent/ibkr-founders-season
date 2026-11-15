@@ -45,6 +45,7 @@ try {
     { TrophiesPage },
     { ShareCardPreview },
     { PrivacyNoticeModal },
+    { formatParserDiagnostic },
     { demoReport },
   ] = await Promise.all([
     vite.ssrLoadModule('/src/i18n.ts'),
@@ -55,6 +56,7 @@ try {
     vite.ssrLoadModule('/src/pages/TrophiesPage.tsx'),
     vite.ssrLoadModule('/src/components/ShareCardPreview.tsx'),
     vite.ssrLoadModule('/src/components/PrivacyNoticeModal.tsx'),
+    vite.ssrLoadModule('/src/lib/parserDiagnostics.ts'),
     vite.ssrLoadModule('/src/data/demo.ts'),
   ])
 
@@ -160,11 +162,29 @@ try {
     'zh-CN': ['先看演示', '导出设置要求', '数据从哪里来', '隐私与数据说明'],
     'zh-TW': ['先看示範', '匯出設定要求', '資料從哪裡來', '隱私與資料說明'],
   }
+  const exerciseScopeTerms = {
+    en: /completed exercises has not been independently validated.*IBKR’s official exercise section are not yet supported/,
+    'zh-CN': /已完成行权.*尚未独立验证.*IBKR 官方行权专区.*暂不支持/,
+    'zh-TW': /已完成行權.*尚未獨立驗證.*IBKR 官方行權專區.*暫不支援/,
+  }
   for (const locale of ['en', 'zh-CN', 'zh-TW']) {
     const markup = Object.values(renderers).map((render) => render(locale)).join('\n')
     for (const canary of localeCanaries[locale]) {
       assert.ok(markup.includes(canary), `${locale} rendered UI is missing: ${canary}`)
     }
+    const scope = t(locale, 'exerciseScope')
+    assert.match(scope, exerciseScopeTerms[locale])
+    for (const [surface, action, render] of [
+      ['welcome', 'welcome-import', renderers.gettingStarted],
+      ['import', 'choose-file', renderers.importPage],
+    ]) {
+      const page = render(locale)
+      const id = surface + '-exercise-scope'
+      assert(page.includes(`id="${id}">${scope}</p>`), `${locale} ${surface} omits the exercise scope`)
+      assert.match(page, new RegExp(`<button[^>]*aria-describedby="${id}"[^>]*data-action="${action}"`))
+      assert(page.indexOf(`id="${id}"`) < page.indexOf(`data-action="${action}"`))
+    }
+    assert.equal(formatParserDiagnostic({ code: 'no_option_events' }, locale), t(locale, 'noEvents'))
     const demoLedger = renderers.ledger(locale)
     assert.ok(
       demoLedger.includes(t(locale, 'reconciliationDemoMatch')),

@@ -111,7 +111,9 @@ export function GettingStartedScreen({
             <span className="step-label">02</span>
             <h2>{t(locale, 'welcomeImportTitle')}</h2>
             <p>{t(locale, 'welcomeImportBody')}</p>
+            <p id="welcome-exercise-scope">{t(locale, 'exerciseScope')}</p>
             <button
+              aria-describedby="welcome-exercise-scope"
               className="secondary-button"
               data-action="welcome-import"
               onClick={onImport}
