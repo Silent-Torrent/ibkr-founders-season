@@ -33,6 +33,16 @@ try {
     assert.deepEqual(poster.sides[1].medals.map(medal => medal.id), [6, 2])
     assert.doesNotMatch(JSON.stringify(poster), /987654|PRIVATE-FICTIONAL|PL1~/)
     assert.notEqual(battlePoster({ ...mine, percent: undefined }, decodeBattle(code), locale).sides[0].returnLabel, '0%')
+    assert.deepEqual(poster.sides[0].medals, [], 'Showing an empty medal section is distinct from hiding it.')
+    for (const [hideDivision, hideMedals] of [[true, false], [false, true], [true, true]]) {
+      const filtered = battlePoster(mine, decodeBattle(code), locale, { hideDivision, hideMedals })
+      assert.deepEqual(filtered.sides, poster.sides.map((side) => ({
+        ...side,
+        division: hideDivision ? undefined : side.division,
+        medals: hideMedals ? undefined : side.medals,
+      })))
+      assert.equal(filtered.privacy, hideDivision ? undefined : poster.privacy)
+    }
   }
   assert.deepEqual(rankRows([{label:'B',value:-2},{label:'A',value:-2},{label:'C',value:-3}]).map(r=>[r.label,r.rank]),[['A',1],['B',1],['C',3]])
   assert.equal(rankRows([{label:'A',value:-3}])[0].rank,1)

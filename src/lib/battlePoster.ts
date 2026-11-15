@@ -6,19 +6,25 @@ import type { Preferences } from './cardOptions'
 import { ribbon, seal, sealLines } from './medalArt'
 import type { DivisionKey } from './season'
 
+export type BattlePosterVisibility = {
+  hideDivision: boolean
+  hideMedals: boolean
+}
+
 type Side = {
   name: string
   source: string
   returnLabel: string
   sign: 'positive' | 'negative' | ''
-  division: string
-  medals: { id: number; name: string }[]
+  division?: string
+  medals?: { id: number; name: string }[]
 }
 
 export function battlePoster(
   mine: { percent?: number; division?: DivisionKey; medals: number[]; source: string },
   opponent: Battle,
   locale: Locale,
+  { hideDivision, hideMedals }: BattlePosterVisibility = { hideDivision: false, hideMedals: false },
 ) {
   const number = new Intl.NumberFormat(locale, {
     style: 'percent', maximumFractionDigits: 2, signDisplay: 'exceptZero',
@@ -28,19 +34,19 @@ export function battlePoster(
       name, source,
       returnLabel: percent == null ? t(locale, 'valueUnavailable') : number.format(percent / 100),
       sign: percent == null || percent === 0 ? '' : percent > 0 ? 'positive' : 'negative',
-      division: t(locale, division ?? 'divisionUnavailable'),
-      medals: ids.map(id => ({ id, name: local(medals[id][0], locale) })),
+      division: hideDivision ? undefined : t(locale, division ?? 'divisionUnavailable'),
+      medals: hideMedals ? undefined : ids.map(id => ({ id, name: local(medals[id][0], locale) })),
     }
   }
   return {
     title: local('赛季对战|賽季對戰|Season battle', locale),
-    kicker: local('本地对比 · 仅供娱乐|本機對比 · 僅供娛樂|Local comparison · for fun', locale),
+    kicker: local('本地对比 · 仅供娱乐 · 不判胜负|本機對比 · 僅供娛樂 · 不判勝負|Local comparison · for fun · no winner', locale),
     sides: [
       side(local('我|我|You', locale), mine.source, mine.percent, mine.division, mine.medals),
       side(local('对手|對手|Opponent', locale), t(locale, 'selfReportedUnverified'), opponent.percent, opponent.division, opponent.medals),
     ],
     emptyMedals: local('无勋章|無勳章|No medals', locale),
-    privacy: local('资产组别会透露账户规模范围。|資產組別會透露帳戶規模範圍。|Divisions reveal broad account-size ranges.', locale),
+    privacy: hideDivision ? undefined : local('资产组别会透露账户规模范围。|資產組別會透露帳戶規模範圍。|Divisions reveal broad account-size ranges.', locale),
     comparability: local('对战码不含赛季与截止日。|對戰碼不含賽季與截止日。|Codes omit the season and as-of date.', locale),
     disclaimer: advice(locale),
   }
@@ -92,13 +98,15 @@ export function paintBattlePoster(
     text(side.source, x + 30, 506, 24, 396, muted)
     const red = redGains ? '#ff858d' : '#ff7e88'
     const scoreColor = side.sign === '' ? paper : (side.sign === 'positive') === redGains ? red : '#68e3ad'
-    text(side.returnLabel, x + 30, 670, 106, 396, scoreColor, true)
-    text(side.division, x + 30, 741, 33, 396)
+    text(side.returnLabel, x + 30, side.medals ? 670 : 768, 106, 396, scoreColor, true)
+    if (side.division) text(side.division, x + 30, side.medals ? 741 : 850, 33, 396)
+    if (!side.medals) return
+    const firstMedalY = side.division ? 844 : 782
     ctx.fillStyle = '#3a3a3a'
-    ctx.fillRect(x + 30, 780, 396, 2)
-    if (!side.medals.length) text(poster.emptyMedals, x + 30, 846, 30, 396, muted)
+    ctx.fillRect(x + 30, firstMedalY - 64, 396, 2)
+    if (!side.medals.length) text(poster.emptyMedals, x + 30, firstMedalY + 2, 30, 396, muted)
     side.medals.forEach((medal, medalIndex) => {
-      const y = 844 + medalIndex * 62
+      const y = firstMedalY + medalIndex * 62
       ctx.save()
       ctx.translate(x + 30, y - 30)
       ctx.scale(.48, .48)
@@ -113,7 +121,7 @@ export function paintBattlePoster(
     })
   })
   text(poster.comparability, 72, 1151, 31, 936, muted)
-  text(poster.privacy, 72, 1216, 31, 936, muted)
+  if (poster.privacy) text(poster.privacy, 72, 1216, 31, 936, muted)
   text(poster.disclaimer, 72, 1322, 37, 936)
   return true
 }

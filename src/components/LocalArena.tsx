@@ -5,6 +5,7 @@ import {local,medals} from '../data/medals'
 import {getDivision,type DivisionKey} from '../lib/season'
 import {displayedMedals} from '../lib/medalCollection'
 import {decodeBattle,encodeBattle,rankRows} from '../lib/battleCode'
+import type {BattlePosterVisibility} from '../lib/battlePoster'
 import {getShareSourceLabel} from '../lib/shareCard'
 import {paintStory} from '../lib/storyCanvas'
 import {formatPercent,formatCurrency,pnlClass} from '../lib/format'
@@ -18,6 +19,7 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
   const [ascending,setAscending]=useState(false)
   const [group,setGroup]=useState('')
   const [opponent,setOpponent]=useState('')
+  const [battleVisibility,setBattleVisibility]=useState<BattlePosterVisibility>({hideDivision:false,hideMedals:false})
   const [feedback,setFeedback]=useState('')
   const [benchmark,setBenchmark]=useState(p.benchmark==null?'':String(p.benchmark))
   const tr=(s:string)=>local(s,l)
@@ -78,6 +80,8 @@ export function LocalArena({report:r,locale:l,players}:{report:PortfolioReport;l
       opponent={other}
       locale={l}
       colors={p.colors}
+      visibility={battleVisibility}
+      onVisibilityChange={setBattleVisibility}
     />}
     </section>
   </section>

@@ -204,54 +204,108 @@ try {
       }
       await enterOpponent(code)
       const comparison=await evaluate("Boolean(document.querySelector('.battle-comparison'))")
-      await capture(name+'-battle-result',comparison?'.battle-poster':'.battle-code')
+      await capture(name+'-battle-result',comparison?'.battle-comparison':'.battle-code')
       if(phase==='after') {
         assert(comparison,'Valid fictional opponent must open the comparison')
-        for(const locale of ['zh-CN','zh-TW','en']) {
-          await evaluate(`(()=>{const s=document.querySelector('.language-select');s.value=${JSON.stringify(locale)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`)
-          await settle()
-          const details=await evaluate(`(()=>{
-            const sides=[...document.querySelectorAll('.battle-side')]
-            return {scores:sides.map(s=>s.querySelector('.battle-return').textContent.trim()),
-              colors:sides.map(s=>getComputedStyle(s.querySelector('.battle-return')).color),
-              medals:sides[1].querySelectorAll('li').length,
-              overflow:document.documentElement.scrollWidth>innerWidth,
-              wide:sides.every(s=>s.scrollWidth<=s.clientWidth+1),
-              text:document.querySelector('.battle-poster').textContent}
-          })()`)
-          assert.deepEqual(details.scores,['+21.3%','-8.25%'])
-          assert.deepEqual(details.colors,locale==='zh-CN'?['rgb(255, 133, 141)','rgb(104, 227, 173)']:['rgb(104, 227, 173)','rgb(255, 126, 136)'])
-          assert.equal(details.medals,2)
-          assert(details.wide&&!details.overflow,locale+' comparison overflow')
-          assert.doesNotMatch(details.text,/PL1~|US\\$|FICTLOSS/)
-        }
-        await evaluate("(()=>{const s=document.querySelector('.language-select');s.value='zh-CN';s.dispatchEvent(new Event('change',{bubbles:true}))})()")
-        await waitFor('[data-battle-export]:not(:disabled)')
-        const battle=await evaluate(`(async()=>{
+        const readBattle = () => evaluate(`(() => {
+          const sides = [...document.querySelectorAll('.battle-side')];
+          const options = [...document.querySelectorAll('[data-battle-hide]')];
+          const lines = [...document.querySelectorAll(
+            '.battle-poster :is(.eyebrow,h4,h5,small,.battle-return,p,li)'
+          )].map(el => el.textContent.trim());
+          return {
+            lines,
+            scores: sides.map(side => side.querySelector('.battle-return').textContent.trim()),
+            colors: sides.map(side => getComputedStyle(side.querySelector('.battle-return')).color),
+            divisions: sides.map(side => side.querySelector('p')?.textContent ?? null),
+            medals: sides.map(side => [...side.querySelectorAll('li')].map(medal => medal.textContent.trim())),
+            checked: options.map(input => input.checked),
+            labels: options.map(input => input.labels[0].textContent.trim()),
+            hitTargets: options.every(input => {
+              const rect = input.labels[0].getBoundingClientRect();
+              return rect.width >= 44 && rect.height >= 44;
+            }),
+            fits: document.documentElement.scrollWidth <= innerWidth &&
+              sides.every(side => side.scrollWidth <= side.clientWidth + 1),
+          };
+        })()`)
+        const exportBattle = keepPng => evaluate(`(async()=>{
           const originalClick=HTMLAnchorElement.prototype.click
           const originalText=CanvasRenderingContext2D.prototype.fillText
           const lines=[]
           let download
           try {
             HTMLAnchorElement.prototype.click=function(){download={name:this.download,data:this.href}}
-          CanvasRenderingContext2D.prototype.fillText=function(text,...args){lines.push({text,color:this.fillStyle});return originalText.call(this,text,...args)}
+            CanvasRenderingContext2D.prototype.fillText=function(text,...args){lines.push({text,color:this.fillStyle});return originalText.call(this,text,...args)}
             document.querySelector('[data-battle-export]').click()
             if(!download)throw Error('No battle download')
             const img=new Image();img.src=download.data;await img.decode()
-            return {...download,width:img.naturalWidth,height:img.naturalHeight,lines}
+            return {name:download.name,data:${keepPng}?download.data:null,width:img.naturalWidth,height:img.naturalHeight,lines}
           } finally {
             HTMLAnchorElement.prototype.click=originalClick
             CanvasRenderingContext2D.prototype.fillText=originalText
           }
         })()`)
-        assert.deepEqual([battle.name,battle.width,battle.height],['pnl-arena-battle.png',1080,1440])
-        for(const line of ['+21.3%','-8.25%','用户自报 · 非券商验证','非投资建议'])assert(battle.lines.some(x=>x.text===line),line)
-        assert.equal(battle.lines.find(x=>x.text==='+21.3%').color,'#ff858d')
-        assert.equal(battle.lines.find(x=>x.text==='-8.25%').color,'#68e3ad')
-        assert.doesNotMatch(battle.lines.map(x=>x.text).join(' '),/PL1~|US\$|FICTLOSS/)
-        await writeFile(join(destination,name+'-battle-export.png'),Buffer.from(battle.data.split(',')[1],'base64'))
+        const localeCases = [
+          ['zh-CN', ['隐藏资产组别', '隐藏勋章'], '本地对比 · 仅供娱乐 · 不判胜负', '用户自报 · 非券商验证', '非投资建议'],
+          ['zh-TW', ['隱藏資產組別', '隱藏勳章'], '本機對比 · 僅供娛樂 · 不判勝負', '使用者自報 · 非券商驗證', '非投資建議'],
+          ['en', ['Hide asset divisions', 'Hide medals'], 'Local comparison · for fun · no winner', 'Self-reported · not broker-verified', 'Not investment advice'],
+        ]
+        for (const [locale, labels, kicker, source, disclaimer] of localeCases) {
+          await evaluate(`(() => {
+            const select = document.querySelector('.language-select');
+            select.value = ${JSON.stringify(locale)};
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+          })()`)
+          await waitFor('[data-battle-export]:not(:disabled)')
+          assert.deepEqual((await readBattle()).checked, locale === 'zh-CN' ? [false, false] : [true, true])
+          let full
+          for (const checked of [[false, false], [true, false], [false, true], [true, true]]) {
+            const [hideDivision, hideMedals] = checked
+            await evaluate(`(() => {
+              const checked = ${JSON.stringify(checked)};
+              document.querySelectorAll('[data-battle-hide]').forEach((input, index) => {
+                if (input.checked !== checked[index]) input.click();
+              });
+            })()`)
+            await settle()
+            const preview = await readBattle()
+            if (!hideDivision && !hideMedals) {
+              full = preview
+              assert(preview.divisions.every(Boolean), 'Divisions should show by default')
+              assert(preview.medals[0].length > 0 && preview.medals[1].length === 2, 'Medals should show by default')
+            }
+            const variant = name+' '+locale+' '+checked
+            assert.deepEqual(preview.labels, labels, variant)
+            assert.deepEqual(preview.checked, checked, variant)
+            assert.deepEqual(preview.scores, ['+21.3%', '-8.25%'], variant)
+            assert.deepEqual(preview.colors, locale === 'zh-CN' ? ['rgb(255, 133, 141)', 'rgb(104, 227, 173)'] : ['rgb(104, 227, 173)', 'rgb(255, 126, 136)'], variant)
+            assert.deepEqual(preview.divisions, hideDivision ? [null, null] : full.divisions, variant)
+            assert.deepEqual(preview.medals, hideMedals ? [[], []] : full.medals, variant)
+            assert(preview.hitTargets && preview.fits, variant+' comparison layout')
+            for (const line of [kicker, source, disclaimer]) assert(preview.lines.includes(line), variant+' '+line)
+            assert.doesNotMatch(preview.lines.join(' '), /PL1~|US\$|FICTLOSS|SYNTHETIC_ACCOUNT/)
+
+            const bothHidden = hideDivision && hideMedals
+            const keepPng = locale === 'zh-CN' && hideDivision === hideMedals
+            const png = await exportBattle(keepPng)
+            assert.deepEqual([png.name, png.width, png.height], ['pnl-arena-battle.png', 1080, 1440], variant)
+            assert.deepEqual(png.lines.map(({ text }) => text).sort(), ['P&L ARENA', ...preview.lines].sort(), variant+' preview/PNG text')
+            assert.equal(png.lines.find(x => x.text === '+21.3%').color, locale === 'zh-CN' ? '#ff858d' : '#68e3ad', variant)
+            assert.equal(png.lines.find(x => x.text === '-8.25%').color, locale === 'zh-CN' ? '#68e3ad' : '#ff7e88', variant)
+            if (keepPng) {
+              const suffix = bothHidden ? '-battle-private' : '-battle'
+              await writeFile(join(destination, name+suffix+'-export.png'), Buffer.from(png.data.split(',')[1], 'base64'))
+              if (bothHidden) await capture(name+suffix, '.battle-comparison')
+            }
+          }
+        }
+        await evaluate("(()=>{const s=document.querySelector('.language-select');s.value='zh-CN';s.dispatchEvent(new Event('change',{bubbles:true}))})()")
+        await settle()
         await enterOpponent(code+'!')
         assert(await evaluate("!document.querySelector('.battle-comparison') && document.querySelector('.battle-code output[aria-live]').textContent.includes('无效')"))
+        await enterOpponent(code)
+        assert.deepEqual((await readBattle()).checked, [true, true], 'Changing opponent input must retain hiding choices')
         await enterOpponent('')
         assert(await evaluate("!document.querySelector('.battle-comparison')"))
       }
