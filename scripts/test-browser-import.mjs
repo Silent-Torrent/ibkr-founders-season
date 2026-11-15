@@ -811,6 +811,13 @@ async function runBrowserChecks() {
   )
   writeFileSync(invalidExtensionFixturePath, 'This is deliberately not a CSV.\n')
   const canonicalFixtureText = readFileSync(fixturePath, 'utf8')
+  const cashSummaryPrefix = 'Cash Report,Data,Base Currency Summary,USD,'
+  assert(canonicalFixtureText.includes(cashSummaryPrefix), 'The fictional base-currency cash summary is missing.')
+  const cashCurrencyConflictFixturePath = join(browserArtifactDirectory, 'synthetic-cash-currency-conflict.csv')
+  writeFileSync(
+    cashCurrencyConflictFixturePath,
+    canonicalFixtureText.replace(cashSummaryPrefix, 'Cash Report,Data,Base Currency Summary,HKD,'),
+  )
   const microMtmFixturePath = join(browserArtifactDirectory, 'synthetic-mtm-micro-difference.csv')
   const canonicalMtmAllAssetsValues = '640.956111,101.387347,-14.620002,12.400000,740.123456'
   assert.equal(
@@ -1562,6 +1569,7 @@ async function runBrowserChecks() {
   assert.equal(acceptedLedger.source, 'Fully synthetic test')
   assert.equal(acceptedLedger.seasonPnl, seasonPnl)
   for (const [path, errorPart, recoveryPart, label] of [
+    [cashCurrencyConflictFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Cash Report currency mismatch with equal cash totals'],
     [unsupportedMtmRecordFixturePath, 'ambiguous or conflicting source sections', 'Do not edit totals by hand.', 'Unsupported populated MTM record type'],
     [conflictingStockUnderlyingFixturePath, 'Conflicting stock-symbol or option-contract mappings', 'Do not edit totals by hand.', 'Conflicting stock Symbol/Underlying'],
     [expiryYearCollisionFixturePath, 'cannot distinguish them safely', 'Do not merge or edit the event rows by hand.', 'Two-/four-digit expiry-year event collision'],

@@ -2241,6 +2241,28 @@ try {
     cashFallbackResult.report?.cashValue === 17113.340479,
     'The Base Currency Summary cash fallback was not read.',
   )
+  for (const [label, fixture] of [
+    ['NAV and cash totals agree numerically', currentSchemaFixture],
+    ['cash fallback without NAV', withoutNavSection],
+  ]) {
+    const conflictingCashCurrency = parseIbkrActivityStatement(
+      fixture.replace(cashRow, cashRow.replace(',USD,', ',HKD,')),
+    )
+    assert(
+      hasDiagnostic(conflictingCashCurrency, 'accounting_section_conflict') &&
+        !conflictingCashCurrency.report,
+      `A Cash Report base-currency mismatch was accepted (${label}): ${diagnosticsText(conflictingCashCurrency)}`,
+    )
+  }
+  const foreignCashDetail = 'Cash Report,Data,EUR,EUR,1000.000000,1600.000000,1600.000000'
+  const multiCurrencyCashResult = parseIbkrActivityStatement(
+    withoutNavSection.replace(cashRow, `${cashRow}\n${foreignCashDetail}`),
+  )
+  assert(
+    multiCurrencyCashResult.errors.length === 0 &&
+      multiCurrencyCashResult.report?.cashValue === 17113.340479,
+    'A native EUR cash detail was mistaken for the USD base-currency summary.',
+  )
   const verticalCashFixture = withoutNavSection
     .replace(
       cashHeader,
@@ -3627,10 +3649,12 @@ try {
   }
 
   for (const validCurrency of ['USD', 'HKD', 'CNY']) {
-    const validCurrencyFixture = currentSchemaFixture.replace(
-      'Account Information,Data,Base Currency,USD',
-      `Account Information,Data,Base Currency,${validCurrency}`,
-    )
+    const validCurrencyFixture = currentSchemaFixture
+      .replace(
+        'Account Information,Data,Base Currency,USD',
+        `Account Information,Data,Base Currency,${validCurrency}`,
+      )
+      .replace(cashRow, cashRow.replace(',USD,', `,${validCurrency},`))
     assert(
       parseIbkrActivityStatement(validCurrencyFixture).report?.baseCurrency === validCurrency,
       `A valid ${validCurrency} base currency was rejected.`,

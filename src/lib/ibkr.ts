@@ -3433,6 +3433,7 @@ function findNetAssetValues(
 
 function validateCashReport(
   records: SectionRecord[],
+  baseCurrency: string | undefined,
   invalidNumericFields: SourceRef[],
   sectionPresent: boolean,
 ): boolean {
@@ -3492,6 +3493,18 @@ function validateCashReport(
     if (!candidate.recognized) continue
     baseCashCandidates += 1
     if (!candidate.schemaValid) valid = false
+
+    // A labelled base-currency summary can also state its currency code.
+    // Check that claim before comparing amounts or using the balance as fallback.
+    const currency = valueFor(record, ['Currency'])
+    if (
+      baseCurrency &&
+      currency?.trim() &&
+      !isBaseCurrencySummaryLabel(currency) &&
+      normalizeCurrencyCode(currency) !== baseCurrency
+    ) {
+      valid = false
+    }
   }
   // Once a Cash Report is present, a single base-currency ending balance is
   // required. Allowing zero candidates would make a renamed/missing header
@@ -5566,6 +5579,7 @@ function parseIndexedStatement(
   accountingSectionConflict ||=
     !validateCashReport(
       cashSection.records,
+      baseCurrency,
       invalidAccountingFields,
       cashSectionPresent,
     )
