@@ -33,6 +33,10 @@ import {
   MAX_SOURCE_REFS_PER_COLLECTION,
   parseResultFitsReportResourceBudget,
 } from './reportCapacity'
+import {
+  CSV_RECONCILIATION_EPSILON,
+  NAV_COMPONENT_ROUNDING_TOLERANCE,
+} from './reconciliation'
 import { Sha256TextAccumulator, sha256Hex } from './sha256'
 
 interface SectionRecord {
@@ -125,7 +129,6 @@ type InstrumentUnderlyingCandidates = Map<
 
 const MAX_CSV_CHARACTERS = 10_000_000
 const MAX_CSV_ROWS = 100_000
-const CSV_RECONCILIATION_EPSILON = 0.000001
 const MTM_PERFORMANCE_SECTION_ALIASES = [
   'Mark-to-Market Performance Summary',
   'Mark-to-Market Performance Summary in Base',
@@ -4276,7 +4279,7 @@ function navDiagnostic(
     }
   }
   const difference = signedCsvDifference(endingNav, calculatedEndingNav)
-  const componentDifference = normalizedDifference(
+  const componentDifference = signedCsvDifference(
     endingNav,
     calculatedEndingFromChangeComponents,
   )
@@ -4296,13 +4299,17 @@ function navDiagnostic(
       },
     }
   }
-  const status =
-    conflicts ||
-    hasUnsupportedComponent ||
-    !isWithinCsvTolerance(difference) ||
-    componentDifference !== 0
-      ? 'WARNING'
-      : 'PASS_EXACT'
+  const withinTolerance =
+    isWithinCsvTolerance(difference) &&
+    Math.abs(componentDifference) <= NAV_COMPONENT_ROUNDING_TOLERANCE
+  const reasonCode = conflicts
+    ? 'ambiguous_schema'
+    : hasUnsupportedComponent
+      ? 'unsupported_component'
+      : withinTolerance ? 'within_tolerance' : 'difference_exceeds_tolerance'
+  const status = reasonCode !== 'within_tolerance'
+    ? 'WARNING'
+    : isWithinCsvTolerance(componentDifference) ? 'PASS_EXACT' : 'PASS_ROUNDED'
 
   return {
     beginningNav,
@@ -4317,13 +4324,9 @@ function navDiagnostic(
       calculatedValue: calculatedEndingNav,
       difference,
       tolerance: CSV_RECONCILIATION_EPSILON,
-      reasonCode: conflicts
-        ? 'ambiguous_schema'
-        : hasUnsupportedComponent
-          ? 'unsupported_component'
-          : isWithinCsvTolerance(difference) && componentDifference === 0
-          ? 'within_tolerance'
-          : 'difference_exceeds_tolerance',
+      componentCalculatedValue: calculatedEndingFromChangeComponents,
+      componentDifference,
+      reasonCode,
       sourceRefs: allSourceRefs,
     },
   }

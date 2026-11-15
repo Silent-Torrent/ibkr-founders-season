@@ -309,6 +309,7 @@ const en = {
   reconciliationReportedValue: 'Reported value',
   reconciliationCalculatedValue: 'Calculated value',
   reconciliationSignedDifference: 'Signed difference',
+  reconciliationNavComponentDifference: 'Change in NAV component difference',
   reconciliationToleranceNote:
     'The signed difference is reported minus calculated in the account’s base currency. An absolute difference at or below 0.000001 meets the CSV numeric tolerance; source and component checks must also pass. Within tolerance does not mean zero difference.',
   reconciliationMtm: 'All-assets MTM',
@@ -319,7 +320,7 @@ const en = {
   reconciliationStatementPnlHelp:
     'Compares the report’s statement-period total with all-assets YTD mark-to-market P&L plus supported interest and fee components.',
   reconciliationNavBridgeHelp:
-    'Checks whether ending net asset value connects to beginning value through deposits and withdrawals, statement-period P&L, interest-accrual changes, and other FX translations.',
+    'Checks whether ending net asset value connects to beginning value through deposits and withdrawals, statement-period P&L, interest-accrual changes, and other FX translations. The separate Change in NAV component sum allows an absolute difference of up to 0.01 in the base currency.',
   reconciliationPassExact: 'Within CSV tolerance',
   reconciliationDemoMatch: 'Fictional figures match',
   reconciliationPassRounded: 'Matches after rounding',
@@ -631,6 +632,7 @@ const zhCN: typeof en = {
   reconciliationReportedValue: '报表值',
   reconciliationCalculatedValue: '计算值',
   reconciliationSignedDifference: '有符号差额',
+  reconciliationNavComponentDifference: '净资产变动分项差额',
   reconciliationToleranceNote:
     '有符号差额＝报表值减去计算值，以账户基础货币计。差额的绝对值不超过 0.000001 只符合 CSV 数值容差；来源与组成项仍须通过核对。“在容差内”不代表差额为零。',
   reconciliationMtm: '全部资产盯市盈亏',
@@ -638,7 +640,7 @@ const zhCN: typeof en = {
   reconciliationNavBridge: '净资产变动衔接',
   reconciliationMtmHelp: '将报表中“全部资产类别”YTD 盯市盈亏总额，与本应用从正股、期权和其他资产解析的合计数进行比较。这不是“已实现 + 未实现”对账。',
   reconciliationStatementPnlHelp: '将报表期间总盈亏，与全部资产 YTD 盯市盈亏加上已支持的利息和费用项后的结果进行比较。',
-  reconciliationNavBridgeHelp: '检查期初净资产，经过入金与出金、报表期间总盈亏、利息应计变动和其他汇兑换算后，是否能衔接到期末净资产。',
+  reconciliationNavBridgeHelp: '检查期初净资产，经过入金与出金、报表期间总盈亏、利息应计变动和其他汇兑换算后，是否能衔接到期末净资产。另行核对净资产变动分项合计，绝对差额上限为 0.01（基准币种）。',
   reconciliationPassExact: '符合 CSV 容差',
   reconciliationDemoMatch: '虚构数字相符',
   reconciliationPassRounded: '按报表精度通过',
@@ -951,6 +953,7 @@ const zhTW: typeof en = {
   reconciliationReportedValue: '報表值',
   reconciliationCalculatedValue: '計算值',
   reconciliationSignedDifference: '有符號差額',
+  reconciliationNavComponentDifference: '淨資產變動分項差額',
   reconciliationToleranceNote:
     '有符號差額＝報表值減去計算值，以帳戶基礎貨幣計。差額的絕對值不超過 0.000001 只符合 CSV 數值容差；來源與組成項仍須通過核對。「在容差內」不代表差額為零。',
   reconciliationMtm: '全部資產盯市損益',
@@ -958,7 +961,7 @@ const zhTW: typeof en = {
   reconciliationNavBridge: '淨資產變動銜接',
   reconciliationMtmHelp: '將報表中「全部資產類別」YTD 盯市損益總額，與本應用從正股、期權和其他資產解析的合計數進行比較。這不是「已實現 + 未實現」核對。',
   reconciliationStatementPnlHelp: '將報表期間總損益，與全部資產 YTD 盯市損益加上已支援的利息和費用項後的結果進行比較。',
-  reconciliationNavBridgeHelp: '檢查期初淨資產，經過入金與出金、報表期間總損益、利息應計變動和其他匯兌換算後，是否能銜接到期末淨資產。',
+  reconciliationNavBridgeHelp: '檢查期初淨資產，經過入金與出金、報表期間總損益、利息應計變動和其他匯兌換算後，是否能銜接到期末淨資產。另行核對淨資產變動分項合計，絕對差額上限為 0.01（基準幣別）。',
   reconciliationPassExact: '符合 CSV 容差',
   reconciliationDemoMatch: '虛構數字相符',
   reconciliationPassRounded: '按報表精度通過',

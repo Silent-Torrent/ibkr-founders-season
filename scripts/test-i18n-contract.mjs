@@ -87,6 +87,7 @@ try {
       'reconciliationReportedValue',
       'reconciliationCalculatedValue',
       'reconciliationSignedDifference',
+      'reconciliationNavComponentDifference',
     ]) {
       assert.equal(typeof t(locale, key), 'string', `${locale} is missing ${key}.`)
       assert(t(locale, key).trim(), `${locale} has an empty ${key}.`)
@@ -113,9 +114,10 @@ try {
         difference: -0.000001, tolerance: 0.000001, sourceRefs: [fictionalSourceRef],
       },
       {
-        id: 'nav_bridge', status: 'PASS_EXACT', reasonCode: 'within_tolerance',
+        id: 'nav_bridge', status: 'PASS_ROUNDED', reasonCode: 'within_tolerance',
         reportedValue: 8750.243455, calculatedValue: 8750.243455,
         difference: 0, tolerance: 0.000001, sourceRefs: [fictionalSourceRef],
+        componentCalculatedValue: 8750.248455, componentDifference: -0.005,
       },
     ],
   }
@@ -205,6 +207,9 @@ try {
       assert(localChecks[1].includes(value), `${locale} statement P&L ${value} was rounded away.`)
     }
     assert.match(localChecks[1], /-[^<]*0\.000001/, `${locale} statement P&L negative difference is hidden.`)
+    assert(localChecks[2].includes(t(locale, 'reconciliationPassRounded')), `${locale} hides the rounded NAV status.`)
+    assert(localChecks[2].includes(t(locale, 'reconciliationNavComponentDifference')), `${locale} omits the NAV component label.`)
+    assert.match(localChecks[2], /-[^<]*0\.005/, `${locale} hides the NAV component difference.`)
   }
 
   const visibleSourceDirectories = [

@@ -234,7 +234,12 @@ function validReport(overrides = {}) {
     reconciliations: [
       reconciliation('mtm_all_assets'),
       reconciliation('statement_period_pnl'),
-      reconciliation('nav_bridge', { reportedValue: 100, calculatedValue: 100 }),
+      reconciliation('nav_bridge', {
+        reportedValue: 100,
+        calculatedValue: 100,
+        componentCalculatedValue: 100,
+        componentDifference: 0,
+      }),
     ],
     sections: ['Statement'],
     warnings,
@@ -411,6 +416,8 @@ function navWarningReport() {
       reportedValue: 100,
       calculatedValue: 99,
       difference: 1,
+      componentCalculatedValue: 99,
+      componentDifference: 1,
       reasonCode: 'difference_exceeds_tolerance',
     })
     report.warnings = [
@@ -1105,8 +1112,66 @@ try {
       `${id} genuine within-tolerance parser output was rejected by Worker validation.`,
     )
   }
+
+  const commissionRow = 'Change in NAV,Data,Commissions,-14.620002'
+  assert.equal(currentSchemaFixture.split(commissionRow).length, 2)
+  const withNavCommission = (commission) => currentSchemaFixture.replace(
+    commissionRow,
+    `Change in NAV,Data,Commissions,${commission}`,
+  )
+  const navParseOptions = {
+    accountComparisonSalt: 'worker-boundary-salt',
+    currentDate: new Date(referenceTimeMs),
+  }
+  for (const [commission, residual, status] of [
+    ['-14.615002', -0.005, 'PASS_ROUNDED'],
+    ['-14.625002', 0.005, 'PASS_ROUNDED'],
+    ['-14.610002', -0.01, 'PASS_ROUNDED'],
+    ['-14.630002', 0.01, 'PASS_ROUNDED'],
+    ['-14.6100019', -0.0100001, 'WARNING'],
+    ['-14.6300021', 0.0100001, 'WARNING'],
+    ['-14.620001', -0.000001, 'PASS_EXACT'],
+  ]) {
+    const parsed = parseIbkrActivityStatement(withNavCommission(commission), navParseOptions)
+    const review = status === 'WARNING'
+    assert.deepEqual(parsed.errors, [])
+    const [mtm, period, nav] = parsed.report.reconciliations
+    assert.deepEqual([mtm.status, period.status], ['PASS_EXACT', 'PASS_EXACT'])
+    assert.equal(nav.status, status, `NAV component residual ${residual}`)
+    assert.equal(nav.difference, 0)
+    assert.equal(nav.componentDifference, residual)
+    assert.equal(nav.reasonCode, review ? 'difference_exceeds_tolerance' : 'within_tolerance')
+    assert.equal(parsed.report.dataQuality, review ? 'warning' : 'good')
+    assert.equal(parsed.report.warnings.some(({ code }) => code === 'nav_bridge_review'), review)
+    assert.equal(isWorkerParseResultWithinLimits(parsed, referenceTimeMs), true)
+  }
+
+  const halfCentCsv = withNavCommission('-14.615002')
+  const halfCentReport = parseIbkrActivityStatement(halfCentCsv, navParseOptions).report
+  for (const [label, alterNav] of [
+    ['missing component sum', (nav) => { delete nav.componentCalculatedValue }],
+    ['forged zero component difference', (nav) => { nav.componentDifference = 0 }],
+    ['over-limit component difference', (nav) => {
+      nav.componentCalculatedValue = 33750.3784551
+      nav.componentDifference = -0.0100001
+    }],
+    ['rounded classification for an exact component sum', (nav) => {
+      nav.componentCalculatedValue = nav.reportedValue
+      nav.componentDifference = 0
+    }],
+    ['exact classification for a rounded component sum', (nav) => { nav.status = 'PASS_EXACT' }],
+  ]) {
+    const forged = structuredClone(halfCentReport)
+    alterNav(forged.reconciliations[2])
+    assert.equal(isWorkerReportWithinLimits(forged, referenceTimeMs), false, label)
+  }
+  const roundedWithReview = structuredClone(halfCentReport)
+  roundedWithReview.warnings.push({ code: 'nav_bridge_review' })
+  roundedWithReview.dataQuality = 'warning'
+  assert.equal(isWorkerReportWithinLimits(roundedWithReview, referenceTimeMs), false)
+
   const missingRealizedResult = parseIbkrActivityStatement(
-    currentSchemaFixture
+    halfCentCsv
       .split('\n')
       .filter(
         (line) =>
@@ -1119,6 +1184,8 @@ try {
     },
   )
   assert.equal(missingRealizedResult.report?.parserFacts.realizedSectionMissing, true)
+  assert.equal(missingRealizedResult.report?.reconciliations[2].status, 'PASS_ROUNDED')
+  assert.equal(missingRealizedResult.report?.dataQuality, 'warning')
   assert.equal(
     missingRealizedResult.warnings.some(
       (warning) => warning.code === 'realized_section_missing',
@@ -1412,13 +1479,15 @@ try {
     true,
     'A signed CSV difference inside the locked tolerance was rejected.',
   )
-  const falselyRoundedCsvReport = structuredClone(withinCsvToleranceReport)
-  falselyRoundedCsvReport.reconciliations[0].status = 'PASS_ROUNDED'
-  assert.equal(
-    isWorkerReportWithinLimits(falselyRoundedCsvReport, referenceTimeMs),
-    false,
-    'A CSV-only reconciliation was incorrectly treated as a rounded PDF check.',
-  )
+  for (const index of [0, 1]) {
+    const falselyRoundedCsvReport = structuredClone(withinCsvToleranceReport)
+    falselyRoundedCsvReport.reconciliations[index].status = 'PASS_ROUNDED'
+    assert.equal(
+      isWorkerReportWithinLimits(falselyRoundedCsvReport, referenceTimeMs),
+      false,
+      `${falselyRoundedCsvReport.reconciliations[index].id} incorrectly accepted NAV-only rounding.`,
+    )
+  }
   assert.equal(
     isWorkerReportWithinLimits(
       mutateReport((report) => {
