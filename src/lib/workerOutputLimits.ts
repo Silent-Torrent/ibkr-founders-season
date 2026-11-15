@@ -15,6 +15,10 @@ import {
 } from './parserDiagnostics'
 import { sumExactNumbers } from './csv'
 import {
+  CSV_RECONCILIATION_EPSILON,
+  NAV_COMPONENT_ROUNDING_TOLERANCE,
+} from './reconciliation'
+import {
   MAX_ACCOUNT_MASK_CHARACTERS,
   MAX_CONTRACT_CHARACTERS,
   MAX_DESCRIPTION_CHARACTERS,
@@ -48,7 +52,6 @@ export const MAX_WORKER_TOTAL_STRING_CHARACTERS =
 const MAX_DIAGNOSTIC_CODE_CHARACTERS = Math.max(
   ...PARSER_DIAGNOSTIC_CODES.map((code) => code.length),
 )
-const WORKER_RECONCILIATION_TOLERANCE = 0.000001
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
@@ -564,6 +567,8 @@ function validateReconciliation(
         'calculatedValue',
         'difference',
         'tolerance',
+        'componentCalculatedValue',
+        'componentDifference',
         'reasonCode',
         'sourceRefs',
       ],
@@ -581,7 +586,7 @@ function validateReconciliation(
     !isOptionalFiniteNumber(value.difference) ||
     !isOptionalFiniteNumber(value.tolerance) ||
     (value.tolerance !== undefined &&
-      value.tolerance !== WORKER_RECONCILIATION_TOLERANCE)
+      value.tolerance !== CSV_RECONCILIATION_EPSILON)
   ) {
     return false
   }
@@ -608,50 +613,53 @@ function validateReconciliation(
   ) {
     return false
   }
-  // This Worker currently returns only CSV reconciliations. PASS_ROUNDED is
-  // reserved for a future PDF comparison and is not valid for these checks.
-  if (status === 'PASS_ROUNDED') return false
-  if (status === 'PASS_EXACT') {
+  const componentCalculatedValue = value.componentCalculatedValue
+  const componentDifference = value.componentDifference
+  let componentMagnitude = 0
+  if (value.id === 'nav_bridge' && hasCompleteNumericEvidence) {
     if (
-      reasonCode !== 'within_tolerance' ||
-      !isFiniteNumber(value.reportedValue) ||
-      !isFiniteNumber(value.calculatedValue) ||
-      !isFiniteNumber(value.difference) ||
-      !isFiniteNumber(value.tolerance) ||
-      value.sourceRefs.length === 0 ||
-      Math.abs(value.difference) > value.tolerance ||
+      !isFiniteNumber(componentCalculatedValue) ||
+      !isFiniteNumber(componentDifference) ||
       !reconciliationDifferenceMatches(
-        value.reportedValue,
-        value.calculatedValue,
-        value.difference,
+        reportedValue,
+        componentCalculatedValue,
+        componentDifference,
       )
     ) {
       return false
     }
-  } else if (status === 'WARNING') {
-    if (
-      reasonCode === 'within_tolerance' ||
-      reasonCode === 'source_missing' ||
-      (reasonCode === 'difference_exceeds_tolerance' &&
-        (!isFiniteNumber(value.reportedValue) ||
-          !isFiniteNumber(value.calculatedValue) ||
-          !isFiniteNumber(value.difference) ||
-          !isFiniteNumber(value.tolerance) ||
-          !reconciliationDifferenceMatches(
-            value.reportedValue,
-            value.calculatedValue,
-            value.difference,
-          ) ||
-          (value.id !== 'nav_bridge' &&
-            Math.abs(value.difference) <= value.tolerance)))
-    ) {
-      return false
-    }
-  } else if (reasonCode !== 'source_missing') {
+    componentMagnitude = Math.abs(componentDifference)
+  } else if (componentCalculatedValue !== undefined || componentDifference !== undefined) {
     return false
   }
 
-  return true
+  if (status === 'PASS_EXACT' || status === 'PASS_ROUNDED') {
+    if (
+      !hasCompleteNumericEvidence ||
+      reasonCode !== 'within_tolerance' ||
+      value.sourceRefs.length === 0 ||
+      Math.abs(difference) > tolerance
+    ) {
+      return false
+    }
+    if (status === 'PASS_EXACT') return componentMagnitude <= tolerance
+    return (
+      value.id === 'nav_bridge' &&
+      componentMagnitude > tolerance &&
+      componentMagnitude <= NAV_COMPONENT_ROUNDING_TOLERANCE
+    )
+  }
+  if (status === 'WARNING') {
+    return !(
+      reasonCode === 'within_tolerance' || reasonCode === 'source_missing' ||
+      (reasonCode === 'difference_exceeds_tolerance' &&
+        (!hasCompleteNumericEvidence ||
+          (Math.abs(difference) <= tolerance &&
+            componentMagnitude <= NAV_COMPONENT_ROUNDING_TOLERANCE)))
+    )
+  }
+
+  return reasonCode === 'source_missing'
 }
 
 function validateReport(
@@ -853,12 +861,12 @@ function validateReport(
     mtmReconciliation.reportedValue !== value.reportedAllAssetsYtdMtm ||
     mtmReconciliation.calculatedValue !== value.parsedAllAssetsYtdMtm ||
     mtmReconciliation.difference !== value.mtmReconciliationDifference ||
-    mtmReconciliation.tolerance !== WORKER_RECONCILIATION_TOLERANCE ||
+    mtmReconciliation.tolerance !== CSV_RECONCILIATION_EPSILON ||
     (Math.abs(value.mtmReconciliationDifference) <=
-      WORKER_RECONCILIATION_TOLERANCE &&
+      CSV_RECONCILIATION_EPSILON &&
       mtmReconciliation.status !== 'PASS_EXACT') ||
     (Math.abs(value.mtmReconciliationDifference) >
-      WORKER_RECONCILIATION_TOLERANCE &&
+      CSV_RECONCILIATION_EPSILON &&
       (mtmReconciliation.status !== 'WARNING' ||
         mtmReconciliation.reasonCode !== 'difference_exceeds_tolerance')) ||
     statementPnlReconciliation.reportedValue !==

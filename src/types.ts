@@ -105,6 +105,9 @@ export interface ReconciliationCheck {
   calculatedValue?: number
   difference?: number
   tolerance?: number
+  // Independent Change in NAV sum and its signed residual, for nav_bridge only.
+  componentCalculatedValue?: number
+  componentDifference?: number
   reasonCode: ReconciliationReasonCode
   sourceRefs: SourceRef[]
 }

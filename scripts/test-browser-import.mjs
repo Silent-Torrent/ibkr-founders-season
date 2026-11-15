@@ -818,19 +818,21 @@ async function runBrowserChecks() {
     cashCurrencyConflictFixturePath,
     canonicalFixtureText.replace(cashSummaryPrefix, 'Cash Report,Data,Base Currency Summary,HKD,'),
   )
-  const microMtmFixturePath = join(browserArtifactDirectory, 'synthetic-mtm-micro-difference.csv')
+  const precisionFixturePath = join(browserArtifactDirectory, 'synthetic-mtm-micro-and-nav-rounding.csv')
   const canonicalMtmAllAssetsValues = '640.956111,101.387347,-14.620002,12.400000,740.123456'
+  const canonicalNavCommission = 'Change in NAV,Data,Commissions,-14.620002'
   assert.equal(
     canonicalFixtureText.split(canonicalMtmAllAssetsValues).length,
     2,
     'The fictional All Assets MTM row changed or is duplicated.',
   )
+  assert.equal(canonicalFixtureText.split(canonicalNavCommission).length, 2)
   writeFileSync(
-    microMtmFixturePath,
+    precisionFixturePath,
     canonicalFixtureText.replace(
       canonicalMtmAllAssetsValues,
       '640.956112,101.387347,-14.620002,12.400000,740.123457',
-    ),
+    ).replace(canonicalNavCommission, 'Change in NAV,Data,Commissions,-14.615002'),
     { flag: 'wx' },
   )
   writeFileSync(emptyFixturePath, '', { flag: 'wx' })
@@ -3045,7 +3047,7 @@ async function runBrowserChecks() {
   await clickPrimaryNavigation('Import')
   const workersBeforeMicroMtm = workerTargets.length
   await cdp.send('DOM.setFileInputFiles', {
-    files: [microMtmFixturePath],
+    files: [precisionFixturePath],
     nodeId: await resolveFileInputNodeId(),
   })
   const microMtmLedger = await waitForPageValue(
@@ -3073,7 +3075,7 @@ async function runBrowserChecks() {
       };
     })()`,
     (value) => value?.heading === 'Ledger' && value?.rows === 3,
-    'Signed micro-difference through the production Chrome Worker',
+    'Signed MTM micro-difference and NAV rounding through the production Chrome Worker',
     20_000,
   )
   assert.equal(workerTargets.length, workersBeforeMicroMtm + 1, 'The micro-difference CSV bypassed the real parser Worker.')
@@ -3086,11 +3088,11 @@ async function runBrowserChecks() {
     ['All-assets MTM', 'Statement-period P&L', 'NAV bridge'],
     'The production Ledger omitted or reordered its three reconciliation checks.',
   )
-  for (const { title, rows } of microMtmLedger.equations) {
-    assert.equal(rows.length, 3, `${title} hides one or more reported/calculated/difference amounts.`)
-    assert.deepEqual(rows.map(({ label }) => label), [
-      'Reported value', 'Calculated value', 'Signed difference',
-    ], `${title} does not label its source-to-calculation equation.`)
+  for (const { title, status, rows } of microMtmLedger.equations) {
+    const labels = ['Reported value', 'Calculated value', 'Signed difference']
+    if (title === 'NAV bridge') labels.push('Change in NAV component difference')
+    assert.deepEqual(rows.map(({ label }) => label), labels, `${title} does not label its source-to-calculation equation.`)
+    assert.equal(status, title === 'NAV bridge' ? 'Matches after rounding' : 'Within CSV tolerance')
     assert(rows.every(({ value }) => value && value !== '—'), `${title} has an unavailable numeric amount.`)
   }
   const [mtmEquation, statementEquation, navEquation] = microMtmLedger.equations
@@ -3099,6 +3101,8 @@ async function runBrowserChecks() {
   assert.match(mtmEquation.rows[2].value, /^\+(?:US)?\$0\.000001$/, 'The signed MTM micro-difference is hidden.')
   assert.match(statementEquation.rows[2].value, /^-(?:US)?\$0\.000001$/, 'The statement P&L negative micro-difference is hidden.')
   assert.match(navEquation.rows[2].value, /(?:US)?\$0(?:\.0+)?$/, 'The zero NAV bridge difference is unavailable.')
+  assert.match(navEquation.rows[3].value, /^-(?:US)?\$0\.005$/, 'The signed NAV component residual is hidden.')
+  assert(!microMtmLedger.warnings.includes('The NAV bridge is incomplete'), 'Rounding produced a NAV review warning.')
   assert(
     !microMtmLedger.warnings.includes('IBKR reported all-assets YTD MTM minus the parsed detail sum'),
     `A within-tolerance MTM difference was incorrectly warned: ${microMtmLedger.warnings}`,
@@ -3182,6 +3186,35 @@ async function runBrowserChecks() {
       sample.count > 0 && sample.minFont >= 12 && !sample.hidden && !sample.clipped,
       `${key} is absent, hidden, too small, or clipped at 320px: ${JSON.stringify(narrowReconciliation)}`,
     )
+  }
+  const layoutQaDirectory = process.env.CARD_LAYOUT_QA_DIR
+  if (layoutQaDirectory) {
+    mkdirSync(layoutQaDirectory, { recursive: true })
+    for (const [width, height] of [[390, 844], [1440, 900]]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', {
+        width, height, deviceScaleFactor: 1, mobile: width === 390,
+      })
+      const framing = await evaluate(`(async () => {
+        await document.fonts.ready;
+        const checks = [...document.querySelectorAll('.reconciliation-item')];
+        checks.forEach((check, index) => { check.open = index === 2 });
+        document.activeElement?.blur();
+        const anchor = innerWidth < 600 ? checks[0] : document.querySelector('#reconciliation-title');
+        const topbarBottom = document.querySelector('.topbar').getBoundingClientRect().bottom;
+        window.scrollTo({
+          top: scrollY + anchor.getBoundingClientRect().top - Math.max(0, topbarBottom) - 16,
+          behavior: 'instant',
+        });
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const bottomNav = document.querySelector('.bottom-nav').getBoundingClientRect();
+        const visibleBottom = bottomNav.height > 0 ? bottomNav.top : innerHeight;
+        const equation = checks[2].querySelector('.reconciliation-equation').getBoundingClientRect();
+        return { equationBottom: equation.bottom, visibleBottom };
+      })()`)
+      assert(framing.equationBottom <= framing.visibleBottom, `NAV evidence is clipped at ${width}px.`)
+      const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
+      writeFileSync(join(layoutQaDirectory, `nav-rounding-${width}.png`), Buffer.from(data, 'base64'))
+    }
   }
   await cdp.send('Emulation.clearDeviceMetricsOverride')
 

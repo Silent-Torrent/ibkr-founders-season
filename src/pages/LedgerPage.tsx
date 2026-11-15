@@ -391,6 +391,12 @@ export function LedgerPage({ report, locale }: LedgerPageProps) {
                             <dt>{t(locale, 'reconciliationSignedDifference')}</dt>
                             <dd>{formatReconciliationDifference(check.difference, report.baseCurrency, locale)}</dd>
                           </div>
+                          {check.componentDifference != null && check.componentDifference !== 0 && (
+                            <div>
+                              <dt>{t(locale, 'reconciliationNavComponentDifference')}</dt>
+                              <dd>{formatReconciliationDifference(check.componentDifference, report.baseCurrency, locale)}</dd>
+                            </div>
+                          )}
                         </dl>
                       )}
                     <SourceRows
