@@ -147,7 +147,9 @@ export async function runReleaseGateEvidence({directory,cdp,evaluate,waitForPage
     return sorted
   })
   await check('D02 trophies PNG and clear',async()=>{
-    await nav('trophies');assert.equal(await evaluate("document.querySelectorAll('.medal.earned').length"),14);await shot('trophies')
+    await nav('trophies')
+    assert.deepEqual(await evaluate("['.medal.earned', '.medal'].map(selector=>document.querySelectorAll(selector).length)"),[15,22])
+    await shot('trophies')
     await nav('ledger')
     await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:directory,eventsEnabled:true})
     const files=[]
