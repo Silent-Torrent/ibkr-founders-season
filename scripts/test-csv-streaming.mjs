@@ -527,6 +527,52 @@ try {
     )
   }
 
+  const fictionalOptionTrades = standardFixture.split('\n').filter((line) =>
+    line.startsWith('Trades,Data,Equity and Index Options,USD,'),
+  )
+  const assignmentRow = fictionalOptionTrades.find((line) => line.endsWith(',A'))
+  const expirationRow = fictionalOptionTrades.find((line) => line.endsWith(',Ep'))
+  assert.ok(assignmentRow && expirationRow, 'Missing fictional assignment or expiration Trades row.')
+  const withTradeCodes = (assignment, expiration) => standardFixture
+    .replace(assignmentRow, assignmentRow.replace(/,A$/, `,${assignment}`))
+    .replace(expirationRow, expirationRow.replace(/,Ep$/, `,${expiration}`))
+  const canonicalReport = parseIbkrActivityStatement(standardFixture, parseOptions).report
+  assert.ok(canonicalReport)
+  assert.deepEqual(canonicalReport.events.map((event) => event.type).sort(), ['assignment', 'expiration'])
+  assert.equal(canonicalReport.symbols.find(({ symbol }) => symbol === 'ZZFICTA')?.assignmentCount, 1)
+  assert.equal(canonicalReport.symbols.find(({ symbol }) => symbol === 'ZZFICTB')?.expirationCount, 1)
+
+  for (const [assignment, expiration] of [
+    ['A', 'Ep'],
+    ['C;A', 'C;Ep'],
+    ['A;C', 'Ep;C'],
+    [' C ; A ', ' Ep ; C '],
+    ['A;C;A;C', 'C;Ep;C;Ep'],
+  ]) {
+    const text = withTradeCodes(assignment, expiration)
+    const sync = parseIbkrActivityStatement(text, parseOptions)
+    const streamed = await parseIbkrActivityStatementBlob(new Blob([text]), parseOptions)
+    const label = `fictional Trades codes ${JSON.stringify([assignment, expiration])}`
+    assert.deepEqual(streamed, sync, `${label}: string and Blob parser results differ`)
+    assert.deepEqual(sync.errors, [], `${label}: expected one lifecycle event per option row`)
+    assert.deepEqual(sync.report?.events, canonicalReport.events, label)
+    assert.deepEqual(sync.report?.symbols, canonicalReport.symbols, label)
+    assert.equal(sync.report?.seasonPnl, canonicalReport.seasonPnl, label)
+    assert.deepEqual(sync.report?.reconciliations, canonicalReport.reconciliations, label)
+  }
+  for (const code of [
+    'C;A;Ep', 'Ep;C;A', 'A;C;Ex', 'C;Ex', 'Ex;C',
+    'A;C;Ca', 'C;A;Co', 'C;AEx', 'C;MEx', 'C;GEA', 'A;C;X',
+    'C;A;P', 'C;;A', 'A/C', 'A;\tC', 'A;\u00a0C',
+  ]) {
+    const text = withTradeCodes(code, 'Ep')
+    const sync = parseIbkrActivityStatement(text, parseOptions)
+    const streamed = await parseIbkrActivityStatementBlob(new Blob([text]), parseOptions)
+    assert.deepEqual(streamed, sync, code)
+    assert.equal(sync.report, undefined, code)
+    assert.ok(sync.errors.some((diagnostic) => diagnostic.code === 'option_event_type_conflict'), code)
+  }
+
   const extraTradesCell = standardFixture.split('\n').map((line) =>
     line.startsWith('Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,')
       ? `${line},Ex`

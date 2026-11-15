@@ -2762,7 +2762,7 @@ try {
       !dedicatedWithConflictingFallback.report,
     `A conflicting unused Trades fallback was hidden by dedicated lifecycle precedence: ${diagnosticsText(dedicatedWithConflictingFallback)}`,
   )
-  for (const conflictingCode of ['Assignment;Expired', 'A;Ex']) {
+  for (const conflictingCode of ['Assignment;Expired', 'A;Ex', 'C;A', 'Ep;C']) {
     const result = parseIbkrActivityStatement(
       dedicatedLifecycleFixture.replace(
         dedicatedEventRow,
