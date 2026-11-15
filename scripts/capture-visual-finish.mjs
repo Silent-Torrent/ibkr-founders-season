@@ -59,6 +59,7 @@ try {
     await waitFor(selector)
     await evaluate(`(async()=>{
       await document.fonts.ready
+      await Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations===1).map(a=>a.finished.catch(()=>{})))
       if (${JSON.stringify(selector)}==='main') window.scrollTo(0,0)
       else if (${JSON.stringify(selector)}==='.medal-wall') {
         const y=document.querySelector('.medal-grid').getBoundingClientRect().top+scrollY
