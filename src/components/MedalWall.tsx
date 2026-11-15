@@ -4,6 +4,7 @@ import { ribbon, seal, sealLines } from '../lib/medalArt'
 import { useContext } from 'react'
 import type { PortfolioReport, Locale } from '../types'
 import { medals, local, tr, insufficient, advice } from '../data/medals'
+import { t } from '../i18n'
 import { Settings } from './Preferences'
 import { medalOutcome, tierName } from '../lib/cardOptions'
 export function MedalWall({
@@ -69,6 +70,7 @@ export function MedalWall({
               {tier!=null && <p className="medal-tier">{tr(l,'等级','等級','Tier')} · {tierName(tier,l)}</p>}
               {r.source!=='local' && <small>{tr(l,'虚构示例','虛構範例','Fictional sample')}</small>}
               <p>{local(m[1], l)}</p>
+              {i === 7 && n === null && <p className="fee-medal-scope">{t(l, 'feeMedalScope')}</p>}
               {detail && <p>{detail}</p>}
               <p>{local(m[p.roast ? 2 : 3], l)}</p><small>{advice(l)}</small>
             </details>
