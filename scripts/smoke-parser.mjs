@@ -2679,6 +2679,126 @@ try {
     'A conflicting unused FII alias was dropped before the global consistency check.',
   )
 
+  // Fictional short-put assignment regression shape, not an active Ex sample.
+  const putFixture = readFileSync(
+    resolve(projectRoot, 'tests/fixtures/short-put-assignment-fictional.csv'),
+    'utf8',
+  )
+  const putFixtureRows = parseCsvRows(putFixture)
+  const putFixtureLines = putFixture.split('\n')
+  const fixtureData = (section) => {
+    const [header, ...rows] = putFixtureRows.filter((row) => row[0] === section)
+    assert(header?.[1] === 'Header', `Missing fixture header for ${section}.`)
+    return rows.map((row) => Object.fromEntries(
+      header.slice(2).map((field, index) => [field, row[index + 2]]),
+    ))
+  }
+  const amount = (row, field) => {
+    const value = parseNumber(row[field])
+    assert(value != null, `Missing numeric ${field} in the short-put fixture.`)
+    return value
+  }
+  const tradeRows = fixtureData('Trades')
+  assert(
+    isDeepStrictEqual(tradeRows.map((row) => row.Code), ['O', 'A;C', 'A;O', 'C;P']) &&
+      tradeRows.every((row) => row.DataDiscriminator === 'Order'),
+    'The short-put fixture must retain its four orders in lifecycle order.',
+  )
+  const [putOpen, putClose, stockOpen, stockClose] = tradeRows
+  const assignedDate = putClose['Date/Time'].slice(0, 10)
+  assert(
+    putOpen.Symbol === 'ZZPUTX 19JUN26 25 P' && putOpen.Symbol === putClose.Symbol &&
+      stockOpen.Symbol === 'ZZPUTX' && stockOpen.Symbol === stockClose.Symbol &&
+      putOpen['Date/Time'] < putClose['Date/Time'] &&
+      stockOpen['Date/Time'].startsWith(assignedDate) &&
+      stockOpen['Date/Time'] < stockClose['Date/Time'],
+    'The put assignment must open the same underlying stock on the same date.',
+  )
+  const contracts = -amount(putOpen, 'Quantity')
+  const multiplier = 100
+  const openCommission = amount(putOpen, 'Comm/Fee')
+  const premium = amount(putOpen, 'Proceeds') + openCommission
+  assert(
+    contracts > 0 && amount(putClose, 'Quantity') === contracts &&
+      amount(putOpen, 'Proceeds') === contracts * multiplier * amount(putOpen, 'T. Price') &&
+      openCommission < 0 && premium > 0 &&
+      amount(putOpen, 'Basis') === -premium && amount(putClose, 'Basis') === premium &&
+      [putOpen, putClose, stockOpen].every((row) => amount(row, 'Realized P/L') === 0),
+    'The printed option opening and assignment must net to zero contracts and zero realized P&L.',
+  )
+  const shares = amount(stockOpen, 'Quantity')
+  const strike = 25
+  const strikeCost = shares * strike
+  const adjustedCost = strikeCost + amount(putOpen, 'Basis')
+  const saleCommission = amount(stockClose, 'Comm/Fee')
+  const netSale = amount(stockClose, 'Proceeds') + saleCommission
+  assert(
+    shares === contracts * multiplier && amount(stockOpen, 'T. Price') === strike &&
+      amount(stockOpen, 'Basis') === strikeCost && amount(stockOpen, 'Proceeds') === -strikeCost &&
+      amount(stockClose, 'Quantity') === -shares && saleCommission < 0 &&
+      amount(stockClose, 'Proceeds') === shares * amount(stockClose, 'T. Price') &&
+      amount(stockClose, 'Basis') === -adjustedCost &&
+      amount(stockClose, 'Realized P/L') === netSale - adjustedCost,
+    'The printed stock close must carry the opening premium into the adjusted stock cost exactly once.',
+  )
+
+  const realizedSection = 'Realized & Unrealized Performance Summary'
+  const [stockSummary, optionSummary] = fixtureData(realizedSection)
+  const stockRealized = amount(stockSummary, 'Realized Total')
+  assert(
+    stockSummary.Symbol === stockOpen.Symbol && optionSummary.Symbol === putOpen.Symbol &&
+      stockRealized === amount(stockClose, 'Realized P/L') &&
+      stockRealized === netSale - strikeCost + premium && amount(optionSummary, 'Realized Total') === 0,
+    'The printed summaries must carry the net premium only in the sole stock sale.',
+  )
+  const mtmSection = 'Mark-to-Market Performance Summary'
+  const mtmField = 'Mark-to-Market P/L Total'
+  const [stockMtm, optionMtm, allAssets] = fixtureData(mtmSection)
+  const allAssetsMtm = amount(allAssets, mtmField)
+  assert(
+    allAssets['Asset Category'] === 'Total (All Assets)' &&
+      allAssetsMtm === amount(stockMtm, mtmField) + amount(optionMtm, mtmField),
+    'The fictional All Assets MTM total must reconcile to the printed stock and option MTM.',
+  )
+
+  const putResult = parseIbkrActivityStatement(putFixture)
+  const putReport = putResult.report
+  assert(putReport && putResult.errors.length === 0, `Short-put fixture rejected: ${diagnosticsText(putResult)}`)
+  const [event] = putReport.events
+  assert(
+    putReport.events.length === 1 && event.type === 'assignment' &&
+      event.symbol === stockOpen.Symbol && event.contract === putClose.Symbol && event.date === assignedDate &&
+      event.sourceRefs.some((ref) =>
+        ref.section === 'Trades' && ref.field === 'Code' && putFixtureLines[ref.rowNumber - 1]?.endsWith(',A;C')),
+    'Only the option A;C may produce an assignment event. The stock A;O must not produce a second event.',
+  )
+  const [assignedUnderlying] = putReport.symbols
+  assert(
+    putReport.symbols.length === 1 && assignedUnderlying.symbol === stockOpen.Symbol &&
+      assignedUnderlying.assignmentCount === 1 && assignedUnderlying.exerciseCount === 0,
+    'The assigned option and stock must roll into one underlying with one assignment and zero exercises.',
+  )
+  assert(
+    assignedUnderlying.stockRealizedYtd === stockRealized &&
+      assignedUnderlying.optionRealizedYtd === 0 &&
+      assignedUnderlying.totalRealizedYtd === assignedUnderlying.stockRealizedYtd + assignedUnderlying.optionRealizedYtd &&
+      assignedUnderlying.sourceRefs.totalRealizedYtd?.filter(
+        (ref) => ref.section === realizedSection && ref.field === 'Realized Total',
+      ).length === 2,
+    'Realized YTD must use the printed summaries without losing or double-counting the premium.',
+  )
+  const mtmCheck = putReport.reconciliations.find((check) => check.id === 'mtm_all_assets')
+  assert(
+    assignedUnderlying.stockYtdMtm === amount(stockMtm, mtmField) &&
+      assignedUnderlying.optionYtdMtm === amount(optionMtm, mtmField) &&
+      putReport.seasonPnl === allAssetsMtm && putReport.reportedAllAssetsYtdMtm === allAssetsMtm &&
+      mtmCheck?.status === 'PASS_EXACT' && mtmCheck.difference === 0 &&
+      putReport.metricSourceRefs.seasonPnl?.some((ref) =>
+        ref.section === mtmSection && ref.field === mtmField &&
+        putFixtureLines[ref.rowNumber - 1]?.startsWith(mtmSection + ',Data,Total (All Assets),')),
+    'Season P&L must remain the All Assets MTM total without adding lifecycle events or the premium again.',
+  )
+
   const canonicalAssignmentRow = 'Trades,Data,Equity and Index Options,USD,ZZFICTA 19JUN26 125 P,ZZFICTA,"2026-06-19, 16:00:00",-1.000000,0.000000,0.000000,-5.555555,0.000000,220.555555,60.222222,A'
   const underlyingTradeHeader = currentSchemaFixture
     .split('\n')

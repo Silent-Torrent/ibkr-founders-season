@@ -1,0 +1,36 @@
+# 虚构数据 — 这是回归形状，不是主动 Ex 样本
+# FICTIONAL regression shape. Put multiplier is 100. Proceeds are signed cash flows and commissions are negative charges. Opening short basis is the negative net premium.
+Statement,Header,Field Name,Field Value
+Statement,Data,Title,Activity Statement
+Statement,Data,Period,"January 1, 2026 - August 15, 2026"
+Account Information,Header,Field Name,Field Value
+Account Information,Data,Account,SYNTHETIC_ZZPUTX
+Account Information,Data,Base Currency,USD
+Net Asset Value,Header,Asset Class,Prior Total,Current Total
+Net Asset Value,Data,Cash,10000.00,10897.75
+Net Asset Value,Data,Total,10000.00,10897.75
+Change in NAV,Header,Field Name,Field Value
+Change in NAV,Data,Starting Value,10000.00
+Change in NAV,Data,Mark-to-Market,900.00
+Change in NAV,Data,Deposits & Withdrawals,0.00
+Change in NAV,Data,Dividends,0.00
+Change in NAV,Data,Withholding Tax,0.00
+Change in NAV,Data,Interest,0.00
+Change in NAV,Data,Change in Interest Accruals,0.00
+Change in NAV,Data,Other Fees,0.00
+Change in NAV,Data,Commissions,-2.25
+Change in NAV,Data,Other FX Translations,0.00
+Change in NAV,Data,Ending Value,10897.75
+Mark-to-Market Performance Summary,Header,Asset Category,Symbol,Mark-to-Market P/L Position,Mark-to-Market P/L Transaction,Mark-to-Market P/L Commissions,Mark-to-Market P/L Total
+Mark-to-Market Performance Summary,Data,Stocks,ZZPUTX,0.00,400.00,-1.25,398.75
+Mark-to-Market Performance Summary,Data,Equity and Index Options,ZZPUTX 19JUN26 25 P,0.00,500.00,-1.00,499.00
+Mark-to-Market Performance Summary,Data,Total (All Assets),,0.00,900.00,-2.25,897.75
+Total P/L for Statement Period,,,,,,,897.75
+Realized & Unrealized Performance Summary,Header,Asset Class,Symbol,Realized Total,Unrealized Total
+Realized & Unrealized Performance Summary,Data,Stocks,ZZPUTX,897.75,0.00
+Realized & Unrealized Performance Summary,Data,Equity and Index Options,ZZPUTX 19JUN26 25 P,0.00,0.00
+Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price,Proceeds,Comm/Fee,Basis,Realized P/L,Code
+Trades,Data,Order,Equity and Index Options,USD,ZZPUTX 19JUN26 25 P,"2026-06-03, 10:00:00",-2,2.50,500.00,-1.00,-499.00,0.00,O
+Trades,Data,Order,Equity and Index Options,USD,ZZPUTX 19JUN26 25 P,"2026-06-19, 16:00:00",2,0.00,0.00,0.00,499.00,0.00,A;C
+Trades,Data,Order,Stocks,USD,ZZPUTX,"2026-06-19, 16:00:00",200,25.00,-5000.00,0.00,5000.00,0.00,A;O
+Trades,Data,Order,Stocks,USD,ZZPUTX,"2026-07-08, 11:00:00",-200,27.00,5400.00,-1.25,-4501.00,897.75,C;P
