@@ -272,6 +272,15 @@ Dividends,Total,99999
 Fees,Header,Amount
 Fees,Data,0
 Fees,Total,99999
+Scenario,Data,6,Multiple assignment orders award one medal with complete codes,1,2026-08-15
+Trades,Header,DataDiscriminator,Asset Category,Symbol,Date/Time,Code
+Trades,Data,Order,Equity and Index Options,ZZMEDALA 19JUN26 15 P,2026-06-19 16:00:00,A
+Trades,Data,Order,Equity and Index Options,ZZMEDALB 17JUL26 20 P,2026-07-17 16:00:00,A;C
+Trades,Data,Order,Stocks,ZZMEDALC,2026-07-20 10:00:00,O
+Scenario,Data,6,An assignment flag with another order missing its code is insufficient,null,2026-08-15
+Trades,Header,DataDiscriminator,Asset Category,Symbol,Date/Time,Code
+Trades,Data,Order,Equity and Index Options,ZZMEDALB 17JUL26 20 P,2026-07-17 16:00:00,A;C
+Trades,Data,Order,Stocks,ZZMEDALC,2026-07-20 10:00:00,
 Scenario,Data,7,0,0,2026-12-31
 Trades,Header,Symbol,Comm/Fee,DataDiscriminator,Quantity,T. Price,Realized P/L,Code,Date/Time,Asset Category
 Trades,Data,ZTEST,0,Order,1,100,0,O,2026-01-05 09:30:00,Stocks
